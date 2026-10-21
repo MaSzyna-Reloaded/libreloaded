@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SmokeSource" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What one particle emitter is made of.
+	</brief_description>
+	<description>
+		How many particles an emitter gives a second, in what cone and how fast they leave, how big, how opaque and of what colour they are born, and how they grow and fade. A particle lives until it has faded out. [SmokeServer] builds an emitter of it ([method SmokeServer.smoke_set_source]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_mean_size" qualifiers="const">
+			<return type="float" />
+			<description>
+				The mean size a particle is born with.
+			</description>
+		</method>
+		<method name="get_particle_amount" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="max_particles" type="int" />
+			<param index="1" name="density" type="float" />
+			<param index="2" name="lifetime" type="float" />
+			<description>
+				How many particles the emitter holds at once: what it gives over [param lifetime] at [param density] times its rate, at most [param max_particles].
+			</description>
+		</method>
+		<method name="get_particle_lifetime" qualifiers="const">
+			<return type="float" />
+			<description>
+				How long a particle lives [lb]s[rb]: until the most opaque one has faded out; 0 for a source whose particles never fade.
+			</description>
+		</method>
+		<method name="get_terminal_size" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="lifetime" type="float" />
+			<description>
+				The size a particle has grown to after [param lifetime].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(0.0627451, 0.0627451, 0.0627451, 1)">
+			The colour a particle is born with.
+		</member>
+		<member name="inclination_max" type="float" setter="set_inclination_max" getter="get_inclination_max" default="0.0">
+			How far off the emitter's up axis a particle may leave [lb]deg[rb].
+		</member>
+		<member name="inclination_min" type="float" setter="set_inclination_min" getter="get_inclination_min" default="0.0">
+		</member>
+		<member name="opacity_limit_max" type="float" setter="set_opacity_limit_max" getter="get_opacity_limit_max" default="1.0">
+		</member>
+		<member name="opacity_limit_min" type="float" setter="set_opacity_limit_min" getter="get_opacity_limit_min" default="0.0">
+		</member>
+		<member name="opacity_max" type="float" setter="set_opacity_max" getter="get_opacity_max" default="1.0">
+			The opacity a particle is born with, picked between [member opacity_min] and this.
+		</member>
+		<member name="opacity_min" type="float" setter="set_opacity_min" getter="get_opacity_min" default="1.0">
+		</member>
+		<member name="opacity_step" type="float" setter="set_opacity_step" getter="get_opacity_step" default="0.0">
+			How much opacity a particle loses a second (below 0), within [member opacity_limit_min] and [member opacity_limit_max].
+		</member>
+		<member name="size_limit_max" type="float" setter="set_size_limit_max" getter="get_size_limit_max" default="inf">
+		</member>
+		<member name="size_limit_min" type="float" setter="set_size_limit_min" getter="get_size_limit_min" default="0.0">
+		</member>
+		<member name="size_max" type="float" setter="set_size_max" getter="get_size_max" default="1.0">
+			The size a particle is born with over the sprite's own, picked between [member size_min] and this.
+		</member>
+		<member name="size_min" type="float" setter="set_size_min" getter="get_size_min" default="1.0">
+		</member>
+		<member name="size_step" type="float" setter="set_size_step" getter="get_size_step" default="0.0">
+			How much a particle grows a second, within [member size_limit_min] and [member size_limit_max].
+		</member>
+		<member name="spawn_rate" type="float" setter="set_spawn_rate" getter="get_spawn_rate" default="0.0">
+			Particles a second.
+		</member>
+		<member name="velocity_max" type="float" setter="set_velocity_max" getter="get_velocity_max" default="1.0">
+			The speed a particle leaves at [lb]m/s[rb], picked between [member velocity_min] and this.
+		</member>
+		<member name="velocity_min" type="float" setter="set_velocity_min" getter="get_velocity_min" default="1.0">
+		</member>
+	</members>
+</class>

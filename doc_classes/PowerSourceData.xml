@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PowerSourceData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A power source of the catenary.
+	</brief_description>
+	<description>
+		A substation or a section point: its supply and its fuses.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="translated" qualifiers="const">
+			<return type="PowerSourceData" />
+			<param index="0" name="offset" type="Vector3" />
+			<description>
+				A copy of the power source moved by [param offset].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="fast_fuse_repetition" type="float" setter="set_fast_fuse_repetition" getter="get_fast_fuse_repetition" default="0.0">
+			How many times the fast fuse trips again.
+		</member>
+		<member name="fast_fuse_timeout" type="float" setter="set_fast_fuse_timeout" getter="get_fast_fuse_timeout" default="0.0">
+			[s].
+		</member>
+		<member name="internal_resistance" type="float" setter="set_internal_resistance" getter="get_internal_resistance" default="0.0">
+			[ohm].
+		</member>
+		<member name="is_section" type="bool" setter="set_is_section" getter="get_is_section" default="false">
+			A section point, not a substation.
+		</member>
+		<member name="max_output_current" type="float" setter="set_max_output_current" getter="get_max_output_current" default="0.0">
+			[A].
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			Its name - the resource's own ([member Resource.resource_name]).
+		</member>
+		<member name="nominal_voltage" type="float" setter="set_nominal_voltage" getter="get_nominal_voltage" default="0.0">
+			[V].
+		</member>
+		<member name="position" type="Vector3" setter="set_position" getter="get_position" default="Vector3(0, 0, 0)">
+			Where it stands.
+		</member>
+		<member name="recuperation" type="bool" setter="set_recuperation" getter="get_recuperation" default="false">
+			It takes the current vehicles give back.
+		</member>
+		<member name="slow_fuse_timeout" type="float" setter="set_slow_fuse_timeout" getter="get_slow_fuse_timeout" default="0.0">
+			[s].
+		</member>
+		<member name="voltage_frequency" type="float" setter="set_voltage_frequency" getter="get_voltage_frequency" default="0.0">
+			[Hz], 0 for direct current.
+		</member>
+	</members>
+</class>

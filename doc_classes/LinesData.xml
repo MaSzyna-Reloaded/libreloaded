@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LinesData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Lines of a scenery.
+	</brief_description>
+	<description>
+		The wires of power lines, mostly: pairs of points, drawn by [code]SceneryLines[/code] and merged with their neighbours ([SceneryLinesGeometry]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="translated" qualifiers="const">
+			<return type="LinesData" />
+			<param index="0" name="offset" type="Vector3" />
+			<description>
+				A copy of the lines moved by [param offset].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(0, 0, 0, 1)">
+			Their colour.
+		</member>
+		<member name="points" type="PackedVector3Array" setter="set_points" getter="get_points" default="PackedVector3Array()">
+			The lines in the world, pairs of points - a strip or a loop turned into pairs as it was read.
+		</member>
+		<member name="range_max" type="float" setter="set_range_max" getter="get_range_max" default="0.0">
+			Visible up to this distance from the lines' centre, 0 - no limit.
+		</member>
+		<member name="range_min" type="float" setter="set_range_min" getter="get_range_min" default="0.0">
+			Visible from this distance.
+		</member>
+		<member name="width" type="float" setter="set_width" getter="get_width" default="0.0">
+			The lines' width; a negative one is a line that does not fade with the distance.
+		</member>
+	</members>
+</class>

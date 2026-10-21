@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ScenarioEventImplementation" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The behaviour of a [ScenarioEventServer] event system.
+	</brief_description>
+	<description>
+		What the events of a scenario mean beyond their delay, condition and action - which may not be queued, when one runs, what follows its run - and its own entries in the server's queue ([method ScenarioEventServer.system_schedule]). The server is the dispatcher; the original's event system, its memory cells and launchers, is one implementation. Implement it in C++ by overriding the virtual methods, or in GDScript by overriding the methods below.
+		Every callback carries the system: a Resource is shared by default, so one implementation may serve several systems and keeps whatever state it needs per system RID. An implementation changes the events only through the [ScenarioEventServer] API.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_event_can_queue" qualifiers="virtual const">
+			<return type="bool" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="event" type="RID" />
+			<param index="2" name="activator" type="RID" />
+			<description>
+				Whether the system's [param event] may be queued now by [param activator]; it may by default.
+			</description>
+		</method>
+		<method name="_event_get_run_time" qualifiers="virtual const">
+			<return type="float" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="event" type="RID" />
+			<param index="2" name="activator" type="RID" />
+			<param index="3" name="now" type="float" />
+			<param index="4" name="run_time" type="float" />
+			<description>
+				The simulation time the system's [param event] runs at, queued by [param activator] at [param now]: by default [param run_time], now with the event's delays.
+			</description>
+		</method>
+		<method name="_event_ran" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="event" type="RID" />
+			<param index="2" name="activator" type="RID" />
+			<description>
+				The system's [param event] ran, its action done.
+			</description>
+		</method>
+		<method name="_scheduled" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="owner" type="RID" />
+			<param index="2" name="ticket" type="int" />
+			<description>
+				The time the implementation scheduled [param owner] for ([method ScenarioEventServer.system_schedule]) came; [param ticket] is what [method ScenarioEventServer.system_schedule] returned.
+			</description>
+		</method>
+		<method name="_system_attached" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<description>
+				The implementation was attached to [param system].
+			</description>
+		</method>
+		<method name="_system_detached" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<description>
+				The implementation was detached from [param system]; it lets go of everything it kept for it.
+			</description>
+		</method>
+	</methods>
+</class>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WorldData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A world of the game's own format, as it is saved.
+	</brief_description>
+	<description>
+		The world's [code]world.res[/code]: its name, where it lies, the clock it starts at and the cells its sections are drawn in. The world node ([code]World[/code]) is made of it; a plugin's subclass says more of a world it divides otherwise. Saved by its class name, it names no script.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="declared_start_time" type="float" setter="set_declared_start_time" getter="get_declared_start_time" default="-1.0">
+			The scenario clock the world declares for its start, hours; below 0 for none - the scenery's default.
+		</member>
+		<member name="origin" type="Vector2" setter="set_origin" getter="get_origin" default="Vector2(0, 0)">
+			The projected metres (east, north) the world's origin lies at.
+		</member>
+		<member name="section_cells" type="Vector2i[]" setter="set_section_cells" getter="get_section_cells" default="[]">
+			The cells of the streaming grid there are sections of ([WorldSection]).
+		</member>
+		<member name="world_name" type="String" setter="set_world_name" getter="get_world_name" default="&quot;&quot;">
+			The world's name: its [code].json[/code]'s and its signalling system's.
+		</member>
+	</members>
+</class>

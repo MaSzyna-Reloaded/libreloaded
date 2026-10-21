@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CompiledScenery" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What a scenery is made of.
+	</brief_description>
+	<description>
+		Read whole and registered with the servers ([code]SceneryServer[/code]): its tracks, traction, models, sounds, lines, trainsets, stations, scripts and nodes. A plugin's subclass carries what only its format has.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="lines" type="LinesData[]" setter="set_lines" getter="get_lines" default="[]">
+			The lines, drawn by SceneryLines (not nodes, so not in [member nodes]).
+		</member>
+		<member name="models" type="ModelData[]" setter="set_models" getter="get_models" default="[]">
+			Its models.
+		</member>
+		<member name="nodes" type="PackedScene" setter="set_nodes" getter="get_nodes">
+			Its nodes, as a scene.
+		</member>
+		<member name="power_sources" type="PowerSourceData[]" setter="set_power_sources" getter="get_power_sources" default="[]">
+			Its power sources.
+		</member>
+		<member name="scripts" type="String[]" setter="set_scripts" getter="get_scripts" default="[]">
+			The scenario's scripts, relative to the scenery directory.
+		</member>
+		<member name="signal_boxes" type="SignalBoxData[]" setter="set_signal_boxes" getter="get_signal_boxes" default="[]">
+			The signal boxes, for a list of them (not drawn).
+		</member>
+		<member name="sounds" type="SoundData[]" setter="set_sounds" getter="get_sounds" default="[]">
+			Its sounds.
+		</member>
+		<member name="stations" type="StationData[]" setter="set_stations" getter="get_stations" default="[]">
+			The stations, for a list of them (not drawn).
+		</member>
+		<member name="tracks" type="TrackData[]" setter="set_tracks" getter="get_tracks" default="[]">
+			Its tracks and roads.
+		</member>
+		<member name="traction" type="TractionData[]" setter="set_traction" getter="get_traction" default="[]">
+			Its catenary's spans.
+		</member>
+		<member name="trainsets" type="TrainsetData[]" setter="set_trainsets" getter="get_trainsets" default="[]">
+			The trainsets and their vehicles, built through the servers (not nodes, so not in [member nodes]).
+		</member>
+	</members>
+</class>

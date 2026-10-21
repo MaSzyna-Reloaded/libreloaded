@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ReloadedModel3D" inherits="VisualInstance3D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A model in the scene, drawn by the [ModelRenderingServer] instance it stands for.
+	</brief_description>
+	<description>
+		A plugin's node derives from it, makes the instance, hands it over ([method set_model_instance]) and announces each new one ([signal model_instance_created]). The lights set here are that instance's.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_normalize_lights_state" qualifiers="virtual const">
+			<return type="Dictionary" />
+			<param index="0" name="lights_state" type="Dictionary" />
+			<description>
+				The deriving node's say on a [member lights_state] set: what it stores and draws, the model's own lights in it, say. Without it the state is kept as it was set.
+			</description>
+		</method>
+		<method name="attach_signal_head">
+			<return type="void" />
+			<param index="0" name="signal_head" type="RID" />
+			<description>
+				The model draws the [SignallingServer] signal head's lights, and frees it with them.
+			</description>
+		</method>
+		<method name="get_model_instance" qualifiers="const">
+			<return type="RID" />
+			<description>
+				Returns the [ModelRenderingServer] instance the node stands for, none until there is one.
+			</description>
+		</method>
+		<method name="set_model_instance">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<description>
+				From the deriving node, whenever it has another instance. It sets the lights on it and announces it itself.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="lights_dimmed" type="Dictionary" setter="set_lights_dimmed" getter="get_lights_dimmed" default="{}">
+			The model's lights dimmed, by name: [code]{light: bool}[/code], at [member lights_dimmed_multiplier].
+		</member>
+		<member name="lights_dimmed_multiplier" type="float" setter="set_lights_dimmed_multiplier" getter="get_lights_dimmed_multiplier" default="1.0">
+			How bright a dimmed light is.
+		</member>
+		<member name="lights_state" type="Dictionary" setter="set_lights_state" getter="get_lights_state" default="{}">
+			The model's lights on or off, by name: [code]{light: bool}[/code].
+		</member>
+	</members>
+	<signals>
+		<signal name="model_instance_created">
+			<param index="0" name="instance" type="RID" />
+			<description>
+				Emitted whenever the node has a new [ModelRenderingServer] instance - on the first load, on a reload, on re-entering the tree.
+			</description>
+		</signal>
+	</signals>
+</class>

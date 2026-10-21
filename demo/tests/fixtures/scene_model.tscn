@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="BoxMesh" id="BoxMesh_hull"]
+size = Vector3(2, 1, 4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tyre"]
+size = Vector3(0.2, 0.5, 0.5)
+
+[node name="Car" type="Node3D"]
+
+[node name="Body" type="Node3D" parent="."]
+
+[node name="Hull" type="MeshInstance3D" parent="Body"]
+mesh = SubResource("BoxMesh_hull")
+
+[node name="Wheel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1)
+
+[node name="Tyre" type="MeshInstance3D" parent="Wheel"]
+mesh = SubResource("BoxMesh_tyre")

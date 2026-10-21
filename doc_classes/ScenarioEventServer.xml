@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ScenarioEventServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		RID based registry and queue of the scenario's events - their dispatcher.
+	</brief_description>
+	<description>
+		The original's event_manager ([code]Event.h:638[/code]).
+		An event is a delay, an optional condition ([ScenarioEventCondition]) and an action ([ScenarioEventAction]); the server knows no event types - what [code]updatevalues[/code] or [code]lights[/code] means is the business of an action. A queued event runs once its time comes: its condition is tested, then the action's [method ScenarioEventAction._run] or [method ScenarioEventAction._run_else] is called. The time is [SimulationServer]'s simulation time, in seconds, which the physics and the drivers read too.
+		An event may belong to an event system ([method system_create]), whose implementation ([ScenarioEventImplementation]) says what more its events are: which may not be queued, when one runs, what follows its run - and keeps entries of its own in the queue ([method system_schedule]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="event_attach_action">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="action" type="ScenarioEventAction" />
+			<description>
+				Sets what [param event] does when it runs.
+			</description>
+		</method>
+		<method name="event_attach_condition">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="condition" type="ScenarioEventCondition" />
+			<description>
+				Sets what decides whether [param event] runs its action's [method ScenarioEventAction._run] or [method ScenarioEventAction._run_else]; a null condition always passes.
+			</description>
+		</method>
+		<method name="event_create">
+			<return type="RID" />
+			<description>
+				Creates an event: no delay, no condition, no action.
+			</description>
+		</method>
+		<method name="event_exists" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				Whether the event exists.
+			</description>
+		</method>
+		<method name="event_free">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				Frees [param event]; a queued one is taken off the queue ([signal event_dequeued]).
+			</description>
+		</method>
+		<method name="event_get_action" qualifiers="const">
+			<return type="ScenarioEventAction" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				What [param event] does when it runs.
+			</description>
+		</method>
+		<method name="event_get_condition" qualifiers="const">
+			<return type="ScenarioEventCondition" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				What decides how [param event] runs; null for none.
+			</description>
+		</method>
+		<method name="event_get_delay" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				Seconds [param event] waits from being queued to running.
+			</description>
+		</method>
+		<method name="event_get_name" qualifiers="const">
+			<return type="StringName" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				The scenery name of [param event].
+			</description>
+		</method>
+		<method name="event_get_random_delay" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				Up to this many seconds more [param event] waits, drawn each time it is queued.
+			</description>
+		</method>
+		<method name="event_get_rid_by_name" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				The event of [param name]; an empty RID for none.
+			</description>
+		</method>
+		<method name="event_get_run_time" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				The simulation time ([method SimulationServer.simulation_get_time]) a queued [param event] runs at, negative when it is not queued.
+			</description>
+		</method>
+		<method name="event_get_system" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				The event system the event belongs to, none for none.
+			</description>
+		</method>
+		<method name="event_is_queued" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="event" type="RID" />
+			<description>
+				Whether [param event] waits in the queue.
+			</description>
+		</method>
+		<method name="event_queue">
+			<return type="bool" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="activator" type="RID" default="RID()" />
+			<param index="2" name="extra_delay" type="float" default="0.0" />
+			<description>
+				Queues [param event] to run after its delay plus [param extra_delay]; [param activator] is the vehicle that queued it. An event is queued once: while it waits, another request is refused and its activator is dropped ([code]event_manager::AddToQuery[/code], [code]Event.cpp:2380-2462[/code]). The implementation of the event's system may refuse it ([method ScenarioEventImplementation._event_can_queue]) and says when it runs ([method ScenarioEventImplementation._event_get_run_time]). Returns whether it was queued.
+			</description>
+		</method>
+		<method name="event_set_delay">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="seconds" type="float" />
+			<description>
+				Seconds [param event] waits from being queued to running.
+			</description>
+		</method>
+		<method name="event_set_name">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="name" type="StringName" />
+			<description>
+				The scenery name [param event] is found by ([method event_get_rid_by_name]).
+			</description>
+		</method>
+		<method name="event_set_random_delay">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="seconds" type="float" />
+			<description>
+				Up to [param seconds] more [param event] waits, drawn each time it is queued.
+			</description>
+		</method>
+		<method name="queue_get_events" qualifiers="const">
+			<return type="RID[]" />
+			<description>
+				Returns the queued events in the order they run.
+			</description>
+		</method>
+		<method name="system_add_event">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="event" type="RID" />
+			<description>
+				The event belongs to the system from now on.
+			</description>
+		</method>
+		<method name="system_attach_implementation">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="implementation" type="ScenarioEventImplementation" />
+			<description>
+				The implementation of the system's events: [method ScenarioEventImplementation._system_detached] of the previous one, [method ScenarioEventImplementation._system_attached] of this one.
+			</description>
+		</method>
+		<method name="system_create">
+			<return type="RID" />
+			<description>
+				An event system, of no implementation yet.
+			</description>
+		</method>
+		<method name="system_free">
+			<return type="void" />
+			<param index="0" name="system" type="RID" />
+			<description>
+				Detaches the system's implementation first; its events stay, of no system.
+			</description>
+		</method>
+		<method name="system_get_implementation" qualifiers="const">
+			<return type="ScenarioEventImplementation" />
+			<param index="0" name="system" type="RID" />
+			<description>
+				The implementation of the system, null for none.
+			</description>
+		</method>
+		<method name="system_schedule">
+			<return type="int" />
+			<param index="0" name="system" type="RID" />
+			<param index="1" name="owner" type="RID" />
+			<param index="2" name="time" type="float" />
+			<description>
+				The system's implementation is called back ([method ScenarioEventImplementation._scheduled]) for [param owner] at [param time] of simulation time, in the queue's order; returns the entry's ticket, passed back with it.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="event_dequeued">
+			<param index="0" name="event" type="RID" />
+			<description>
+				A queued event left the queue without launching - it was freed (its scenery unloaded). The RID is no longer valid.
+			</description>
+		</signal>
+		<signal name="event_freed">
+			<param index="0" name="event" type="RID" />
+			<description>
+				Emitted when the [param event] is freed ([method event_free]): whoever holds it forgets it.
+			</description>
+		</signal>
+		<signal name="event_launched">
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="activator" type="RID" />
+			<description>
+				[param event], queued by [param activator], came to run - before its condition is tested.
+			</description>
+		</signal>
+		<signal name="event_queued">
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="activator" type="RID" />
+			<description>
+				[param event] was queued by [param activator].
+			</description>
+		</signal>
+	</signals>
+</class>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RailVehicleHeating" inherits="RailVehicleComponent" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Represents and configures the vehicle's train heating (Clima) power source.
+	</brief_description>
+	<description>
+		[RailVehicleHeating] wraps the FIZ [code]Clima:[/code] section, which selects and configures the power source used
+		to heat the train (an onboard generator, an accumulator, a power cable from another vehicle, and so on).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_active" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Whether the train heating works ([code]Heating[/code]).
+			</description>
+		</method>
+		<method name="get_allowed" qualifiers="const">
+			<return type="bool" />
+			<description>
+				The heating switch's own state ([code]HeatingAllow[/code]) - what [code]trainheating_sw:[/code] flips ([code]Train.cpp:6674[/code]).
+			</description>
+		</method>
+		<method name="get_power" qualifiers="const">
+			<return type="float" />
+			<description>
+				The heating's power ([code]HeatingPower[/code]).
+			</description>
+		</method>
+		<method name="heating">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+				The train heating switched on or off ([code]HeatingSwitch()[/code]; [code]OnCommand_heatingenable/disable[/code], [code]Train.cpp:5256-5296[/code]).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="heating_max_voltage" type="float" setter="set_heating_max_voltage" getter="get_heating_max_voltage" default="0.0">
+			[code]Clima:HMaxVoltage[/code]
+			Maximum voltage of the electric heating circuit, in volts.
+		</member>
+		<member name="heating_source" type="int" setter="set_heating_source" getter="get_heating_source" enum="RailVehicleController.TrainPowerSource" default="3">
+			[code]Clima:Heating[/code]
+			Power source for the train heating circuit.
+		</member>
+	</members>
+</class>

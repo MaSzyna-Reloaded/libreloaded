@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SceneryModelPlacement" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A decoration model supplied by a [SceneryStreamingProvider].
+	</brief_description>
+	<description>
+		An item of [constant SceneryStreamingProvider.CONTENT_MODELS]: a model drawn while its cell is supplied, registered with [method ModelRenderingServer.instance_register] and streamed by its own range. It is named by nothing, so no event or signal reaches it.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="lights_colors" type="Dictionary" setter="set_lights_colors" getter="get_lights_colors" default="{}">
+			Its lights' colours, by name ([member ModelData.lights_colors]).
+		</member>
+		<member name="lights_state" type="Dictionary" setter="set_lights_state" getter="get_lights_state" default="{}">
+			Its lights on or off, by name ([member ModelData.lights_state]).
+		</member>
+		<member name="model" type="String" setter="set_model" getter="get_model" default="&quot;&quot;">
+			The model's name, which its backend finds it by ([member ModelData.model]).
+		</member>
+		<member name="model_provider" type="StringName" setter="set_model_provider" getter="get_model_provider" default="&amp;&quot;&quot;">
+			The model renderer's backend the model is the one of ([member ModelData.model_provider]); empty for the default one.
+		</member>
+		<member name="range_max" type="float" setter="set_range_max" getter="get_range_max" default="0.0">
+			The distance it is drawn up to [m]; [code]0[/code] or less is no limit of its own (the streaming's draw distance).
+		</member>
+		<member name="range_min" type="float" setter="set_range_min" getter="get_range_min" default="0.0">
+			The distance it is drawn from [m].
+		</member>
+		<member name="skins" type="PackedStringArray" setter="set_skins" getter="get_skins" default="PackedStringArray()">
+			The model's replaceable materials, by number.
+		</member>
+		<member name="transform" type="Transform3D" setter="set_transform" getter="get_transform" default="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)">
+			Where the model stands in the world.
+		</member>
+	</members>
+</class>

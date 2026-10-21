@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TractionData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		One span of the catenary.
+	</brief_description>
+	<description>
+		Where its wires hang, how they are strung and what feeds them. A plugin keeps what is only its own in [member meta] or in a subclass.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="translated" qualifiers="const">
+			<return type="TractionData" />
+			<param index="0" name="offset" type="Vector3" />
+			<description>
+				A copy of the span moved by [param offset].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="contact_p1" type="Vector3" setter="set_contact_p1" getter="get_contact_p1" default="Vector3(0, 0, 0)">
+			The contact wire's start.
+		</member>
+		<member name="contact_p2" type="Vector3" setter="set_contact_p2" getter="get_contact_p2" default="Vector3(0, 0, 0)">
+			The contact wire's end.
+		</member>
+		<member name="damage_flag" type="int" setter="set_damage_flag" getter="get_damage_flag" default="0">
+			Its damage, a plugin's mask.
+		</member>
+		<member name="max_current" type="float" setter="set_max_current" getter="get_max_current" default="0.0">
+			[A].
+		</member>
+		<member name="meta" type="Dictionary" setter="set_meta" getter="get_meta" default="{}">
+			What a plugin keeps of its own about the span.
+		</member>
+		<member name="min_height" type="float" setter="set_min_height" getter="get_min_height" default="0.0">
+			The lowest the contact wire hangs between its supports [m].
+		</member>
+		<member name="nominal_voltage" type="float" setter="set_nominal_voltage" getter="get_nominal_voltage" default="0.0">
+			[V].
+		</member>
+		<member name="parallel" type="String" setter="set_parallel" getter="get_parallel" default="&quot;&quot;">
+			The span it runs beside, by its name.
+		</member>
+		<member name="power_supply_name" type="String" setter="set_power_supply_name" getter="get_power_supply_name" default="&quot;&quot;">
+			The power source feeding the span, by its name.
+		</member>
+		<member name="resistivity" type="float" setter="set_resistivity" getter="get_resistivity" default="0.0">
+			[ohm/m].
+		</member>
+		<member name="segment_length" type="float" setter="set_segment_length" getter="get_segment_length" default="0.0">
+			The dropper spacing [m].
+		</member>
+		<member name="support_p1" type="Vector3" setter="set_support_p1" getter="get_support_p1" default="Vector3(0, 0, 0)">
+			The support wire's start.
+		</member>
+		<member name="support_p2" type="Vector3" setter="set_support_p2" getter="get_support_p2" default="Vector3(0, 0, 0)">
+			The support wire's end.
+		</member>
+		<member name="visible" type="bool" setter="set_visible" getter="get_visible" default="true">
+			Drawn or not.
+		</member>
+		<member name="wire_offset" type="float" setter="set_wire_offset" getter="get_wire_offset" default="0.0">
+			The wires' offset across the span [m].
+		</member>
+		<member name="wire_thickness" type="float" setter="set_wire_thickness" getter="get_wire_thickness" default="0.0">
+			The contact wire's thickness [m].
+		</member>
+		<member name="wires" type="int" setter="set_wires" getter="get_wires" default="0">
+			How the wires are strung ([code]TractionRenderingServer.Wires[/code]), the contact wire alone by default.
+		</member>
+	</members>
+</class>

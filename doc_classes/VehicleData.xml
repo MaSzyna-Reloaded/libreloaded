@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VehicleData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A vehicle of a trainset.
+	</brief_description>
+	<description>
+		Which vehicle of the catalogue it is ([code]VehicleCatalogServer[/code]), in which livery, what it is in the trainset and how it stands. A provider's subclass keeps what it knows of it besides.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="take_vehicle_of">
+			<return type="void" />
+			<param index="0" name="other" type="VehicleData" />
+			<description>
+				The entry becomes the vehicle [param other] is, in its livery, turned the way [param other] is.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="coupling" type="int" setter="set_coupling" getter="get_coupling" default="0">
+			Its coupling with the next vehicle of the trainset, a mask of [code]RailVehicleController.CouplingFlags[/code].
+		</member>
+		<member name="direction" type="int" setter="set_direction" getter="get_direction" enum="TrackServer.Direction" default="0">
+			Reversed in its trainset or not.
+		</member>
+		<member name="driver_type" type="int" setter="set_driver_type" getter="get_driver_type" enum="VehicleData.DriverType" default="0">
+			Who is aboard.
+		</member>
+		<member name="gap" type="float" setter="set_gap" getter="get_gap" default="0.0">
+			How far it stands behind the vehicle before it [m].
+		</member>
+		<member name="livery" type="String" setter="set_livery" getter="get_livery" default="&quot;&quot;">
+			The name of its livery; empty for the provider's default.
+		</member>
+		<member name="load_amount" type="float" setter="set_load_amount" getter="get_load_amount" default="0.0">
+			How much it carries.
+		</member>
+		<member name="load_name" type="String" setter="set_load_name" getter="get_load_name" default="&quot;&quot;">
+			What it carries.
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			Its name for the player to read - the resource's own ([member Resource.resource_name]); none shows the [member vehicle_id].
+		</member>
+		<member name="trainset_index" type="int" setter="set_trainset_index" getter="get_trainset_index" default="-1">
+			In a trainset as the player arranged it: its place in the trainset as the scenery declares it, front first, by which it is paired with its declared vehicle; -1: a vehicle added to it.
+		</member>
+		<member name="vehicle" type="String" setter="set_vehicle" getter="get_vehicle" default="&quot;&quot;">
+			What the provider finds the vehicle by.
+		</member>
+		<member name="vehicle_id" type="String" setter="set_vehicle_id" getter="get_vehicle_id" default="&quot;&quot;">
+			The vehicle's id, what finds it; may be empty or repeated.
+		</member>
+		<member name="vehicle_provider" type="StringName" setter="set_vehicle_provider" getter="get_vehicle_provider" default="&amp;&quot;&quot;">
+			The name of the provider the vehicle is the one of; empty for the project's default.
+		</member>
+		<member name="velocity" type="float" setter="set_velocity" getter="get_velocity" default="0.0">
+			The velocity it starts with [km/h] - its trainset's, along the track; a reversed vehicle takes it negated.
+		</member>
+	</members>
+	<constants>
+		<constant name="DRIVER_NOBODY" value="0" enum="DriverType">
+			Nobody - the vehicle is not driven at all.
+		</constant>
+		<constant name="DRIVER_HEAD" value="1" enum="DriverType">
+			A driver in its front cab.
+		</constant>
+		<constant name="DRIVER_REAR" value="2" enum="DriverType">
+			A driver in its rear cab.
+		</constant>
+	</constants>
+</class>

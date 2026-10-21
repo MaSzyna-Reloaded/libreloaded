@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ReloadedPluginServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The plugins of Rails Reloaded the library runs.
+	</brief_description>
+	<description>
+		Creates the plugins when the library starts, runs their stages (see [ReloadedPlugin]) and frees them when it ends.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="data_path_resolve" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="base_dir" type="String" />
+			<param index="1" name="relative_path" type="String" />
+			<description>
+				Returns the path a data file is found under, relative to [param base_dir], as the plugin that resolves the data's paths reads it (data written for a case-insensitive filesystem, say). Without such a plugin, [param relative_path] as it is.
+			</description>
+		</method>
+		<method name="plugin_get_list" qualifiers="const">
+			<return type="ReloadedPlugin[]" />
+			<description>
+				Returns the plugins, in the order they were created.
+			</description>
+		</method>
+	</methods>
+</class>

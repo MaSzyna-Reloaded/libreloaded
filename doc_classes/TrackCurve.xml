@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrackCurve" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A track's curve.
+	</brief_description>
+	<description>
+		From [member p1] to [member p2], its handles [member c1] and [member c2] relative to the ends, the rails rolled [member roll1] at [member p1] and [member roll2] at [member p2]; a [member radius] other than 0 makes it an arc. Every change is announced ([signal Resource.changed]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="translated" qualifiers="const">
+			<return type="TrackCurve" />
+			<param index="0" name="offset" type="Vector3" />
+			<description>
+				A copy of the curve moved by [param offset] - its handles are relative to its ends.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="c1" type="Vector3" setter="set_c1" getter="get_c1" default="Vector3(0, 0, 0)">
+			The handle at the start, relative to [member p1].
+		</member>
+		<member name="c2" type="Vector3" setter="set_c2" getter="get_c2" default="Vector3(0, 0, 0)">
+			The handle at the end, relative to [member p2].
+		</member>
+		<member name="p1" type="Vector3" setter="set_p1" getter="get_p1" default="Vector3(0, 0, 0)">
+			The start of the curve.
+		</member>
+		<member name="p2" type="Vector3" setter="set_p2" getter="get_p2" default="Vector3(0, 0, 0)">
+			The end of the curve.
+		</member>
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="0.0">
+			The arc's radius [m]; 0 for a curve by its handles.
+		</member>
+		<member name="roll1" type="float" setter="set_roll1" getter="get_roll1" default="0.0">
+			The rails' roll at the start [rad].
+		</member>
+		<member name="roll2" type="float" setter="set_roll2" getter="get_roll2" default="0.0">
+			The rails' roll at the end [rad].
+		</member>
+	</members>
+</class>

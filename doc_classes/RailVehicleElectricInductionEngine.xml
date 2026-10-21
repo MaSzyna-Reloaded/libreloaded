@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RailVehicleElectricInductionEngine" inherits="RailVehicleElectricEngine" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Subclass of RailVehicleElectricEngine for inverter-fed asynchronous (induction) traction motors.
+	</brief_description>
+	<description>
+		[RailVehicleElectricInductionEngine] wraps the inverter-fed asynchronous motor variant of the FIZ
+		[code]Engine:[/code] section (used when [code]EngineType=ElectricInductionMotor[/code]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_field_current" qualifiers="const">
+			<return type="float" />
+			<description>
+				The motors' field current [lb]A[rb] ([code]eimv[eimv_If][/code]).
+			</description>
+		</method>
+		<method name="get_force_full" qualifiers="const">
+			<return type="float" />
+			<description>
+				The full force at the current speed [lb]kN[rb] ([code]eimv[eimv_Fful][/code]).
+			</description>
+		</method>
+		<method name="get_force_max" qualifiers="const">
+			<return type="float" />
+			<description>
+				The force the motors are set to [lb]kN[rb], negative when braking ([code]eimv[eimv_Fmax][/code]).
+			</description>
+		</method>
+		<method name="get_motor_voltage" qualifiers="const">
+			<return type="float" />
+			<description>
+				The voltage the inverters feed the motors with [lb]V[rb] ([code]eimv[eimv_U][/code]).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="initial_force" type="float" setter="set_initial_force" getter="get_initial_force" default="0.0">
+			[code]Engine:F0[/code]
+			Initial (starting) traction force, in kN.
+		</member>
+		<member name="max_braking_force" type="float" setter="set_max_braking_force" getter="get_max_braking_force" default="0.0">
+			[code]Engine:Fh[/code]
+			Maximum ED braking force, in kN.
+		</member>
+		<member name="max_braking_power" type="float" setter="set_max_braking_power" getter="get_max_braking_power" default="0.0">
+			[code]Engine:Ph[/code]
+			Maximum ED braking power.
+		</member>
+		<member name="max_power" type="float" setter="set_max_power" getter="get_max_power" default="0.0">
+			[code]Engine:Pmax[/code]
+			Maximum traction power.
+		</member>
+		<member name="motor_max_current" type="float" setter="set_motor_max_current" getter="get_motor_max_current" default="0.0">
+			[code]Engine:Imax[/code]
+			Maximum current setting for this unit's motors.
+		</member>
+		<member name="nominal_voltage" type="float" setter="set_nominal_voltage" getter="get_nominal_voltage" default="0.0">
+			The engine's nominal voltage [lb]V[rb] ([code]Volt[/code]).
+		</member>
+		<member name="pole_pairs" type="float" setter="set_pole_pairs" getter="get_pole_pairs" default="0.0">
+			[code]Engine:p[/code]
+			Number of motor pole pairs.
+		</member>
+	</members>
+</class>

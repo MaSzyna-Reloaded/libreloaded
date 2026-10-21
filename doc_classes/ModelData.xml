@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ModelData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		One model in the game.
+	</brief_description>
+	<description>
+		A building, any 3D object: which model and whose (the backend that finds it by its name), with which skins, where it stands and from how far it is seen; drawn through [ModelRenderingServer]. A scenery holds them ([member CompiledScenery.models]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="translated" qualifiers="const">
+			<return type="ModelData" />
+			<param index="0" name="offset" type="Vector3" />
+			<description>
+				A copy of the model placed [param offset] further.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="lights_colors" type="Dictionary" setter="set_lights_colors" getter="get_lights_colors" default="{}">
+			Its lights' colours, by name: [code]{light: Color}[/code] ([method ModelRenderingServer.instance_set_lights_colors]).
+		</member>
+		<member name="lights_state" type="Dictionary" setter="set_lights_state" getter="get_lights_state" default="{}">
+			Its lights on or off, by name: [code]{light: bool}[/code] ([method ModelRenderingServer.instance_set_lights_state]); a light not named is as the model has it.
+		</member>
+		<member name="model" type="String" setter="set_model" getter="get_model" default="&quot;&quot;">
+			The model's name; the backend of [member model_provider] finds its file.
+		</member>
+		<member name="model_provider" type="StringName" setter="set_model_provider" getter="get_model_provider" default="&amp;&quot;&quot;">
+			The name of the model renderer's backend the model is the one of ([ModelRenderingServer]); empty for the default one.
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			The placement's name - the resource's own ([member Resource.resource_name]) - empty for none; a signal head is registered under it.
+		</member>
+		<member name="position" type="Vector3" setter="set_position" getter="get_position" default="Vector3(0, 0, 0)">
+			Where it stands.
+		</member>
+		<member name="range_max" type="float" setter="set_range_max" getter="get_range_max" default="0.0">
+			Visible up to this distance, 0 - no limit.
+		</member>
+		<member name="range_min" type="float" setter="set_range_min" getter="get_range_min" default="0.0">
+			Visible from this distance.
+		</member>
+		<member name="rotation" type="Vector3" setter="set_rotation" getter="get_rotation" default="Vector3(0, 0, 0)">
+			Euler angles (radians), same order as [member Node3D.rotation].
+		</member>
+		<member name="signal_head_kind" type="SignalHeadKind" setter="set_signal_head_kind" getter="get_signal_head_kind">
+			Set when the model is a signal head.
+		</member>
+		<member name="skins" type="PackedStringArray" setter="set_skins" getter="get_skins" default="PackedStringArray()">
+			Its skins.
+		</member>
+	</members>
+</class>

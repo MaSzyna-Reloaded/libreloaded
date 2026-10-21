@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SmokeServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The particle emitters of the world, by RID.
+	</brief_description>
+	<description>
+		Smoke a vehicle or the scenery gives off. An emitter is made of a [SmokeSource] and drawn with a sprite - by default the flipbook of [code]reloaded/smoke/modern/atlas[/code], the core's own smoke. A moving emitter ([constant KIND_DYNAMIC]) spawns its particles at the rate its owner sets ([method smoke_set_intensity]); a standing one ([constant KIND_STATIC]) emits on its own, its plume in the air the moment it is built. Every emitter drifts with the wind of [SimulationServer]. A change of a [code]reloaded/smoke/*[/code] setting builds every emitter again.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="smoke_create">
+			<return type="RID" />
+			<param index="0" name="kind" type="int" enum="SmokeServer.Kind" />
+			<description>
+				An emitter built as soon as it has a source.
+			</description>
+		</method>
+		<method name="smoke_free">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<description>
+			</description>
+		</method>
+		<method name="smoke_get_atlas" qualifiers="const">
+			<return type="Texture2D" />
+			<description>
+				The flipbook of [code]reloaded/smoke/modern/atlas[/code]; null when the project gives none.
+			</description>
+		</method>
+		<method name="smoke_get_density" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="kind" type="int" enum="SmokeServer.Kind" />
+			<description>
+				How many more particles an emitter of [param kind] gives than its source asks for; each is fainter by as much.
+			</description>
+		</method>
+		<method name="smoke_get_lifetime" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="source" type="SmokeSource" />
+			<param index="1" name="kind" type="int" enum="SmokeServer.Kind" />
+			<description>
+				How long a particle of [param source] lives in an emitter of [param kind] [lb]s[rb].
+			</description>
+		</method>
+		<method name="smoke_get_max_particles" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="kind" type="int" enum="SmokeServer.Kind" />
+			<description>
+				The particles one emitter of [param kind] holds at most.
+			</description>
+		</method>
+		<method name="smoke_get_statistics" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				The number of emitters ([code]total[/code]) and how many of them are built now ([code]built[/code]). A registered emitter is built only while the camera is near.
+			</description>
+		</method>
+		<method name="smoke_register">
+			<return type="RID" />
+			<param index="0" name="kind" type="int" enum="SmokeServer.Kind" />
+			<param index="1" name="transform" type="Transform3D" />
+			<description>
+				An emitter standing at [param transform], built while the camera is within its kind's distance ([code]reloaded/smoke/dynamic/distance[/code], [code]reloaded/smoke/static/distance[/code]).
+			</description>
+		</method>
+		<method name="smoke_set_intensity">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<param index="1" name="intensity" type="float" />
+			<description>
+				A moving emitter's spawn rate over its source's, 0..1. Only the rate: nothing reaches a particle already in the air.
+			</description>
+		</method>
+		<method name="smoke_set_scenario">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<param index="1" name="scenario" type="RID" />
+			<description>
+			</description>
+		</method>
+		<method name="smoke_set_source">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<param index="1" name="source" type="SmokeSource" />
+			<description>
+				What the emitter is made of; it is built of it again.
+			</description>
+		</method>
+		<method name="smoke_set_sprite">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<param index="1" name="sprite" type="Texture2D" />
+			<description>
+				What a particle is drawn with; null for the core's own smoke.
+			</description>
+		</method>
+		<method name="smoke_set_transform">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<param index="1" name="transform" type="Transform3D" />
+			<description>
+				Where the particles are born; they leave along the transform's up axis.
+			</description>
+		</method>
+		<method name="smoke_set_visible">
+			<return type="void" />
+			<param index="0" name="emitter" type="RID" />
+			<param index="1" name="visible" type="bool" />
+			<description>
+				A hidden emitter spawns nothing.
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="KIND_STATIC" value="0" enum="Kind">
+			An emitter of the scenery, standing still.
+		</constant>
+		<constant name="KIND_DYNAMIC" value="1" enum="Kind">
+			A vehicle's emitter, moving and spawning at the rate its owner sets.
+		</constant>
+	</constants>
+</class>

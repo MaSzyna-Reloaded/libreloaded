@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrainsetData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A trainset of a scenery.
+	</brief_description>
+	<description>
+		Its vehicles stand on the track one after another from the offset and are coupled ([code]RailVehicleServer.trainset_place()[/code]); a vehicle outside any trainset is a trainset of one, standing by its own track and offset.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_arranged_vehicles" qualifiers="const">
+			<return type="VehicleData[]" />
+			<param index="0" name="arranged" type="VehicleData[]" />
+			<description>
+				Its vehicles as [param arranged] lists them (a scenery's trainset_override) when every declared vehicle there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared vehicle by its place ([member VehicleData.trainset_index]); a declared vehicle becomes the entry's vehicle, turned its way, its crew and load kept; an added one gets the velocity of the vehicle before it, nobody aboard, no load, no gap, an id of its own and no name. The couplings are the places'.
+			</description>
+		</method>
+		<method name="get_driver_vehicle" qualifiers="const">
+			<return type="VehicleData" />
+			<description>
+				The vehicle the player starts in: the one with a driver in its front cab, else in its rear one, else the first; null for a trainset without vehicles.
+			</description>
+		</method>
+		<method name="is_occupied" qualifiers="const">
+			<return type="bool" />
+			<description>
+				A driver sits in one of its vehicles, so the player can take the trainset - the original's launcher refuses one without.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="description" type="String" setter="set_description" getter="get_description" default="&quot;&quot;">
+			What the scenario says the train is to do.
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			Its name - the resource's own ([member Resource.resource_name]); empty for a vehicle outside a trainset.
+		</member>
+		<member name="offset" type="float" setter="set_offset" getter="get_offset" default="0.0">
+			The distance along the track its front stands at [m].
+		</member>
+		<member name="player_drivable" type="bool" setter="set_player_drivable" getter="get_player_drivable" default="true">
+			The scenario offers the trainset to the player.
+		</member>
+		<member name="timetable" type="String" setter="set_timetable" getter="get_timetable" default="&quot;&quot;">
+			The timetable of its driver - its first order; empty for a vehicle outside a trainset.
+		</member>
+		<member name="track_name" type="String" setter="set_track_name" getter="get_track_name" default="&quot;&quot;">
+			The track its front stands on.
+		</member>
+		<member name="vehicles" type="VehicleData[]" setter="set_vehicles" getter="get_vehicles" default="[]">
+			Its vehicles, front first.
+		</member>
+		<member name="velocity" type="float" setter="set_velocity" getter="get_velocity" default="0.0">
+			The velocity it starts with - its driver's first order.
+		</member>
+	</members>
+</class>

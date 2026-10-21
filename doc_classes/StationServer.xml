@@ -1,0 +1,660 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="StationServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The stations of a scenery, the timetables of the trains calling at them and their runs, and the dispatch of a train at a stop.
+	</brief_description>
+	<description>
+		A station has a name it is also found by ([method station_find_by_name]) and the tracks where a train stops at or passes it, its stop points. A timetable is a plan only: the name of its train and its entries, each a station with its planned arrival and departure; any number of trains may run by one. A run is a timetable run by a trainset: whoever drives the train moves it on from entry to entry ([method run_next_entry]), and the server records what the train did at the stations and works out how late it is ([method run_get_delay]).
+		A dispatch is kept under the vehicle the train is driven from. Its steps follow one another as the cars report them done: the passengers exchanged ([signal RailVehicleLoad.load_exchange_finished]), the train let go ([method dispatch_depart]), its doors closed ([signal RailVehicleDoors.doors_closed]). The cars open their doors and exchange by themselves; whoever drives works the cab's doors as [signal dispatch_step_changed] asks. The original keeps this as a negative [code]fStopTime[/code] of the driver and its [code]Doors()[/code] (Driver.cpp:1233-1241, 4266-4356, 6767-6801).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="dispatch_cancel">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Drops the dispatch - the train left the stop.
+			</description>
+		</method>
+		<method name="dispatch_depart">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The train may go as far as its timetable says: once its passengers are done, its doors close and the dispatch is over.
+			</description>
+		</method>
+		<method name="dispatch_get_exchange_time" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The seconds the longest exchange of the dispatch still takes, 0 when none.
+			</description>
+		</method>
+		<method name="dispatch_get_step" qualifiers="const">
+			<return type="int" enum="StationServer.DispatchStep" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The step of the train's dispatch, [constant DISPATCH_STEP_NONE] without one.
+			</description>
+		</method>
+		<method name="dispatch_start">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="cars" type="RID[]" />
+			<description>
+				Starts the dispatch of the train driven from [param vehicle], of [param cars]: those whose load is being exchanged ([method RailVehicleServer.load_add], [method RailVehicleServer.load_remove]) are waited for. The train's earlier dispatch is dropped.
+			</description>
+		</method>
+		<method name="run_create">
+			<return type="RID" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="trainset" type="RID" />
+			<param index="2" name="offset" type="float" default="0.0" />
+			<description>
+				The trainset [param trainset] runs [param timetable], its times shifted by [param offset] hours, from its first entry - standing there from now where no arrival is planned. A trainset has one run at a time: [code]RID()[/code] for one that has. Coupled into another trainset, a run goes with it where that one has none and ends where it has; it ends with its trainset.
+			</description>
+		</method>
+		<method name="run_entry_get_actual_arrival" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				When the train arrived at the entry, hours since midnight; [constant NO_TIME] until it did.
+			</description>
+		</method>
+		<method name="run_entry_get_actual_departure" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				When the train left the entry, or passed it where it does not stop, hours since midnight; [constant NO_TIME] until it did.
+			</description>
+		</method>
+		<method name="run_find_by_trainset" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="trainset" type="RID" />
+			<description>
+				The run of [param trainset], [code]RID()[/code] for none.
+			</description>
+		</method>
+		<method name="run_free">
+			<return type="void" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				Ends the run.
+			</description>
+		</method>
+		<method name="run_get_current_entry" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				The entry the train drives to or stands at; the entry count once it is past the last.
+			</description>
+		</method>
+		<method name="run_get_delay" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="time" type="float" />
+			<description>
+				How late the train is at [param time] [lb]min[rb], early when negative - as on a railway: the delay recorded last (of the arrival, the departure or the passing), or more once the clock has passed the planned time of where the train has not got to: the current entry's arrival on the way to it, its departure where the train stands there or passes it. The shorter way round the clock.
+			</description>
+		</method>
+		<method name="run_get_offset" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				How many hours the run's times are the timetable's shifted.
+			</description>
+		</method>
+		<method name="run_get_time_to_departure" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="time" type="float" />
+			<description>
+				The minutes from [param time] to the departure from the current entry - negative once it is past; 0 where the train passes it.
+			</description>
+		</method>
+		<method name="run_get_timetable" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				The timetable the run runs.
+			</description>
+		</method>
+		<method name="run_get_trainset" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				The trainset that runs it.
+			</description>
+		</method>
+		<method name="run_next_entry">
+			<return type="void" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				On to the next entry - by whoever drives the train. The server records the arrival, the departure and the passing at the current entry's station by its stop points: the train stopping on one has arrived, starting off from the entry it stands at has left it, coming onto one moving where it does not stop has passed it.
+			</description>
+		</method>
+		<method name="run_previous_entry">
+			<return type="void" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				Back to the entry before.
+			</description>
+		</method>
+		<method name="station_add_stop_point">
+			<return type="void" />
+			<param index="0" name="station" type="RID" />
+			<param index="1" name="track" type="RID" />
+			<description>
+				Adds [param track] to the tracks where a train stops at or passes the station - once.
+			</description>
+		</method>
+		<method name="station_clear_stop_points">
+			<return type="void" />
+			<param index="0" name="station" type="RID" />
+			<description>
+				The station has no stop points any more.
+			</description>
+		</method>
+		<method name="station_create">
+			<return type="RID" />
+			<description>
+				A new station, with no name and no stop points.
+			</description>
+		</method>
+		<method name="station_find_by_name" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="name" type="String" />
+			<description>
+				The station of [param name], [code]RID()[/code] for none. The station named so last is found.
+			</description>
+		</method>
+		<method name="station_free">
+			<return type="void" />
+			<param index="0" name="station" type="RID" />
+			<description>
+				Frees the station. Refused while a timetable calls at it.
+			</description>
+		</method>
+		<method name="station_get_name" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="station" type="RID" />
+			<description>
+				The station's name.
+			</description>
+		</method>
+		<method name="station_get_stop_points" qualifiers="const">
+			<return type="RID[]" />
+			<param index="0" name="station" type="RID" />
+			<description>
+				The tracks where a train stops at or passes the station.
+			</description>
+		</method>
+		<method name="station_get_type" qualifiers="const">
+			<return type="int" enum="StationServer.StationType" />
+			<param index="0" name="station" type="RID" />
+			<description>
+				What the station is: a station, or a passenger stop.
+			</description>
+		</method>
+		<method name="station_list" qualifiers="const">
+			<return type="RID[]" />
+			<description>
+				Every station.
+			</description>
+		</method>
+		<method name="station_set_name">
+			<return type="void" />
+			<param index="0" name="station" type="RID" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Names the station; [method station_find_by_name] finds it by the new name, no longer by the old one.
+			</description>
+		</method>
+		<method name="station_set_type">
+			<return type="void" />
+			<param index="0" name="station" type="RID" />
+			<param index="1" name="type" type="int" enum="StationServer.StationType" />
+			<description>
+				Says what the station is - [constant STATION_TYPE_STATION], or [constant STATION_TYPE_PASSENGER_STOP], a small stop where fewer get on and off.
+			</description>
+		</method>
+		<method name="timetable_add_entry">
+			<return type="int" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="station" type="RID" />
+			<param index="2" name="arrival" type="float" />
+			<param index="3" name="departure" type="float" />
+			<description>
+				Adds [param station] at the end of the timetable, planned to arrive at [param arrival] and depart at [param departure], hours since midnight - [constant NO_TIME] for an arrival where the train passes without stopping. Returns the entry's index, -1 for an unknown timetable or station.
+			</description>
+		</method>
+		<method name="timetable_create">
+			<return type="RID" />
+			<description>
+				A new timetable, with no entries.
+			</description>
+		</method>
+		<method name="timetable_entry_get_arrival" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The arrival planned at the entry, hours since midnight; [constant NO_TIME] where the train passes.
+			</description>
+		</method>
+		<method name="timetable_entry_get_departure" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The departure planned from the entry, hours since midnight - the time it passes where it does not stop.
+			</description>
+		</method>
+		<method name="timetable_entry_get_extra" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				What a plugin keeps of its own about the entry ([method timetable_entry_set_extra]).
+			</description>
+		</method>
+		<method name="timetable_entry_get_kilometre" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				Where the entry's station is on the line [lb]km[rb].
+			</description>
+		</method>
+		<method name="timetable_entry_get_radio_channel" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The radio channel from the entry on, [constant NO_RADIO_CHANNEL] for none.
+			</description>
+		</method>
+		<method name="timetable_entry_get_running_time" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The running time to the entry [lb]min[rb].
+			</description>
+		</method>
+		<method name="timetable_entry_get_speed_limit" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The speed limit on the way to the entry [lb]km/h[rb], [constant NO_SPEED_LIMIT] for none.
+			</description>
+		</method>
+		<method name="timetable_entry_get_station" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The entry's station.
+			</description>
+		</method>
+		<method name="timetable_entry_get_track_count" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The line's tracks on the way to the entry, 1 or 2.
+			</description>
+		</method>
+		<method name="timetable_entry_is_direction_change" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				Whether the train changes its direction at the entry.
+			</description>
+		</method>
+		<method name="timetable_entry_is_stop" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				Whether the train stops at the entry: an arrival is planned there.
+			</description>
+		</method>
+		<method name="timetable_entry_is_technical_stop" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				Whether the stop is a technical one: the train stops for its own sake, nobody gets on or off.
+			</description>
+		</method>
+		<method name="timetable_entry_set_direction_change">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="change" type="bool" />
+			<description>
+				Says the train changes its direction at the entry.
+			</description>
+		</method>
+		<method name="timetable_entry_set_extra">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="extra" type="Dictionary" />
+			<description>
+				What a plugin keeps of its own about the entry - the core reads none of it.
+			</description>
+		</method>
+		<method name="timetable_entry_set_kilometre">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="kilometre" type="float" />
+			<description>
+				Sets where the entry's station is on the line [lb]km[rb].
+			</description>
+		</method>
+		<method name="timetable_entry_set_radio_channel">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="channel" type="int" />
+			<description>
+				Sets the radio channel from the entry on.
+			</description>
+		</method>
+		<method name="timetable_entry_set_running_time">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="minutes" type="float" />
+			<description>
+				Sets the running time to the entry [lb]min[rb].
+			</description>
+		</method>
+		<method name="timetable_entry_set_speed_limit">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="speed_limit" type="float" />
+			<description>
+				Sets the speed limit on the way to the entry [lb]km/h[rb].
+			</description>
+		</method>
+		<method name="timetable_entry_set_technical_stop">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="technical" type="bool" />
+			<description>
+				Says the stop is a technical one.
+			</description>
+		</method>
+		<method name="timetable_entry_set_track_count">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<param index="2" name="track_count" type="int" />
+			<description>
+				Sets the line's tracks on the way to the entry, 1 or 2.
+			</description>
+		</method>
+		<method name="timetable_free">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				Frees the timetable.
+			</description>
+		</method>
+		<method name="timetable_get_destination" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The station the train runs to, [code]RID()[/code] for one not said - its relation's end, beyond the entries where it runs on.
+			</description>
+		</method>
+		<method name="timetable_get_entry_count" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				How many entries the timetable has.
+			</description>
+		</method>
+		<method name="timetable_get_extra" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				What a plugin keeps of its own about the timetable ([method timetable_set_extra]).
+			</description>
+		</method>
+		<method name="timetable_get_origin" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The station the train runs from, [code]RID()[/code] for one not said.
+			</description>
+		</method>
+		<method name="timetable_get_required_brake_ratio" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The braked weight the train is to have [lb]%[rb], 0 for none required.
+			</description>
+		</method>
+		<method name="timetable_get_required_locomotive" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The type of the locomotive the train is to have, empty for none required.
+			</description>
+		</method>
+		<method name="timetable_get_required_mass" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The mass the train is to have [lb]t[rb], 0 for none required - its trainset's own is [method RailVehicleServer.trainset_get_mass].
+			</description>
+		</method>
+		<method name="timetable_get_speed_limit" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The train's speed limit [lb]km/h[rb], [constant NO_SPEED_LIMIT] for none - of a timetable of no stations, the only limit it gives.
+			</description>
+		</method>
+		<method name="timetable_get_train_category" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				What kind of train it is ([code]Os[/code], [code]Ex[/code]), empty for none said.
+			</description>
+		</method>
+		<method name="timetable_get_train_label" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The train's own name, empty for none.
+			</description>
+		</method>
+		<method name="timetable_get_train_name" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="timetable" type="RID" />
+			<description>
+				The name of the train the timetable is of.
+			</description>
+		</method>
+		<method name="timetable_set_destination">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="station" type="RID" />
+			<description>
+				Sets the station the train runs to.
+			</description>
+		</method>
+		<method name="timetable_set_extra">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="extra" type="Dictionary" />
+			<description>
+				What a plugin keeps of its own about the timetable - the core reads none of it.
+			</description>
+		</method>
+		<method name="timetable_set_origin">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="station" type="RID" />
+			<description>
+				Sets the station the train runs from.
+			</description>
+		</method>
+		<method name="timetable_set_required_brake_ratio">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="percent" type="float" />
+			<description>
+				Sets the braked weight the train is to have [lb]%[rb].
+			</description>
+		</method>
+		<method name="timetable_set_required_locomotive">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="locomotive" type="String" />
+			<description>
+				Sets the type of the locomotive the train is to have.
+			</description>
+		</method>
+		<method name="timetable_set_required_mass">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="tonnes" type="float" />
+			<description>
+				Sets the mass the train is to have [lb]t[rb].
+			</description>
+		</method>
+		<method name="timetable_set_speed_limit">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="speed_limit" type="float" />
+			<description>
+				Sets the train's speed limit [lb]km/h[rb].
+			</description>
+		</method>
+		<method name="timetable_set_train_category">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="category" type="String" />
+			<description>
+				Sets what kind of train it is.
+			</description>
+		</method>
+		<method name="timetable_set_train_label">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="label" type="String" />
+			<description>
+				Sets the train's own name.
+			</description>
+		</method>
+		<method name="timetable_set_train_name">
+			<return type="void" />
+			<param index="0" name="timetable" type="RID" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Names the train the timetable is of (its number).
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="dispatch_finished">
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The dispatch is over, the train may go.
+			</description>
+		</signal>
+		<signal name="dispatch_step_changed">
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="step" type="int" />
+			<description>
+				The dispatch of the train driven from [param vehicle] went to another [param step] ([enum DispatchStep]).
+			</description>
+		</signal>
+		<signal name="run_arrived">
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The train of [param run] stopped at a stop point of the station of [param entry].
+			</description>
+		</signal>
+		<signal name="run_created">
+			<param index="0" name="run" type="RID" />
+			<description>
+				[param run] began: a trainset runs a timetable ([method run_create]).
+			</description>
+		</signal>
+		<signal name="run_departed">
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The train of [param run] standing at [param entry] started off.
+			</description>
+		</signal>
+		<signal name="run_entry_changed">
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				[param run] moved on, or back, to [param entry].
+			</description>
+		</signal>
+		<signal name="run_freed">
+			<param index="0" name="run" type="RID" />
+			<description>
+				[param run] ended.
+			</description>
+		</signal>
+		<signal name="run_passed">
+			<param index="0" name="run" type="RID" />
+			<param index="1" name="entry" type="int" />
+			<description>
+				The train of [param run] passed the station of [param entry], where it does not stop.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="STATION_TYPE_STATION" value="0" enum="StationType">
+			A station.
+		</constant>
+		<constant name="STATION_TYPE_PASSENGER_STOP" value="1" enum="StationType">
+			A passenger stop: a small one, where fewer get on and off.
+		</constant>
+		<constant name="NO_TIME" value="-1">
+			A time left out of a timetable: the arrival where a train passes without stopping.
+		</constant>
+		<constant name="NO_SPEED_LIMIT" value="-1">
+			No speed limit.
+		</constant>
+		<constant name="NO_RADIO_CHANNEL" value="-1">
+			No radio channel from an entry on.
+		</constant>
+		<constant name="NO_KILOMETRE" value="-1">
+			An entry's kilometre the timetable does not give.
+		</constant>
+		<constant name="DISPATCH_STEP_NONE" value="0" enum="DispatchStep">
+			No dispatch.
+		</constant>
+		<constant name="DISPATCH_STEP_EXCHANGE" value="1" enum="DispatchStep">
+			The passengers get off and on.
+		</constant>
+		<constant name="DISPATCH_STEP_WAIT_DEPARTURE" value="2" enum="DispatchStep">
+			The exchange is over, the train is not let go yet.
+		</constant>
+		<constant name="DISPATCH_STEP_CLOSE_DOORS" value="3" enum="DispatchStep">
+			The train is let go: its doors close.
+		</constant>
+	</constants>
+</class>

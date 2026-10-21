@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SceneModelRenderingBackend" inherits="ModelRenderingBackend" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Godot's scenes as models of [ModelRenderingServer], the backend [code]"scene"[/code].
+	</brief_description>
+	<description>
+		A model is a [PackedScene] by its path (a [code].tscn[/code], a [code].scn[/code], an imported [code].glb[/code]), a part is a node of it by its name. An instance draws the scene's meshes with [RenderingServer] instances ([constant ModelRenderingServer.INSTANCER_OPTIMIZED]) or as the scene's own nodes under the attached node ([constant ModelRenderingServer.INSTANCER_NODES]); a streamed placement is built while the camera is in its range ([SceneryStreamingServer]). Its models have no lights, no skins and no materials read ahead: [method ModelRenderingBackend.instance_has_light] is false for every one, a signal head attached draws nothing and goes with the instance. It is the core's own renderer, registered as the core starts.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

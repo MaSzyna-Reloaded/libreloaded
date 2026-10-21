@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrackData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A segment of track or road: what it is and what it has.
+	</brief_description>
+	<description>
+		What a segment of track or road is and what it has - never how it is drawn: the renderer picks the materials and the section for its features. A plugin keeps what is only its own in [member meta] or in a subclass. Saved by its class name, it names no script.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_rendering_backend" qualifiers="const">
+			<return type="StringName" />
+			<description>
+				The [TrackRenderingServer] backend that draws the segment, by its name; empty for the default one. A plugin's own data names its plugin's backend.
+			</description>
+		</method>
+		<method name="translated" qualifiers="const">
+			<return type="TrackData" />
+			<param index="0" name="offset" type="Vector3" />
+			<description>
+				A copy of the segment moved by [param offset] (both its curves).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="bed" type="int" setter="set_bed" getter="get_bed" enum="TrackData.Bed" default="0">
+			What a rail track's bed is made of.
+		</member>
+		<member name="centre_line" type="bool" setter="set_centre_line" getter="get_centre_line" default="false">
+			A road's centre line is painted.
+		</member>
+		<member name="curve" type="TrackCurve" setter="set_curve" getter="get_curve">
+			Its curve.
+		</member>
+		<member name="damage" type="int" setter="set_damage" getter="get_damage" default="0">
+			Its damage, a mask of [code]TrackServer[/code]'s track damage flags.
+		</member>
+		<member name="diverging_curve" type="TrackCurve" setter="set_diverging_curve" getter="get_diverging_curve">
+			A switch's diverging curve; none for a plain segment.
+		</member>
+		<member name="formation_height" type="float" setter="set_formation_height" getter="get_formation_height" default="0.0">
+			From the crown of the formation the bed lies on down to the ground [m]: 0 for none, below 0 a cutting.
+		</member>
+		<member name="formation_slope" type="float" setter="set_formation_slope" getter="get_formation_slope" default="1.5">
+			The formation's slopes, 1:n.
+		</member>
+		<member name="formation_width" type="float" setter="set_formation_width" getter="get_formation_width" default="0.0">
+			The crown of the formation beyond the foot of the ballast [m].
+		</member>
+		<member name="friction" type="float" setter="set_friction" getter="get_friction" default="0.15">
+			The rails' friction coefficient; [code]TrackServer[/code]'s default when nothing else is known.
+		</member>
+		<member name="joint_spacing" type="float" setter="set_joint_spacing" getter="get_joint_spacing" default="-1.0">
+			Rail length between joints [m], -1 for a continuous rail.
+		</member>
+		<member name="kind" type="int" setter="set_kind" getter="get_kind" enum="TrackServer.TrackType" default="0">
+			What the segment is ([enum TrackServer.TrackType]).
+		</member>
+		<member name="meta" type="Dictionary" setter="set_meta" getter="get_meta" default="{}">
+			What a plugin keeps of its own about the segment; handed to [TrackServer] with it.
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			Its name - the resource's own ([member Resource.resource_name]).
+		</member>
+		<member name="shoulder" type="bool" setter="set_shoulder" getter="get_shoulder" default="false">
+			A road has a shoulder.
+		</member>
+		<member name="sleeper_kind" type="int" setter="set_sleeper_kind" getter="get_sleeper_kind" enum="TrackData.SleeperKind" default="0">
+			What the rails are laid on, where the bed has sleepers; the renderer draws the kind with its own assets.
+		</member>
+		<member name="sleeper_spacing" type="float" setter="set_sleeper_spacing" getter="get_sleeper_spacing" default="0.6">
+			From one sleeper to the next [m]; a slab or an embedded bed ([constant BED_SLAB], [constant BED_EMBEDDED]) has none.
+		</member>
+		<member name="speed_limit" type="float" setter="set_speed_limit" getter="get_speed_limit" default="-1.0">
+			[km/h], -1 for none.
+		</member>
+		<member name="structure" type="int" setter="set_structure" getter="get_structure" enum="TrackData.Structure" default="0">
+			It stands on a bridge or runs in a tunnel.
+		</member>
+		<member name="surface" type="int" setter="set_surface" getter="get_surface" enum="TrackData.Surface" default="0">
+			What a road is surfaced with.
+		</member>
+		<member name="visible" type="bool" setter="set_visible" getter="get_visible" default="true">
+			Drawn or not.
+		</member>
+		<member name="width" type="float" setter="set_width" getter="get_width" default="1.5">
+			Gauge, or a road's width [m]; a standard gauge track's by default.
+		</member>
+	</members>
+	<constants>
+		<constant name="STRUCTURE_NONE" value="0" enum="Structure">
+			Neither.
+		</constant>
+		<constant name="STRUCTURE_BRIDGE" value="1" enum="Structure">
+			On a bridge.
+		</constant>
+		<constant name="STRUCTURE_TUNNEL" value="2" enum="Structure">
+			In a tunnel.
+		</constant>
+		<constant name="BED_CRUSHED_STONE" value="0" enum="Bed">
+			Crushed stone ballast.
+		</constant>
+		<constant name="BED_GRAVEL" value="1" enum="Bed">
+			Gravel.
+		</constant>
+		<constant name="BED_DIRT" value="2" enum="Bed">
+			Earth.
+		</constant>
+		<constant name="BED_SLAB" value="3" enum="Bed">
+			A concrete slab.
+		</constant>
+		<constant name="BED_EMBEDDED" value="4" enum="Bed">
+			Embedded in a street.
+		</constant>
+		<constant name="SURFACE_ASPHALT" value="0" enum="Surface">
+			Asphalt.
+		</constant>
+		<constant name="SURFACE_CONCRETE" value="1" enum="Surface">
+			Concrete.
+		</constant>
+		<constant name="SURFACE_PAVING" value="2" enum="Surface">
+			Paving.
+		</constant>
+		<constant name="SURFACE_GRAVEL" value="3" enum="Surface">
+			Gravel.
+		</constant>
+		<constant name="SURFACE_DIRT" value="4" enum="Surface">
+			Earth.
+		</constant>
+		<constant name="SLEEPER_CONCRETE" value="0" enum="SleeperKind">
+			Concrete sleepers.
+		</constant>
+		<constant name="SLEEPER_WOOD" value="1" enum="SleeperKind">
+			Wooden sleepers.
+		</constant>
+		<constant name="SLEEPER_STEEL" value="2" enum="SleeperKind">
+			Steel sleepers.
+		</constant>
+	</constants>
+</class>

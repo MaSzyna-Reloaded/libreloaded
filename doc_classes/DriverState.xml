@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DriverState" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What a driver does and wants now, as [method DriverServer.driver_get_state] answered.
+	</brief_description>
+	<description>
+		A snapshot filled by the driver's implementation ([method DriverImplementation._get_state]) - it does not follow the driver, a holder asks again. Whatever the implementation thinks with, every field means the same: what it shows the player of the driver.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="at_stop" type="bool" setter="set_at_stop" getter="get_at_stop" default="false">
+			It stands at a passenger stop.
+		</member>
+		<member name="direction" type="int" setter="set_direction" getter="get_direction" enum="VehicleController.Direction" default="1">
+			The way it is to drive its vehicle.
+		</member>
+		<member name="hints" type="Array" setter="set_hints" getter="get_hints" default="[]">
+			The steps it would take now, in the order it decided on them ([code]DriverHint[/code], [code]addons/libreloaded/driver/driver_hint.gd[/code]); empty while it is aboard no vehicle.
+		</member>
+		<member name="next_speed_limit" type="float" setter="set_next_speed_limit" getter="get_next_speed_limit" default="-1.0">
+			The next change of the speed limit [km/h] ([constant StationServer.NO_SPEED_LIMIT]: the limit ends); with no change ahead the speed limit itself.
+		</member>
+		<member name="next_speed_limit_distance" type="float" setter="set_next_speed_limit_distance" getter="get_next_speed_limit_distance" default="inf">
+			The distance to the next change of the speed limit [m]; [code]INF[/code] with no change ahead.
+		</member>
+		<member name="speed_limit" type="float" setter="set_speed_limit" getter="get_speed_limit" default="-1.0">
+			The speed it may drive at now [km/h]: 0 when it is to stand, [constant StationServer.NO_SPEED_LIMIT] for no limit.
+		</member>
+		<member name="stop_reason" type="int" setter="set_stop_reason" getter="get_stop_reason" enum="DriverState.StopReason" default="0">
+			Why it keeps the train standing.
+		</member>
+		<member name="stop_reason_details" type="PackedStringArray" setter="set_stop_reason_details" getter="get_stop_reason_details" default="PackedStringArray()">
+			What the stop reason comes from, translated: what the vehicle misses to be ready.
+		</member>
+		<member name="stop_time_left" type="float" setter="set_stop_time_left" getter="get_stop_time_left" default="0.0">
+			How long it is to stand yet [s], 0 when no wait holds it.
+		</member>
+		<member name="task" type="String" setter="set_task" getter="get_task" default="&quot;&quot;">
+			What the driver is doing, translated; empty for nothing it names.
+		</member>
+		<member name="waiting_for_orders" type="bool" setter="set_waiting_for_orders" getter="get_waiting_for_orders" default="true">
+			It has nothing to do but wait for an order.
+		</member>
+	</members>
+	<constants>
+		<constant name="STOP_REASON_NONE" value="0" enum="StopReason">
+			It does not.
+		</constant>
+		<constant name="STOP_REASON_AHEAD" value="1" enum="StopReason">
+			A stop ahead - the place it is to stand at.
+		</constant>
+		<constant name="STOP_REASON_NOT_READY" value="2" enum="StopReason">
+			Its vehicle is not ready to go ([member stop_reason_details] says what is missing).
+		</constant>
+		<constant name="STOP_REASON_WAITING_FOR_ORDERS" value="3" enum="StopReason">
+			It has no order to go.
+		</constant>
+		<constant name="STOP_REASON_SIGNAL" value="4" enum="StopReason">
+			A signal shows stop.
+		</constant>
+		<constant name="STOP_REASON_DISPATCH" value="5" enum="StopReason">
+			The station has not dispatched the train yet.
+		</constant>
+	</constants>
+</class>

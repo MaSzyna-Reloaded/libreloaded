@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ReloadedMaterialServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The materials the world names.
+	</brief_description>
+	<description>
+		A track's rails and bed and a mesh's surfaces take their materials by the name the data gives them. The core knows no material data: a plugin provides them ([method material_set_provider]); without one nothing is found, and whatever asks draws with its own default.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="material_get" qualifiers="const">
+			<return type="Material" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="options" type="Dictionary" default="{}" />
+			<description>
+				The material of [param name], null when there is none or no provider. [param options]: [code]cull_disabled[/code] (bool) - it draws both faces.
+			</description>
+		</method>
+		<method name="material_get_texture_length" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="name" type="String" />
+			<description>
+				The length the material's texture covers along a track [lb]m[rb], -1 when the material declares none.
+			</description>
+		</method>
+		<method name="material_get_texture_size" qualifiers="const">
+			<return type="Vector2i" />
+			<param index="0" name="name" type="String" />
+			<description>
+				The size of the material's texture in texels, zero when unknown.
+			</description>
+		</method>
+		<method name="material_set_provider">
+			<return type="void" />
+			<param index="0" name="material" type="Callable" />
+			<param index="1" name="texture_size" type="Callable" />
+			<param index="2" name="texture_length" type="Callable" />
+			<description>
+				What finds the materials: [code]material(name, options) -&gt; Material[/code], [code]texture_size(name) -&gt; Vector2i[/code], [code]texture_length(name) -&gt; float[/code].
+			</description>
+		</method>
+	</methods>
+</class>

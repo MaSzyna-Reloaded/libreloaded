@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WorldSection" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What is drawn of one cell of a world.
+	</brief_description>
+	<description>
+		One cell of [SceneryStreamingServer]'s grid: its layers' meshes, models and lines, in the world's coordinates. Read when the camera comes within reach of the cell and let go once it has left ([code]WorldSectionProvider[/code]). Saved by its class name, it names no script.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="cell" type="Vector2i" setter="set_cell" getter="get_cell" default="Vector2i(0, 0)">
+			The cell of the streaming grid it is.
+		</member>
+		<member name="layers" type="WorldLayer[]" setter="set_layers" getter="get_layers" default="[]">
+			Its layers.
+		</member>
+	</members>
+</class>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrackRenderingBackend" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What [TrackRenderingServer] forwards the drawing of a track to.
+	</brief_description>
+	<description>
+		The renderer of one kind of track data ([method TrackData.get_rendering_backend]), registered by its name ([method TrackRenderingServer.backend_register]). It keeps what it draws of each track under the track's render RID, from [method track_create] to [method track_free], and reads the track's curves from [TrackServer] as it builds it.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="topology_rebuilt">
+			<return type="void" />
+			<description>
+				The joined tracks are other ones ([signal TrackServer.topology_rebuilt]).
+			</description>
+		</method>
+		<method name="track_build">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				Builds (or builds again) what the track draws.
+			</description>
+		</method>
+		<method name="track_clear">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				What the track drew goes as it leaves the camera's range; the track stays.
+			</description>
+		</method>
+		<method name="track_create">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="track" type="RID" />
+			<description>
+				[TrackServer]'s [param track] is drawn by this backend under [param track_render].
+			</description>
+		</method>
+		<method name="track_free">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				What the track drew goes, and the track with it.
+			</description>
+		</method>
+		<method name="track_set_description">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="description" type="TrackData" />
+			<description>
+				What the track is; given before it is streamed or built.
+			</description>
+		</method>
+		<method name="track_set_scenario">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="scenario" type="RID" />
+			<description>
+				The world the track is drawn in.
+			</description>
+		</method>
+		<method name="track_set_switch_blade_offsets">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="offset1" type="float" />
+			<param index="2" name="offset2" type="float" />
+			<description>
+				The blades of a switch at the switch's offsets.
+			</description>
+		</method>
+		<method name="track_set_visible">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="visible" type="bool" />
+			<description>
+				Shows or hides what the track draws.
+			</description>
+		</method>
+		<method name="track_stream">
+			<return type="bool" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				Whether the backend streams the track itself ([code]true[/code]) or [TrackRenderingServer] registers it with [SceneryStreamingServer] ([code]false[/code]).
+			</description>
+		</method>
+	</methods>
+</class>

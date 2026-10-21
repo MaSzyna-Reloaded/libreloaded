@@ -1,0 +1,33 @@
+[gd_resource type="TrackRenderingLook" format=3]
+
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_rail_material.tres" id="1_rail"]
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_bed_material.tres" id="2_bed"]
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_formation_material.tres" id="3_formation"]
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_concrete_material.tres" id="4_concrete"]
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_road_material.tres" id="5_road"]
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_shoulder_material.tres" id="6_shoulder"]
+[ext_resource type="Material" path="res://addons/libreloaded/tracks/plain_wood_material.tres" id="7_wood"]
+
+[resource]
+rail_material = ExtResource("1_rail")
+bed_materials = {
+0: ExtResource("2_bed"),
+1: ExtResource("6_shoulder"),
+2: ExtResource("3_formation"),
+3: ExtResource("4_concrete"),
+4: ExtResource("5_road")
+}
+formation_material = ExtResource("3_formation")
+surface_materials = {
+0: ExtResource("5_road"),
+1: ExtResource("4_concrete"),
+2: ExtResource("4_concrete"),
+3: ExtResource("6_shoulder"),
+4: ExtResource("3_formation")
+}
+shoulder_material = ExtResource("6_shoulder")
+sleeper_materials = {
+0: ExtResource("4_concrete"),
+1: ExtResource("7_wood"),
+2: ExtResource("1_rail")
+}

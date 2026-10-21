@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ModelRenderingServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What draws the models of the world.
+	</brief_description>
+	<description>
+		A model loaded from a file, its instances placed, posed, lit and picked by RID. It draws nothing itself: each model is the one of a [ModelRenderingBackend], by the backend's name ([method backend_register], [member ModelData.model_provider]), and an instance's calls are forwarded to the backend that made it. A model of no backend named ([code]provider[/code] empty) is the one of the backend the project setting [code]reloaded/models/backend[/code] names. The core draws vehicles, road traffic and what the player picks through it. A part is a named piece of a model (a bogie, a wheel); the lights are the model's own, by name.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="backend_get_list" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				The names of the registered backends.
+			</description>
+		</method>
+		<method name="backend_register">
+			<return type="void" />
+			<param index="0" name="name" type="StringName" />
+			<param index="1" name="backend_id" type="int" />
+			<description>
+				The [ModelRenderingBackend] of the instance id [param backend_id] draws the models of [param name] from now on. It is the default one when the project setting [code]reloaded/models/backend[/code] names it.
+			</description>
+		</method>
+		<method name="backend_unregister">
+			<return type="void" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				Takes the backend [param name] away; its instances are forgotten with it.
+			</description>
+		</method>
+		<method name="instance_attach_object_instance_id">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="id" type="int" />
+			<description>
+				The [Node3D], by instance id, that [constant INSTANCER_NODES] and [constant INSTANCER_EDITABLE_NODES] build their node tree under. [constant INSTANCER_OPTIMIZED] instances report it as their owner (e.g. for picking in the editor). [code]0[/code] detaches it. Rebuilds an already built instance.
+			</description>
+		</method>
+		<method name="instance_attach_signal_head">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="signal_head" type="RID" />
+			<description>
+				The [param instance] draws the [SignallingServer] signal head's lights: its lamps follow [signal SignallingServer.signal_head_light_switched], it gives the signal head its light count once built, and frees the signal head when it is freed. An instance draws one signal head at most.
+			</description>
+		</method>
+		<method name="instance_build">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<description>
+				Builds (or rebuilds) the content of the [param instance]; [signal instance_built] when done.
+			</description>
+		</method>
+		<method name="instance_create">
+			<return type="RID" />
+			<param index="0" name="provider" type="StringName" />
+			<param index="1" name="model" type="Resource" />
+			<param index="2" name="instancer" type="int" enum="ModelRenderingServer.Instancer" />
+			<param index="3" name="instance_kind" type="int" enum="ModelRenderingServer.InstanceKind" />
+			<description>
+				Creates an empty instance; set it up with the [code]instance_set_*[/code] methods and [method instance_attach_object_instance_id], then call [method instance_build].
+				[param instance_kind] says what the placement is, in the words a [code].scn[/code] uses for it. It is given here rather than through a setter because it cannot be changed once the instance is built: the smoke density it selects is baked into every particle emitter of the model - its process material, its particle budget and its spawn rate. A client that has to change it frees the instance and creates it again.
+			</description>
+		</method>
+		<method name="instance_free">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<description>
+				Frees the [param instance] with its [RenderingServer] instances or generated nodes.
+			</description>
+		</method>
+		<method name="instance_get_aabb" qualifiers="const">
+			<return type="AABB" />
+			<param index="0" name="instance" type="RID" />
+			<description>
+				The bounds of every mesh of the model, in the model's space.
+			</description>
+		</method>
+		<method name="instance_get_part_transform" qualifiers="const">
+			<return type="Transform3D" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="part" type="String" />
+			<description>
+				The part's transform in the model, through every parent, without any pose.
+			</description>
+		</method>
+		<method name="instance_get_transform" qualifiers="const">
+			<return type="Transform3D" />
+			<param index="0" name="instance" type="RID" />
+			<description>
+				Where the instance stands in its scenario.
+			</description>
+		</method>
+		<method name="instance_has_light" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="light" type="String" />
+			<description>
+				Returns [code]true[/code] when the model of [param instance] has the light named [param light].
+			</description>
+		</method>
+		<method name="instance_has_part" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="part" type="String" />
+			<description>
+				Whether the model has the part.
+			</description>
+		</method>
+		<method name="instance_intersect_segment" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="from" type="Vector3" />
+			<param index="2" name="to" type="Vector3" />
+			<description>
+				Where the segment [param from]..[param to] (world space) first meets the meshes of the instance: [code]{position, distance}[/code], the distance measured from [param from]. Empty when it misses, or when the instance is hidden or not built (not streamed in).
+			</description>
+		</method>
+		<method name="instance_register">
+			<return type="RID" />
+			<param index="0" name="provider" type="StringName" />
+			<param index="1" name="name" type="String" />
+			<param index="2" name="skins" type="PackedStringArray" />
+			<param index="3" name="transform" type="Transform3D" />
+			<param index="4" name="range_begin" type="float" />
+			<param index="5" name="range_end" type="float" />
+			<param index="6" name="scenario" type="RID" />
+			<description>
+				Registers a placement of the model of [param name] of the backend [param provider] (the default one for none) for streaming instead of building it right away. Nothing is loaded or built until [SceneryStreamingServer]'s camera comes within [param range_end] of the chunk the [param transform] falls into; the instance is cleared again when the camera leaves. [param range_end] of [code]0[/code] (a scenery node that declares no range) means the global draw distance.
+				Without a streaming camera a registered instance is never built. Free it with [method instance_free] like any other instance.
+			</description>
+		</method>
+		<method name="instance_set_emission_energy">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="energy" type="float" />
+			<description>
+				The self-illumination energy of every emissive material of the instance.
+			</description>
+		</method>
+		<method name="instance_set_instancer">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="instancer" type="int" enum="ModelRenderingServer.Instancer" />
+			<description>
+				Builds the instance again with another instancer, keeping the RID and everything set on it.
+			</description>
+		</method>
+		<method name="instance_set_lights_colors">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="lights_colors" type="Dictionary" />
+			<description>
+				The model's lights' colours, by name: [code]{light: Color}[/code], over the colour each light carries.
+			</description>
+		</method>
+		<method name="instance_set_lights_dimmed">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="lights_dimmed" type="Dictionary" />
+			<param index="2" name="multiplier" type="float" />
+			<description>
+				Light name to dimmed: a dimmed light shows its "_xon" part instead of "_on" when it has one, and its spotlight ([constant INSTANCER_NODES]) shines at [param multiplier] of its energy.
+			</description>
+		</method>
+		<method name="instance_set_lights_state">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="lights_state" type="Dictionary" />
+			<description>
+				Light name to enabled state; shows the "on" or the "off" parts of the model's lights (and the spotlights of [constant INSTANCER_NODES]).
+			</description>
+		</method>
+		<method name="instance_set_material_overlay">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="material" type="Material" />
+			<description>
+				Draws [param material] over every part of the instance (an outline, a tint); [code]null[/code] for none. Kept while the instance is streamed out and in again.
+			</description>
+		</method>
+		<method name="instance_set_node_transform">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="transform" type="Transform3D" />
+			<description>
+				Where the model sits in the attached node - a node tree built under it is placed there.
+			</description>
+		</method>
+		<method name="instance_set_options">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="data_path" type="String" />
+			<param index="2" name="skins" type="PackedStringArray" />
+			<param index="3" name="exclude_node_names" type="Array" />
+			<param index="4" name="force_alpha" type="bool" />
+			<param index="5" name="force_alpha_part_paths" type="NodePath[]" />
+			<param index="6" name="max_texture_size" type="int" />
+			<description>
+				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the project's [code]maszyna/import/dds_max_texture_size[/code] (see [code]ResourceInstance[/code]). Rebuilds an already built instance.
+			</description>
+		</method>
+		<method name="instance_set_part_emission_energy">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="part" type="String" />
+			<param index="2" name="energy" type="float" />
+			<description>
+				The self-illumination energy of a part, by name, and of everything under it, kept across rebuilds; below 0 gives it the instance's own again - one cab of a low-poly interior lit by its cab light.
+			</description>
+		</method>
+		<method name="instance_set_part_material_override">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="part" type="String" />
+			<param index="2" name="material" type="Material" />
+			<description>
+				Draws a part, by name, with [param material] instead of its own.
+			</description>
+		</method>
+		<method name="instance_set_part_poses">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="poses" type="Dictionary" />
+			<description>
+				Poses parts, by name, on top of their own transform, kept across rebuilds.
+			</description>
+		</method>
+		<method name="instance_set_part_visible">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="part" type="String" />
+			<param index="2" name="visible" type="bool" />
+			<description>
+				Shows or hides a part, by name, kept across rebuilds.
+			</description>
+		</method>
+		<method name="instance_set_scenario">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="scenario" type="RID" />
+			<description>
+				Scenario of an [constant INSTANCER_OPTIMIZED] instance. Rebuilds an already built instance.
+			</description>
+		</method>
+		<method name="instance_set_transform">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="transform" type="Transform3D" />
+			<description>
+				Global transform of an [constant INSTANCER_OPTIMIZED] instance. A node tree follows its attached node instead.
+			</description>
+		</method>
+		<method name="instance_set_visible">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="visible" type="bool" />
+			<description>
+				Visibility of an [constant INSTANCER_OPTIMIZED] instance.
+			</description>
+		</method>
+		<method name="material_preload">
+			<return type="Variant" />
+			<param index="0" name="provider" type="StringName" />
+			<param index="1" name="model" type="Resource" />
+			<param index="2" name="data_path" type="String" />
+			<param index="3" name="skins" type="PackedStringArray" />
+			<param index="4" name="max_texture_size" type="int" />
+			<description>
+				Reads the files of the model's materials - their [code].mat[/code] and their textures' images - on the calling thread, through the material preloader ([method material_set_preloader]). What it returns holds them; the build that makes the materials keeps it until it is done, so the main thread reads no file.
+			</description>
+		</method>
+		<method name="model_load">
+			<return type="Resource" />
+			<param index="0" name="provider" type="StringName" />
+			<param index="1" name="name" type="String" />
+			<description>
+				The model of the name of the backend [param provider] (the default one for none), loaded once and shared by every instance of it. The backend finds its file by the name.
+			</description>
+		</method>
+		<method name="signal_head_get_instance" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="signal_head" type="RID" />
+			<description>
+				The instance the [SignallingServer] signal head is attached to ([method instance_attach_signal_head]), asked of every backend; an empty [RID] when no model draws it.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="instance_built">
+			<param index="0" name="instance" type="RID" />
+			<description>
+				[param instance] was built - its model, and so its lights, are known from now on.
+			</description>
+		</signal>
+		<signal name="instance_freed">
+			<param index="0" name="instance" type="RID" />
+			<description>
+				[param instance] was freed, so whatever refers to it can let go.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="INSTANCER_OPTIMIZED" value="0" enum="Instancer">
+			Renders the model as [RenderingServer] instances, without nodes.
+		</constant>
+		<constant name="INSTANCER_NODES" value="1" enum="Instancer">
+			Builds an internal node tree under the attached node.
+		</constant>
+		<constant name="INSTANCER_EDITABLE_NODES" value="2" enum="Instancer">
+			Builds a node tree under the attached node, editable in the editor.
+		</constant>
+		<constant name="INSTANCE_KIND_STATIC" value="0" enum="InstanceKind">
+			A static [code]node ... model[/code] of a scenery - a chimney, a cooling tower, a road vehicle standing as a prop. This is what a placement registered with [method instance_register] always is. Its smoke follows [code]maszyna/rendering/smoke_density_static[/code].
+		</constant>
+		<constant name="INSTANCE_KIND_DYNAMIC" value="1" enum="InstanceKind">
+			Part of a [code]dynamic[/code], which is a vehicle. Its smoke follows [code]maszyna/rendering/smoke_density_dynamic[/code].
+		</constant>
+	</constants>
+</class>

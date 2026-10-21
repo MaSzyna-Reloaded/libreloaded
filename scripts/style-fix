@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+    echo "Usage: scripts/style-fix [path/to/file]" >&2
+}
+
+is_supported_format_file() {
+    [[ "$1" == *.cpp || "$1" == *.hpp || "$1" == *.h ]]
+}
+
+is_excluded_file() {
+    [[ "$1" == */maszyna-mover/* || "$1" == "${ROOT_DIR}/src/gen/"* ]]
+}
+
+# The plugins built with the library (LIBRELOADED_PLUGINS, ;-separated, relative to this checkout
+# or absolute): their files are checked as the core's, against the same configuration
+plugin_dirs() {
+    local plugins="${LIBRELOADED_PLUGINS:-}"
+    local dir
+    IFS=';' read -r -a dirs <<< "${plugins}"
+    for dir in "${dirs[@]}"; do
+        [ -n "${dir}" ] || continue
+        (cd "${ROOT_DIR}" && realpath "${dir}")
+    done
+}
+
+# Where the C++ sources are: the core's and each plugin's
+source_dirs() {
+    echo "${ROOT_DIR}/src"
+    plugin_dirs
+}
+
+resolve_target_file() {
+    local file="$1"
+
+    if [ -f "${ROOT_DIR}/${file}" ]; then
+        file="${ROOT_DIR}/${file}"
+    fi
+
+    if [ ! -f "${file}" ]; then
+        echo "Style fix: file not found: ${file}" >&2
+        exit 1
+    fi
+    file="$(realpath "${file}")"
+
+    if is_excluded_file "${file}"; then
+        echo "Style fix: file is excluded from style checks: ${file}" >&2
+        exit 1
+    fi
+
+    if ! is_supported_format_file "${file}"; then
+        echo "Style fix: unsupported file type: ${file}" >&2
+        exit 1
+    fi
+
+    echo "${file}"
+}
+
+run_clang_format() {
+    if [ "$#" -eq 0 ]; then
+        mapfile -t roots < <(source_dirs)
+        find "${roots[@]}" \( -name "*.cpp" -or -name "*.hpp" -or -name "*.h" \) \
+            -not -path "*/maszyna-mover/*" \
+            -not -path "${ROOT_DIR}/src/gen/*" \
+            -exec clang-format -i --style=file:"${ROOT_DIR}/.clang-format" {} +
+    elif is_supported_format_file "$1"; then
+        clang-format -i --style=file:"${ROOT_DIR}/.clang-format" "$1"
+    fi
+}
+
+if [ "$#" -gt 1 ]; then
+    usage
+    exit 1
+fi
+
+target_file=""
+if [ "$#" -eq 1 ]; then
+    target_file="$(resolve_target_file "$1")"
+fi
+
+# Formatting only. clang-tidy fixes are not applied here: run per file, a rename reaches the
+# declaration but not its uses in other files. Fix clang-tidy findings by hand.
+echo "Style fix: running clang-format..."
+if [ -n "${target_file}" ]; then
+    run_clang_format "${target_file}"
+else
+    run_clang_format
+fi
+
+echo "Style fix: OK"

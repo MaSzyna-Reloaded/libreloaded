@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrackRenderingLook" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The assets the core's tracks are drawn with.
+	</brief_description>
+	<description>
+		What [StandardTrackRenderingBackend] draws a track with: the materials of its rails, bed, formation and of a road's carriageway and shoulders, and a sleeper of each kind. A track says what it is ([TrackData]); its look is the renderer's.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="bed_get_material" qualifiers="const">
+			<return type="Material" />
+			<param index="0" name="bed" type="int" enum="TrackData.Bed" />
+			<description>
+				The material of a bed of [param bed]; [code]null[/code] when the look has none.
+			</description>
+		</method>
+		<method name="sleeper_get_material" qualifiers="const">
+			<return type="Material" />
+			<param index="0" name="kind" type="int" enum="TrackData.SleeperKind" />
+			<description>
+				The material of a sleeper of [param kind]; [code]null[/code] when the look has none.
+			</description>
+		</method>
+		<method name="sleeper_get_mesh" qualifiers="const">
+			<return type="Mesh" />
+			<param index="0" name="kind" type="int" enum="TrackData.SleeperKind" />
+			<description>
+				The mesh of a sleeper of [param kind]; [code]null[/code] when the look has none.
+			</description>
+		</method>
+		<method name="surface_get_material" qualifiers="const">
+			<return type="Material" />
+			<param index="0" name="surface" type="int" enum="TrackData.Surface" />
+			<description>
+				The material of a carriageway of [param surface]; [code]null[/code] when the look has none.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="bed_materials" type="Dictionary" setter="set_bed_materials" getter="get_bed_materials" default="{}">
+			[code]{TrackData.Bed: Material}[/code].
+		</member>
+		<member name="formation_material" type="Material" setter="set_formation_material" getter="get_formation_material">
+			The formation's crown and slopes.
+		</member>
+		<member name="rail_material" type="Material" setter="set_rail_material" getter="get_rail_material">
+			The rails.
+		</member>
+		<member name="shoulder_material" type="Material" setter="set_shoulder_material" getter="get_shoulder_material">
+			A road's shoulders.
+		</member>
+		<member name="sleeper_materials" type="Dictionary" setter="set_sleeper_materials" getter="get_sleeper_materials" default="{}">
+			[code]{TrackData.SleeperKind: Material}[/code].
+		</member>
+		<member name="sleeper_meshes" type="Dictionary" setter="set_sleeper_meshes" getter="get_sleeper_meshes" default="{}">
+			[code]{TrackData.SleeperKind: Mesh}[/code], the sleeper's top at 0 and its length across X; a kind with none gets the backend's own.
+		</member>
+		<member name="surface_materials" type="Dictionary" setter="set_surface_materials" getter="get_surface_materials" default="{}">
+			[code]{TrackData.Surface: Material}[/code].
+		</member>
+	</members>
+</class>

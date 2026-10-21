@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SoundData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A sound of a scenery.
+	</brief_description>
+	<description>
+		Played by a scenery's event: where it is, its file and how far it is heard.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="file" type="String" setter="set_file" getter="get_file" default="&quot;&quot;">
+			The file in the game's sounds, lower case, without its extension.
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			Its name - the resource's own ([member Resource.resource_name]).
+		</member>
+		<member name="position" type="Vector3" setter="set_position" getter="get_position" default="Vector3(0, 0, 0)">
+			Where it is.
+		</member>
+		<member name="range_max" type="float" setter="set_range_max" getter="get_range_max" default="0.0">
+			How far it is heard.
+		</member>
+	</members>
+</class>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WorldLayer" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		One layer of a world, as data.
+	</brief_description>
+	<description>
+		A world's railways, roads, buildings, catenary, wires... of a section of a world ([WorldSection]), or of a sector of a world a plugin divides into sectors. The simulation's part of a world - tracks, traction, power sources, signals - is loaded whole with the world; a layer of a section holds what is only drawn (meshes, models, lines).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="is_empty" qualifiers="const">
+			<return type="bool" />
+			<description>
+				It holds nothing.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="group" type="int" setter="set_group" getter="get_group" enum="TrackServer.TrackTypeGroup" default="0">
+			What its tracks are ([method TrackServer.track_get_group] of each).
+		</member>
+		<member name="lines" type="LinesData[]" setter="set_lines" getter="get_lines" default="[]">
+			Lines - the wires of power lines.
+		</member>
+		<member name="meshes" type="ArrayMesh[]" setter="set_meshes" getter="get_meshes" default="[]">
+			Geometry, its surfaces named after the game's material they are drawn with or carrying a material of their own.
+		</member>
+		<member name="models" type="ModelData[]" setter="set_models" getter="get_models" default="[]">
+			Models of whichever model renderer's backend ([member ModelData.model_provider]).
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+			The layer's name, the resource's own: what a tool keeps a layer by.
+		</member>
+		<member name="power_sources" type="PowerSourceData[]" setter="set_power_sources" getter="get_power_sources" default="[]">
+			Its power sources.
+		</member>
+		<member name="range_end" type="float" setter="set_range_end" getter="get_range_end" default="0.0">
+			How far the meshes are drawn from [m]; 0: the draw distance.
+		</member>
+		<member name="tracks" type="TrackData[]" setter="set_tracks" getter="get_tracks" default="[]">
+			Its tracks.
+		</member>
+		<member name="traction" type="TractionData[]" setter="set_traction" getter="get_traction" default="[]">
+			Its traction.
+		</member>
+	</members>
+</class>

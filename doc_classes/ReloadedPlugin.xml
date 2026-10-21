@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ReloadedPlugin" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A plugin of Rails Reloaded: what it is for the player, and what it adds to the core.
+	</brief_description>
+	<description>
+		A plugin brings its classes and servers to the core at two points of the library's start: its classes once every core class is registered, since they derive from them; its servers once the vehicle servers exist and before the servers that follow model instances. Its servers go in reverse at the same point of the library's end. [ReloadedPluginServer] holds the plugins.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="description" type="String" setter="" getter="get_description" default="&quot;&quot;">
+			What the plugin brings, for the player.
+		</member>
+		<member name="logo" type="Texture2D" setter="" getter="get_logo">
+			The plugin's logo, loaded from its addon when its servers are created.
+		</member>
+		<member name="name" type="String" setter="" getter="get_name" default="&quot;&quot;">
+			The plugin's name, for the player.
+		</member>
+	</members>
+</class>

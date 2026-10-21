@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="StandardTrackRenderingBackend" inherits="TrackRenderingBackend" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The core's tracks, drawn as their [TrackData] says.
+	</brief_description>
+	<description>
+		Registered with [TrackRenderingServer] as [code]standard[/code], the default backend. A rail track is two rails on a bed of its kind - a ballast prism, a slab, or a street the rails are embedded in - over its formation, banked or cut as its [code]formation_*[/code] say; a road its carriageway and shoulders. Its sleepers - one every [member TrackData.sleeper_spacing], none on a slab or an embedded bed - are MultiMesh chunks drawn within 150 m of the camera, as DoS drew them; a kind of sleeper the look gives no mesh of gets the backend's own. It draws with the renderer's assets, a [TrackRenderingLook] (the project setting [code]reloaded/tracks/look[/code]). Each curve of a switch is drawn as a track of its own; the blades are not drawn.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="track_get_mesh" qualifiers="const">
+			<return type="ArrayMesh" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				The mesh the track is drawn with while it is built; [code]null[/code] otherwise.
+			</description>
+		</method>
+		<method name="track_get_sleeper_multimeshes" qualifiers="const">
+			<return type="RID[]" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				The [RenderingServer] MultiMeshes of the track's sleepers while it is built, a chunk each.
+			</description>
+		</method>
+		<method name="track_get_sleeper_transforms" qualifiers="const">
+			<return type="Array" />
+			<param index="0" name="track_render" type="RID" />
+			<description>
+				Where the track's sleepers lie, as they are drawn.
+			</description>
+		</method>
+	</methods>
+</class>
