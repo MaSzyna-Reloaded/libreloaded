@@ -108,7 +108,7 @@ Legend:
 
 ### Moving out
 
-- [ ] [LS-044](#ls-044) The plugin moved to its own repository
+- [x] [LS-044](#ls-044) The plugin moved to its own repository
 - [x] [LS-045](#ls-045) The game's AI driver is a port of `Driver.cpp`
 - [ ] [LS-046](#ls-046) The game builds with both repositories
 - [ ] [LS-047](#ls-047) libreloaded's public headers for building plugins
@@ -222,21 +222,6 @@ References to plugin classes in code outside `addons/libmaszyna/legacy/`, commen
 
 ## Moving out
 
-### LS-044
-
-**The plugin moved to its own repository**
-
-* **Done (2026-10-21):** `~/src/rails-reloaded/libmaszyna`, one initial commit, its own `Makefile`
-  (builds into the sibling `../libreloaded` with `LIBRELOADED_PLUGINS` = itself) and test project;
-  libreloaded no longer has `plugins/`. Its style is checked by libreloaded's scripts, which take a
-  plugin outside the checkout (`LIBRELOADED_PLUGINS` absolute)
-* **Left:**
-  * the origin: operator, 2026-10-21 - local only for now; then the game and the importer take it as
-    a submodule (LS-046)
-  * the history: libreloaded's import commit (`55938e5`, on `origin/main`) still holds the plugin
-    (`src/legacy`, `addons/libmaszyna/legacy`); `git filter-repo` of every commit - operator,
-    2026-10-21: not now
-
 ### LS-046
 
 **The game builds with both repositories**
@@ -244,7 +229,9 @@ References to plugin classes in code outside `addons/libmaszyna/legacy/`, commen
 * **Where:** `maszyna-reloaded` - `.gitmodules` (`vendor/libmaszyna` → MaSzyna-API-wrapper), the
   `addons/libmaszyna` symlink, `Makefile`, `project.godot`, CI, the Windows installer
 * **Fix:** submodules `vendor/libreloaded` and `vendor/libmaszyna`, `LIBRELOADED_PLUGINS`, both
-  addons linked, `bin/libreloaded`. The smoke of LS-034: the autoload `SmokeSourceLibrary` →
+  addons linked, `bin/libreloaded`. Done (2026-10-21): `LIBRELOADED_PLUGINS` names the plugins'
+  checkouts, `make plugin-local` / `plugin-submodule` as `libreloaded-local`; left: the submodules -
+  libmaszyna has no origin yet, and `vendor/libmaszyna` is still MaSzyna-API-wrapper. The smoke of LS-034: the autoload `SmokeSourceLibrary` →
   `MaszynaSmokeSourceLibrary` (`res://addons/libmaszyna/smoke/`), and the keys of
   `settings/settings.json` `maszyna/smoke/{enabled,dynamic/*,static/*}` → `reloaded/smoke/*`
   (`maszyna/smoke/generator_mode` stays). The sceneries of LS-057: `SceneryInstancer` →
@@ -342,6 +329,7 @@ References to plugin classes in code outside `addons/libmaszyna/legacy/`, commen
   `traction_rendering_backend.gd`, libmaszyna's `maszyna_traction_rendering_backend.gd`
 * **Rule:** `CODE_STYLE.md`: recurring work goes to C++ first - the meshes are built on the main
   thread, interpreted, as each track comes into the camera's range
-* **Fix:** the servers and the backends in C++, the core's and libmaszyna's, as `SmokeServer`;
-  `set_rendering_backend()` unchanged.
+* **Fix:** the servers and the backends in C++, the core's and libmaszyna's, as `SmokeServer`.
+  Done for the tracks (2026-10-20: `TrackRenderingServer`, `StandardTrackRenderingBackend`,
+  `MaszynaTrackRenderingBackend`); left: the traction's server and backends.
 * **Decision:** operator, 2026-10-19: after LS-062.
