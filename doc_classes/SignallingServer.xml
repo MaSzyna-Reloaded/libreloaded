@@ -297,6 +297,7 @@
 			<param index="0" name="signal_head" type="RID" />
 			<description>
 				Returns the number of lights of the signal head, as what draws them set it ([method signal_head_set_light_count]). It is 0 until then; [signal signal_head_config_changed] tells when it is known.
+			</description>
 		</method>
 		<method name="signal_head_get_light_state" qualifiers="const">
 			<return type="int" enum="SignallingServer.LightState" />
