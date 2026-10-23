@@ -1,83 +1,57 @@
 ---
-# Feel free to add content and custom Front Matter to this file.
-# To modify the layout, see https://jekyllrb.com/docs/themes/#overriding-theme-defaults
-
 layout: home
 ---
 
 <div style="display: flex; justify-content: space-between; align-items: center;">
 <img src="assets/godot-logo.png" style="width: 40%; height: auto"/>
-<img src="assets/maszyna-logo.jpg" style="width: 40%; height: auto" />
+<img src="assets/rails-reloaded-logo.png" style="width: 40%; height: auto" alt="Rails Reloaded"/>
 </div>
 
-## Godot and MaSzyna EU07
+## Rails Reloaded Core
 
-**MaSzyna: Reloaded Core** is intended to be the technical foundation for the development
-of a port of [MaSzyna Train Simulator](https://eu07.pl).
+Rails Reloaded Core (libreloaded) is the foundation for railway simulations built with the Godot
+Engine. It is a C++ GDExtension with a GDScript addon.
 
-Resposibilities of the core:
-* Implementation of High-Level APIs in core systems like **VehicleServer**, **RailVehicleServer**,
-  **CabinSystem**, **Logging**, **EventSystem**.
-* **Physics systems**: the vehicle servers and the interfaces of a vehicle's parts, which a
-  plugin's simulation implements
-* Custom Godot nodes for developing vehicles, cabins, game objects and sceneries
-* Renderers for tracks, roads, tractions and other custom visual
-  elements, with the backends a plugin draws its data with
-* [Plugins](architecture#plugins): what a simulation brings of its own - its vehicles, data
-  formats, sceneries and cabs - built into the core's library
+The core contains the parts that every railway simulation needs:
 
-## Important topics
+* servers for vehicles, cabins, the player and cameras
+* tracks, traction and signalling
+* sceneries, scenarios and Lua scripts
+* rendering of tracks, roads, traction and other scenery elements
+* custom Godot nodes for building vehicles, cabins and sceneries
 
-* [Overall architecture](architecture)
-* [API reference](api/) - every class of libreloaded and of the plugins this site was built with,
-  C++ and GDScript
-* [Lua scenario scripts](lua-scripting) - the scripting API for sceneries, with examples
+Everything specific to one simulation is added by a **plugin**. This includes its vehicles and
+their physics, its file formats, its sceneries and its cabins. A plugin is compiled into the same
+library as the core. See [Plugins](architecture#plugins) for how this works.
 
-## Knowledge base
+An example of a plugin is [libmaszyna](https://github.com/MaSzyna-Reloaded/libmaszyna), a port of
+[MaSzyna - Symulator Pojazdów Szynowych](https://eu07.pl).
 
-### MaSzyna Train Simulator
+## Documentation
 
-* [FIZ files](https://wiki.eu07.pl/index.php/Plik_charakterystyki)
-* [E3D format](https://wiki.eu07.pl/index.php/Format_E3D)
-* [E3D format - Rainsted Wiki](http://rainsted.com/pl/Format_binarny_modeli_-_E3D)
-* [MMD format](https://wiki.eu07.pl/index.php/Plik_multimedi%C3%B3w_(mmd))
-* [MAT format](https://wiki.eu07.pl/index.php/Materia%C5%82y_-_Pliki_.mat)
-* [Scenery file format](https://wiki.eu07.pl/index.php/Plik_scenerii)
-* [Node objects](https://wiki.eu07.pl/index.php/Obiekt_node)
+* [Architecture](architecture) - how the core is built and how plugins extend it
+* [API reference](api/) - all classes of the core and of the plugins this site was built with
+* [Lua scenario scripts](lua-scripting) - the scripting API for sceneries
 
-### Godot Game Engine
+## Godot resources
 
 * [GDExtension documentation](https://docs.godotengine.org/en/stable/tutorials/scripting/gdextension/index.html)
 * [Making plugins for Godot](https://docs.godotengine.org/en/stable/tutorials/plugins/editor/making_plugins.html)
-* [Architecture: Why Godot is not ECS based engine](https://godotengine.org/article/why-isnt-godot-ecs-based-game-engine/)
-* [Architecture: Not everything must be a Node](https://docs.godotengine.org/en/stable/tutorials/best_practices/node_alternatives.html)
-* [Godot Multiplayer API](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html)
-* [Godot Input handling](https://docs.godotengine.org/en/stable/tutorials/inputs/index.html)
-* [Godot Assets pipeline](https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/index.html)
-* [Godot Materials](https://docs.godotengine.org/en/stable/tutorials/3d/standard_material_3d.html)
-* [Godot Performance and optimization](https://docs.godotengine.org/en/stable/tutorials/performance/index.html#)
+* [Why Godot is not an ECS-based engine](https://godotengine.org/article/why-isnt-godot-ecs-based-game-engine/)
+* [Not everything must be a Node](https://docs.godotengine.org/en/stable/tutorials/best_practices/node_alternatives.html)
+* [Multiplayer API](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html)
+* [Input handling](https://docs.godotengine.org/en/stable/tutorials/inputs/index.html)
+* [Assets pipeline](https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/index.html)
+* [Materials](https://docs.godotengine.org/en/stable/tutorials/3d/standard_material_3d.html)
+* [Performance and optimization](https://docs.godotengine.org/en/stable/tutorials/performance/index.html)
 
+## Goals
 
-## The Mission
-
-**MaSzyna: Reloaded** is a development organization dedicated to creating a next-generation train
-simulator experience built with the Godot Engine. We leverage the power of [MaSzyna - Symulator
-pojazdów szynowych](https://eu07.pl) by utilizing its assets and scenery elements, while offering
-a modern and customizable platform for train enthusiasts and developers.
-
-
-Our focus:
-
-- **Modern Engine and Development Environment:** By utilizing Godot Engine, we aim to deliver a
-  visually stunning and performant train simulator experience.
-
-- **Community-Driven Development:** Open-source tools and contributions allow for collaborative
-  development and user-driven features.
-
-- **Customization and Modding Potential:** Our tools empower players and developers to personalize
-  their train simulation experience through extensive customization options and modding capabilities.
+* **A modern engine.** Godot gives us good rendering, performance and tools.
+* **Open development.** The code is open source and contributions are welcome.
+* **Modding.** Players and developers can customize and extend the simulation.
 
 ## Authors
 
-- **[Marcin Nowak](https://github.com/marcinn/)**: Software architecture and programming
-- **[Karol "DoS" Tomaszewski](https://github.com/JezSonic)**: Game port concept, CI and programming
+- **[Marcin Nowak](https://github.com/marcinn/)**: software architecture and programming
+- **[Karol "DoS" Tomaszewski](https://github.com/JezSonic)**: game port concept, CI and programming

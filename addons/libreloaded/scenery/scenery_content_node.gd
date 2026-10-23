@@ -8,21 +8,21 @@ class_name SceneryContentNode
 ## plugin's world.
 
 signal loaded
-## What a load is doing, in the order MaszynaSceneryProvider goes through it: the scenery's files read
+## What a load is doing, in the order a scenery provider goes through it: the scenery's files read
 ## (parsed, or its cache), tracks, traction and models registered, terrain built, objects
 ## instanced, vehicles built - and then, the game's own, the player's surroundings built by the
 ## streaming around the player's camera
 enum LoadStage { FILES, INFRASTRUCTURE, TERRAIN, OBJECTS, VEHICLES, SURROUNDINGS }
-## Emitted by MaszynaSceneryProvider as the load goes (progress 0..1 of the whole load, its stage, what
+## Emitted by the scenery provider as the load goes (progress 0..1 of the whole load, its stage, what
 ## it is doing now)
 signal load_progress(progress:float, stage:LoadStage, message:String)
-## Emitted by MaszynaSceneryProvider while the files are parsed: includes parsed so far and the file being
+## Emitted by the scenery provider while the files are parsed: includes parsed so far and the file being
 ## parsed now - the progress of the files stage alone cannot tell a large include from a stall
 signal load_files_parsed(count:int, filename:String)
 ## A load() has ended, whatever came of it: loaded, given up, or nothing to load
 signal load_ended
-## The content is about to be freed (a reload, an unload): whatever runs on it - its scenario,
-## MaszynaScenario - stops now, while everything it reaches still exists
+## The content is about to be freed (a reload, an unload): whatever runs on it - its scenario -
+## stops now, while everything it reaches still exists
 signal unloading
 ## Emitted as the content is freed over frames (load(), clear()): the share of it freed so far
 signal clear_progress(progress:float)
@@ -41,10 +41,9 @@ const SceneryEditor = preload("res://addons/libreloaded/editor/scenery_toolbar/s
 
 @export var autoload:bool = true
 ## The vehicles of one trainset as the player arranged them for this load (the scenery
-## selector), front first, each declared one with its place in the declared trainset
-## (MaszynaVehicleData.trainset_index) - TrainsetData.get_arranged_vehicles(). The scenery
-## cache holds what the .scn declares; this only replaces it for this load. Empty: the trainsets
-## as declared.
+## selector), front first, each declared one with its place in the declared trainset -
+## TrainsetData.get_arranged_vehicles(). The scenery cache holds what the scenery declares; this
+## only replaces it for this load. Empty: the trainsets as declared.
 @export var trainset_override:Array[VehicleData] = []
 
 ## Off by default: loaded content gets no owner and stays unselectable in the editor (matches
@@ -88,7 +87,7 @@ var _event_rids:Array[RID] = []
 var _event_system_rids:Array[RID] = []
 var _isolated_rids:Array[RID] = []
 var _trainset_rids:Array[RID] = []
-## The scenery's vehicles (MaszynaVehicleSystem), in the order of its file
+## The scenery's vehicles, in the order of its file
 var _vehicle_rids:Array[RID] = []
 ## What the scenario starts - loaded here, run only by the game: the scenery's scripts
 var _scenario_scripts:Array[String] = []
@@ -217,7 +216,7 @@ func get_trainsets() -> Array[RID]:
     return _trainset_rids
 
 
-## The scenery's vehicles (MaszynaVehicleSystem), in the order of its file
+## The scenery's vehicles, in the order of its file
 func get_vehicles() -> Array[RID]:
     return _vehicle_rids
 
@@ -227,7 +226,7 @@ func get_models() -> Array[RID]:
     return _model_rids
 
 
-## The scenery's `lua` scripts, run by its scenario (MaszynaScenario)
+## The scenery's scenario scripts, run by its scenario
 func get_scenario_scripts() -> Array[String]:
     return _scenario_scripts
 
@@ -371,7 +370,7 @@ func clear() -> void:
     _loading = false
 
 
-## Gives the load under way up: it stops at its next step (MaszynaSceneryProvider), and what it had
+## Gives the load under way up: it stops at the scenery provider's next step, and what it had
 ## built is freed. Nothing happens while nothing loads.
 func stop_loading() -> void:
     if _loading:

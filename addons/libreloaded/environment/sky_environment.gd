@@ -4,7 +4,7 @@ extends Node
 class_name SkyEnvironment
 
 ## Draws the state of a EnvironmentNode - the WorldEnvironment, its sky, the sun and the cab
-## light. A sky addon is a backend extending this; libmaszyna carries none of its own, the project
+## light. A sky addon is a backend extending this; a plugin carries none of its own, the project
 ## that has the addon places its backend next to the environment node and connects the node's
 ## configuration_changed to apply_configuration() in the scene.
 
@@ -82,7 +82,7 @@ enum ShadowView { SCENERY, CABIN }
 ## (extinction per metre times length) - and so the look of the fog - unchanged. At 24 that is 72 m
 ## by night and 192 m by day. Raising it further spreads the same froxel depth slices over more
 ## metres, which softens the fog near the camera, and shafts still stop where the light's shadow
-## does (MaszynaE3DRenderingServer.SCENERY_LIGHT_SHADOW_FADE_DISTANCE) - the two have to be raised together.
+## does (the fade distance of the model backend's light shadows) - the two have to be raised together.
 const FOG_VOLUMETRIC_LENGTH_SCALE_SETTING: StringName = &"reloaded/weather/fog/volumetric_length_scale"
 const FOG_VOLUMETRIC_LENGTH_SCALE_DEFAULT: float = 24.0
 const VOLUMETRIC_FOG_ENERGY_SETTING: StringName = &"reloaded/weather/fog/volumetric_energy"

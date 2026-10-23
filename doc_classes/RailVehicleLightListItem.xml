@@ -10,7 +10,7 @@
 	</tutorials>
 	<members>
 		<member name="cabin_a_end_signals" type="bool" setter="set_cabin_a_end_signals" getter="get_cabin_a_end_signals" default="false">
-			State of the end-of-train signal plates at cabin A (Maszyna [code]light::rearendsignals[/code])
+			State of the end-of-train signal plates at cabin A
 		</member>
 		<member name="cabin_a_head_light" type="bool" setter="set_cabin_a_head_light" getter="get_cabin_a_head_light" default="false">
 			State of the head light in cabin A indicating whether it is lit up or not
@@ -34,7 +34,7 @@
 			State of the right white signal in cabin A indicating whether it is lit up or not
 		</member>
 		<member name="cabin_b_end_signals" type="bool" setter="set_cabin_b_end_signals" getter="get_cabin_b_end_signals" default="false">
-			State of the end-of-train signal plates at cabin B (Maszyna [code]light::rearendsignals[/code])
+			State of the end-of-train signal plates at cabin B
 		</member>
 		<member name="cabin_b_head_light" type="bool" setter="set_cabin_b_head_light" getter="get_cabin_b_head_light" default="false">
 			State of the head light in cabin B indicating whether it is lit up or not

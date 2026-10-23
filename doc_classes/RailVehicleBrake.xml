@@ -4,7 +4,7 @@
 		Represents and configures the vehicle brake system and exposes controls to operate it.
 	</brief_description>
 	<description>
-		RailVehicleBrake provides access to the underlying MaSzyna brake model for a vehicle. It lets you:
+		RailVehicleBrake provides access to the underlying brake model for a vehicle. It lets you:
 		- Configure key pneumatic parameters (pressures, tank volumes, cylinder geometry, friction method).
 		- Select the brake distributor/valve type used by the vehicle.
 		- Operate the main brake handle and auxiliary features like the brake releaser.

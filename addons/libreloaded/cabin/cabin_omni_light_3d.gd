@@ -12,7 +12,7 @@ func set_vehicle_rid(vehicle_rid:RID) -> void:
 ## Which vehicle this cabin element sits in; every read of it goes through CabinSystem.
 var _vehicle_rid:RID
 ## The cabin of the Cabin3D it sits in, taken when it enters the tree - a cab is rebuilt for
-## another cabin (MaszynaDynamicTrainCabin)
+## another cabin
 var _cabin:RID
 
 var _dirty:bool = false

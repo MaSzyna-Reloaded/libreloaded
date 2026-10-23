@@ -14,7 +14,7 @@ var vehicle:RID = RID():
             _dirty = true
 
 ## Which vehicle of the occupied one's unit the widget acts on, as the cab's same control does
-## (MmdSemanticCatalog, MaszynaCabin*): the main switch is the controlled vehicle's (mvControlled)
+## (CabinState.Target)
 @export var target:CabinState.Target = CabinState.Target.OCCUPIED:
     set(x):
         _dirty = true

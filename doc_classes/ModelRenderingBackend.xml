@@ -168,7 +168,7 @@
 			<param index="5" name="force_alpha_part_paths" type="NodePath[]" />
 			<param index="6" name="max_texture_size" type="int" />
 			<description>
-				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the project's [code]maszyna/import/dds_max_texture_size[/code] (see [code]ResourceInstance[/code]). Rebuilds an already built instance.
+				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the backend's own limit (see [code]ResourceInstance[/code]). Rebuilds an already built instance.
 			</description>
 		</method>
 		<method name="instance_set_part_emission_energy">

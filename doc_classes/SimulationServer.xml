@@ -132,7 +132,7 @@
 			0-1, the weather's; full cover dims the daylight by 0.65 ([code]simulationenvironment.cpp:163[/code]).
 		</member>
 		<member name="friction" type="float" setter="set_friction" getter="get_friction" default="1.0">
-			The scenery's rail friction multiplier ([code]Global.fFriction[/code], [code]Globals.h:95[/code]), set by the scenery's [code]friction[/code] event ([MaszynaFrictionAction]).
+			The scenery's rail friction multiplier, set by a scenario event of the scenery.
 		</member>
 		<member name="latitude" type="float" setter="set_latitude" getter="get_latitude" default="50.271">
 			Where the sun is seen from, decimal degrees north.

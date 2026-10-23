@@ -4,7 +4,7 @@
 		The [code]lines[/code] nodes of one section of the 1 km grid, merged and made into a mesh.
 	</brief_description>
 	<description>
-		The scenery's [code]lines[/code], [code]line_strip[/code] and [code]line_loop[/code] nodes - the wires of power lines, mostly - of one section, merged as the original merges them in its 250 m cells ([code]basic_cell::insert()[/code], scene.cpp:302-326) and made into the mesh [code]scenery_lines.gdshader[/code] draws: a line a few pixels wide fading with the distance of its node's centre, as [code]opengl33renderer.cpp[/code] draws them. Filled by [code]SceneryLines[/code] from a scenery's nodes and by [MaszynaSBTTerrainProvider] from a region file.
+		The scenery's [code]lines[/code], [code]line_strip[/code] and [code]line_loop[/code] nodes - the wires of power lines, mostly - of one section, merged as the original merges them in its 250 m cells ([code]basic_cell::insert()[/code], scene.cpp:302-326) and made into the mesh [code]scenery_lines.gdshader[/code] draws: a line a few pixels wide fading with the distance of its node's centre, as [code]opengl33renderer.cpp[/code] draws them. Filled by [code]SceneryLines[/code] from a scenery's nodes and by a plugin's terrain provider.
 	</description>
 	<tutorials>
 	</tutorials>

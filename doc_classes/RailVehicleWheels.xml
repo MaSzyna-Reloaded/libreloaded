@@ -4,7 +4,7 @@
 		Class used to configure wheel geometry and expose wheel-related runtime state.
 	</brief_description>
 	<description>
-		Class that maps the [code]Wheels[/code] section of MaSzyna vehicle configuration to the vehicle's simulation.
+		The wheels of a rail vehicle - their configuration and state, as the vehicle's simulation implements them.
 	</description>
 	<tutorials>
 	</tutorials>

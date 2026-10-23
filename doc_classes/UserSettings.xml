@@ -6,7 +6,7 @@
 	<description>
 		Stores user settings in the [code]user://settings.cfg[/code] file and exposes a small API for reading and writing values grouped by section and key.
 		Missing keys are filled with built-in defaults during [method load_config], so callers can safely read settings even when the config file does not exist yet or does not contain every supported option.
-		The class also provides a dedicated helper for the configured Maszyna game directory.
+		The class also provides a dedicated helper for the configured game data directory.
 	</description>
 	<tutorials>
 	</tutorials>

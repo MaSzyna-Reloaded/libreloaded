@@ -8,7 +8,7 @@ class_name BaseCabinTool3D
 
 var _vehicle_rid:RID
 ## The cabin of the Cabin3D this element sits in, taken when it enters the tree - a cab is rebuilt
-## for another cabin (MaszynaDynamicTrainCabin)
+## for another cabin
 var _cabin:RID
 var _dirty:bool = false
 ## The element's time - the simulation's

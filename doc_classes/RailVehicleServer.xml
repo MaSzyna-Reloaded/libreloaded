@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		Which track a vehicle occupies, how far along it, which way round, and which branch of a switch. Movement along the route, crossing endpoints, forcing switch blades and the resulting world transform all live here.
-		What the vehicle [i]does[/i] - forces, integration, couplers - belongs to its [VehicleController] and the simulation behind it. The vehicle itself - its handle, name, commands and components - is [VehicleServer]'s; this server takes a vehicle created there ([method vehicle_attach]), moves it and ties it to the tracks, the traction wires and the other servers. It knows the same RID for what is rail: the track, the couplers, the cabins by kind and the railway's component kinds. The step itself is the implementation's ([MaszynaMoverVehicleServer]), which calls the per-vehicle rail operations in its phases.
+		What the vehicle [i]does[/i] - forces, integration, couplers - belongs to its [VehicleController] and the simulation behind it. The vehicle itself - its handle, name, commands and components - is [VehicleServer]'s; this server takes a vehicle created there ([method vehicle_attach]), moves it and ties it to the tracks, the traction wires and the other servers. It knows the same RID for what is rail: the track, the couplers, the cabins by kind and the railway's component kinds. The step itself is the implementation's, which calls the per-vehicle rail operations in its phases.
 	</description>
 	<tutorials>
 	</tutorials>

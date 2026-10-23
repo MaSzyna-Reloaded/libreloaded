@@ -11,7 +11,7 @@ class_name CabinRadio3D
 ## The cab's lamps of the message and of the Radio-Stop read their state from here
 ## (btLampkaRadioMessage, btLampkaRadioStop, Train.cpp:9129-9130).
 
-## Original engine: m_radiosound's range, 2 * EU07_SOUND_CABCONTROLSCUTOFFRANGE (Train.h:845, sound.h:17)
+## How far the cab's radio is heard, in metres
 const RANGE:float = 15.0
 const RADIO_MESSAGE:StringName = &"radio_message"
 const RADIO_STOP:StringName = &"radio_stop"

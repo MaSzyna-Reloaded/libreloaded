@@ -308,7 +308,7 @@ static func report_progress_throttled(
 
 
 ## Lets a frame be drawn once the main thread has worked FRAME_BUDGET_MSEC since the last one, for
-## the loops of a load that report nothing of their own (MaszynaEventFactory.build())
+## the loops of a load that report nothing of their own
 static func frame_budget_wait() -> void:
     if Time.get_ticks_msec() - _last_report_msec < FRAME_BUDGET_MSEC:
         return

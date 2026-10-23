@@ -199,7 +199,7 @@
 			<param index="5" name="force_alpha_part_paths" type="NodePath[]" />
 			<param index="6" name="max_texture_size" type="int" />
 			<description>
-				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the project's [code]maszyna/import/dds_max_texture_size[/code] (see [code]ResourceInstance[/code]). Rebuilds an already built instance.
+				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the backend's own limit (see [code]ResourceInstance[/code]). Rebuilds an already built instance.
 			</description>
 		</method>
 		<method name="instance_set_part_emission_energy">
@@ -313,10 +313,10 @@
 			Builds a node tree under the attached node, editable in the editor.
 		</constant>
 		<constant name="INSTANCE_KIND_STATIC" value="0" enum="InstanceKind">
-			A static [code]node ... model[/code] of a scenery - a chimney, a cooling tower, a road vehicle standing as a prop. This is what a placement registered with [method instance_register] always is. Its smoke follows [code]maszyna/rendering/smoke_density_static[/code].
+			A static [code]node ... model[/code] of a scenery - a chimney, a cooling tower, a road vehicle standing as a prop. This is what a placement registered with [method instance_register] always is. Its smoke follows [code]reloaded/smoke/static/density[/code].
 		</constant>
 		<constant name="INSTANCE_KIND_DYNAMIC" value="1" enum="InstanceKind">
-			Part of a [code]dynamic[/code], which is a vehicle. Its smoke follows [code]maszyna/rendering/smoke_density_dynamic[/code].
+			Part of a [code]dynamic[/code], which is a vehicle. Its smoke follows [code]reloaded/smoke/dynamic/density[/code].
 		</constant>
 	</constants>
 </class>

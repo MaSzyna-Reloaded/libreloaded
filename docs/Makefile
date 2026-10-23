@@ -7,7 +7,7 @@ SITE ?= $(abspath $(CURDIR)/../build-docs/site)
 # volume, so they are installed once, and the site is built inside the container rather than into
 # the site's directory, which would otherwise fill up with files owned by root.
 DOCKER_RUBY_IMAGE := ruby:3.3
-DOCKER_GEMS_VOLUME := maszyna-docs-gems
+DOCKER_GEMS_VOLUME := reloaded-docs-gems
 DOCKER_RUN = docker run --rm -it -v "$(SITE):/srv/site" -v $(DOCKER_GEMS_VOLUME):/usr/local/bundle \
 	-w /srv/site -p 4000:4000 -p 35729:35729 $(DOCKER_RUBY_IMAGE)
 

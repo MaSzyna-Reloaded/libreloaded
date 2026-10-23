@@ -4,7 +4,7 @@
 		Manages cached resources in [code]user://[/code] directory
 	</brief_description>
 	<description>
-		[ResourceCache] stores cache resources in the user directory. It can be used to store temporary resources created at runtime, such as [MaszynaE3DModel]. If a [code]hash[/code] is provided, the cache is automatically invalidated. If the [code]hash[/code] does not match, the cache entry is overwritten, preventing the cache from growing when the source changes.
+		[ResourceCache] stores cache resources in the user directory. It can be used to store temporary resources created at runtime, such as models converted from a plugin's data. If a [code]hash[/code] is provided, the cache is automatically invalidated. If the [code]hash[/code] does not match, the cache entry is overwritten, preventing the cache from growing when the source changes.
 	</description>
 	<tutorials>
 	</tutorials>

@@ -4,7 +4,7 @@
 		Resource loader for runtime [code].ogg[/code] audio files.
 	</brief_description>
 	<description>
-		[OggVorbisFormatLoader] integrates [code].ogg[/code] files with Godot's resource loading pipeline for runtime asset paths used by libmaszyna. It recognizes the [code]ogg[/code] extension and returns an [AudioStreamOggVorbis] resource loaded from the requested file.
+		[OggVorbisFormatLoader] integrates [code].ogg[/code] files with Godot's resource loading pipeline for runtime asset paths of a plugin's data. It recognizes the [code]ogg[/code] extension and returns an [AudioStreamOggVorbis] resource loaded from the requested file.
 	</description>
 	<tutorials>
 	</tutorials>

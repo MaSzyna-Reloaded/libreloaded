@@ -8,7 +8,7 @@ class_name CabinLogic
 ## It needs no 3D cab: whoever drives - the player by keys and mouse, the AI - reports
 ## manipulations with CabinSystem.act(). The player's hand on a control - a key, a click on its
 ## widget - is one of press(), release(), increase(), decrease(), which decide what the control
-## does with it as the cab has it. The original's is MaszynaCabinLogic.
+## does with it as the cab has it. A plugin's cab logic derives from it.
 
 ## The driver's hand on a control, as a key moves it: press() and increase()/decrease()
 enum Gesture { PRESS, INCREASE, DECREASE }

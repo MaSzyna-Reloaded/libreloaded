@@ -25,7 +25,7 @@
 		<method name="preloads_drain">
 			<return type="void" />
 			<description>
-				Drops the queued loads of the vehicles' model files and waits for the running ones. The loads run the GDScript model loader on worker threads, so this is called while the scene tree is still alive ([code]MaszynaVehicleSystem._exit_tree()[/code]).
+				Drops the queued loads of the vehicles' model files and waits for the running ones. The loads run the GDScript model loader on worker threads, so this is called while the scene tree is still alive.
 			</description>
 		</method>
 		<method name="vehicle_attach">

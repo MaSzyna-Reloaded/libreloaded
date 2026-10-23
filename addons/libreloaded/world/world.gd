@@ -9,7 +9,7 @@ class_name World
 ## with its scenario (SCENARIO_FILE: trainsets, sounds, scripts) and registered through
 ## SceneryServer.instantiate_compiled() by the worlds' provider (WorldSceneryProvider); what is only
 ## drawn is in a section a cell of SceneryStreamingServer's grid (SECTIONS_DIR), read as the camera
-## comes near (WorldSectionProvider), as libmaszyna's triangle chunks are. A plugin's world divides
+## comes near (WorldSectionProvider). A plugin's world divides
 ## it otherwise (its subclass). The node is made of its WorldData (open()); nothing of it is saved.
 
 ## Where the worlds are, under the game's directory: <name>.json describing a world, its packs in <name>/

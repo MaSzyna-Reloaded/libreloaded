@@ -39,7 +39,7 @@ static func decode(bytes:PackedByteArray) -> String:
     return text
 
 
-## The text back in cp1250 bytes - for a parser that reads cp1250 (MaszynaParser); a character
+## The text back in cp1250 bytes - for a parser that reads cp1250; a character
 ## cp1250 has no byte for becomes "?"
 static func encode(text:String) -> PackedByteArray:
     var bytes:PackedByteArray = []

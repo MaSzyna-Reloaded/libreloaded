@@ -8,7 +8,7 @@ extends Node
 ## VehicleServer handle (RailVehicleServer knows which of the vehicle's cabs it is), a vehicle its
 ## VehicleServer handle - never its scenery name, which two vehicles may share and one may lack.
 ## Cabin controls only report manipulations through act(); the handlers are registered by the
-## CabinLogic attached to the vehicle (e.g. MaszynaCabinLogic) - for the cabin its driver sits in -
+## CabinLogic attached to the vehicle (a plugin's) - for the cabin its driver sits in -
 ## and translate them into vehicle commands. CabinSystem itself has no cabin logic and forwards
 ## nothing by default.
 

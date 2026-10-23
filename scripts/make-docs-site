@@ -21,9 +21,10 @@ from pathlib import Path
 
 from reloaded_sources import ROOT, sources
 
-# what Jekyll or a local install leaves in docs/, and docs/Makefile - never part of the site
+# what Jekyll or a local install leaves in docs/, docs/Makefile and the findings (the repository's
+# record behind FINDINGS.md, not a guide) - never part of the site
 IGNORED = shutil.ignore_patterns("_site", ".jekyll-cache", ".jekyll-metadata", ".sass-cache", "vendor", "api",
-                                 "Makefile")
+                                 "Makefile", "findings-archive.md")
 # what of a plugin's docs/ is not its pages: the site's configuration and machinery are libreloaded's
 PLUGIN_IGNORED = shutil.ignore_patterns("_config.yml", "_layouts", "_includes", "Gemfile", "Gemfile.lock",
                                         "Makefile", "404.html", ".bundle", ".gitignore", "_site",

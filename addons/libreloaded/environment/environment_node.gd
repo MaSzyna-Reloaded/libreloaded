@@ -3,16 +3,15 @@ extends Node
 class_name EnvironmentNode
 
 ## Group the player sets cabin_view on when switching between the cabin and the exterior view
-const GROUP: StringName = &"maszyna_environment"
+const GROUP: StringName = &"reloaded_environment"
 ## Render layer of the cab interior - with reloaded/cabin/improve_shadows_quality the cab is lit by a
 ## sun of its own that reaches only this layer (SkyEnvironment._create_cabin_light())
 const CABIN_RENDER_LAYER: int = 1 << 18
 ## Wind speed the 0-1 wind_strength maps onto, m/s
 const WIND_SPEED_MIN: float = 0.15
 const WIND_SPEED_MAX: float = 3.0
-## The original's Global.Overcast runs 0-1 for the cloud cover and on up to 2 for precipitation
-## (simulationenvironment.cpp:64-71); MaszynaScenery turns its heaviest step into a precipitation
-## of 0.4 (maszyna_scenery.gd PRECIPITATION_MEDIUM), which here is an overcast of 2 again
+## The overcast runs 0-1 for the cloud cover and on up to 2 for precipitation; a precipitation of
+## OVERCAST_FULL_PRECIPITATION is an overcast of 2
 const OVERCAST_MAX: float = 2.0
 const OVERCAST_FULL_PRECIPITATION: float = 0.4
 ## The original's fog range with the fog switched off - the longest a scenery may declare
@@ -42,7 +41,7 @@ signal configuration_changed
 ## The time, the date, the location, the cloud cover and the temperature are SimulationServer's -
 ## it runs the clock, rolls the date and works out the light level from the sun, and says so by its
 ## signals. This node only passes them through: the getters read the server, the setters write it,
-## and what a backend needs of them (MaszynaE3DRenderingServer's lights, the shaders' light level, the
+## and what a backend needs of them (the model backend's lights, the shaders' light level, the
 ## materials' season) the node hands over when the server announces a change. Its defaults are the
 ## server's (SimulationServer DEFAULT_*), so a scene that keeps one stores nothing for it.
 

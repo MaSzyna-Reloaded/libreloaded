@@ -2,8 +2,8 @@
 extends Node3D
 class_name TrainSet3D
 
-## A trainset assembled by hand - a node over RailVehicleServer's trainset (get_rid()), as a loaded
-## scenery's "trainset:" block is one built by MaszynaSceneryProvider without a node. Its RailVehicle3D
+## A trainset assembled by hand - a node over RailVehicleServer's trainset (get_rid()), as a trainset
+## of a loaded scenery is one built by its scenery provider without a node. Its RailVehicle3D
 ## children are the trainset's vehicles, in order: the server stands them on the trainset's track
 ## one after another from its front, each as long as it is, and couples each with the next as
 ## "endtrainset" does. Reordered, they stand anew. A vehicle of a trainset has no start track of

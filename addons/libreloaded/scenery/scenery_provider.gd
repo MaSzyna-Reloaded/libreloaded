@@ -6,7 +6,7 @@ class_name SceneryProvider
 ## loads one, reads one into a CompiledScenery, and registers with the servers what of it only it
 ## knows. A plugin's provider is an autoload deriving from this one.
 
-## What a list of sceneries labels the provider's own with ("MaSzyna")
+## What a list of sceneries labels the provider's own with (the plugin's name)
 var title:String = ""
 
 

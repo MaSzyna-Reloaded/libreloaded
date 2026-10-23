@@ -1,9 +1,8 @@
-title: MaSzyna Reloaded Core
+title: Rails Reloaded Core
 
 description: >- # this means to ignore newlines until "baseurl:"
-  MaSzyna: Reloaded is a development organization dedicated to creating
-  a next-generation train simulator based on https://eu07.pl experience
-  built with the Godot Engine.
+  The core of Rails Reloaded: a GDExtension for the Godot Engine holding what
+  is common to a railway simulation, and the plugins built into it.
 
 github_username: MaSzyna-Reloaded
 
