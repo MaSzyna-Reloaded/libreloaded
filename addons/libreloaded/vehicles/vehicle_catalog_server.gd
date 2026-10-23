@@ -15,7 +15,8 @@ const LIVERY_EXTENSION:String = "tres"
 ## The liveries of [param vehicle] changed: a player's one added or removed
 signal livery_list_changed(vehicle:VehicleInfo)
 
-var _providers:Dictionary[StringName, VehicleCatalogProvider] = {}
+## The registered providers' ObjectIDs, by name
+var _providers:Dictionary[StringName, int] = {}
 ## The provider each vehicle made through the catalogue is the one of, until it is freed
 var _vehicle_providers:Dictionary[RID, StringName] = {}
 
@@ -28,19 +29,29 @@ func _exit_tree() -> void:
     VehicleServer.vehicle_freed.disconnect(_on_vehicle_freed)
 
 
-func provider_register(provider_name:StringName, provider:VehicleCatalogProvider) -> void:
-    _providers[provider_name] = provider
+## A VehicleCatalogProvider, by its ObjectID, supplies the vehicles of [param provider_name]
+func provider_register(provider_name:StringName, provider_id:int) -> void:
+    _providers[provider_name] = provider_id
 
 
 func provider_unregister(provider_name:StringName) -> void:
     _providers.erase(provider_name)
 
 
+## The VehicleCatalogProvider registered as [param provider_name], by its ObjectID; 0 for none
+func provider_get(provider_name:StringName) -> int:
+    return _providers.get(provider_name, 0)
+
+
+func provider_get_list() -> PackedStringArray:
+    return PackedStringArray(_providers.keys())
+
+
 ## The vehicles of [param category] of every provider
 func vehicle_list(category:VehicleInfo.VehicleCategory) -> Array[VehicleInfo]:
     var vehicles:Array[VehicleInfo] = []
-    for provider:VehicleCatalogProvider in _providers.values():
-        vehicles.append_array(provider.vehicle_list(category))
+    for provider_name:StringName in _providers:
+        vehicles.append_array(_get_provider(provider_name).vehicle_list(category))
     return vehicles
 
 
@@ -48,7 +59,7 @@ func vehicle_list(category:VehicleInfo.VehicleCategory) -> Array[VehicleInfo]:
 ## its provider: its VehicleServer handle, given at once; none when the provider is not there
 func vehicle_create(vehicle:VehicleData, scene_node_id:int) -> RID:
     var provider_name:StringName = _get_provider_name(vehicle)
-    var provider:VehicleCatalogProvider = _providers.get(provider_name)
+    var provider:VehicleCatalogProvider = _get_provider(provider_name)
     if not provider:
         push_error("No vehicle provider \"%s\" for %s" % [provider_name, vehicle.vehicle])
         return RID()
@@ -60,34 +71,34 @@ func vehicle_create(vehicle:VehicleData, scene_node_id:int) -> RID:
 
 ## The vehicle goes, with everything its provider made for it
 func vehicle_free(vehicle_rid:RID) -> void:
-    var provider:VehicleCatalogProvider = _providers.get(_vehicle_providers.get(vehicle_rid, &""))
+    var provider:VehicleCatalogProvider = _get_provider(_vehicle_providers.get(vehicle_rid, &""))
     if provider:
         provider.vehicle_free(vehicle_rid)
 
 
 ## What the vehicle was created from; null for one the catalogue did not make
 func vehicle_get_data(vehicle_rid:RID) -> VehicleData:
-    var provider:VehicleCatalogProvider = _providers.get(_vehicle_providers.get(vehicle_rid, &""))
+    var provider:VehicleCatalogProvider = _get_provider(_vehicle_providers.get(vehicle_rid, &""))
     return provider.vehicle_get_data(vehicle_rid) if provider else null
 
 
 ## [param vehicle] seen from its side by its provider, in its livery (VehicleCatalogProvider.
 ## vehicle_get_side_view()); await it; null when the provider is not there or has none
 func vehicle_get_side_view(vehicle:VehicleData) -> Texture2D:
-    var provider:VehicleCatalogProvider = _providers.get(_get_provider_name(vehicle))
+    var provider:VehicleCatalogProvider = _get_provider(_get_provider_name(vehicle))
     return await provider.vehicle_get_side_view(vehicle) if provider else null
 
 
 ## The width [px] of [param vehicle]'s side view between its couplers, 0 for its whole width
 func vehicle_get_side_view_coupling_width(vehicle:VehicleData) -> float:
-    var provider:VehicleCatalogProvider = _providers.get(_get_provider_name(vehicle))
+    var provider:VehicleCatalogProvider = _get_provider(_get_provider_name(vehicle))
     return provider.vehicle_get_side_view_coupling_width(vehicle) if provider else 0.0
 
 
 ## The liveries of [param vehicle]: its provider's, then the player's
 func livery_list(vehicle:VehicleInfo) -> Array[VehicleLivery]:
     var liveries:Array[VehicleLivery] = []
-    var provider:VehicleCatalogProvider = _providers.get(vehicle.vehicle_provider)
+    var provider:VehicleCatalogProvider = _get_provider(vehicle.vehicle_provider)
     if provider:
         liveries.append_array(provider.livery_list(vehicle))
     var directory:String = _get_liveries_directory(vehicle)
@@ -151,15 +162,20 @@ func livery_remove(vehicle:VehicleInfo, livery_name:String) -> Error:
 ## What [param vehicle] is, as its provider describes it (VehicleCatalogProvider.
 ## vehicle_get_description()); null when the provider is not there or has none
 func vehicle_get_description(vehicle:VehicleData) -> VehicleController:
-    var provider:VehicleCatalogProvider = _providers.get(_get_provider_name(vehicle))
+    var provider:VehicleCatalogProvider = _get_provider(_get_provider_name(vehicle))
     return provider.vehicle_get_description(vehicle) if provider else null
 
 
 ## What [param vehicle] looks like in its livery, as its provider draws it (VehicleCatalogProvider.
 ## vehicle_get_appearance()); null when the provider is not there or has none
 func vehicle_get_appearance(vehicle:VehicleData) -> RailVehicleAppearance:
-    var provider:VehicleCatalogProvider = _providers.get(_get_provider_name(vehicle))
+    var provider:VehicleCatalogProvider = _get_provider(_get_provider_name(vehicle))
     return provider.vehicle_get_appearance(vehicle) if provider else null
+
+
+## The provider registered as [param provider_name]; null for none
+func _get_provider(provider_name:StringName) -> VehicleCatalogProvider:
+    return instance_from_id(_providers.get(provider_name, 0)) as VehicleCatalogProvider
 
 
 func _get_provider_name(vehicle:VehicleData) -> StringName:
@@ -170,7 +186,7 @@ func _get_provider_name(vehicle:VehicleData) -> StringName:
 
 func _get_provider_livery_names(vehicle:VehicleInfo) -> Array[String]:
     var names:Array[String] = []
-    var provider:VehicleCatalogProvider = _providers.get(vehicle.vehicle_provider)
+    var provider:VehicleCatalogProvider = _get_provider(vehicle.vehicle_provider)
     if provider:
         for livery:VehicleLivery in provider.livery_list(vehicle):
             names.append(livery.name)

@@ -4,11 +4,12 @@
 #include "tracks/TrackServer.hpp"
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 
 namespace godot {
-    /* What a segment of track or road is and what it has - never how it is drawn: the renderer picks
-     * the materials and the section for its features. A plugin keeps what is only its own in meta
-     * or in a subclass. Its name is the resource's name. */
+    /* What a segment of track or road is and what it has - never how it is drawn: the backend that
+     * draws it (rendering_backend) picks the materials and the section for its features. A plugin
+     * keeps what is only its own in meta or in a subclass. Its name is the resource's name. */
     class TrackData : public Resource {
             GDCLASS(TrackData, Resource)
 
@@ -77,6 +78,9 @@ namespace godot {
             /* What a plugin keeps of its own about the segment; handed to TrackServer with it
              * (track_set_meta()) */
             Dictionary meta;
+            /* The name of the TrackRenderingServer backend that draws the segment; empty for the
+             * default one (TrackRenderingServer::BACKEND_SETTING) */
+            StringName rendering_backend;
 
         protected:
             static void _bind_methods();
@@ -102,10 +106,7 @@ namespace godot {
             MAKE_GS_NR(double, formation_slope);
             MAKE_GS_NR(double, sleeper_spacing);
             MAKE_GS_NR(SleeperKind, sleeper_kind);
-
-            /// The TrackRenderingServer backend that draws the segment, by its name; empty for the
-            /// default one. A plugin's own data names its plugin's backend
-            virtual StringName get_rendering_backend() const;
+            MAKE_GS(StringName, rendering_backend);
 
             /// A copy of the segment moved by p_offset (both its curves)
             Ref<TrackData> translated(const Vector3 &p_offset) const;

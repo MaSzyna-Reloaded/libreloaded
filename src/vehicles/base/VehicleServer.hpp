@@ -148,6 +148,8 @@ namespace godot {
              * register its own */
             void implementation_register(const StringName &p_name, uint64_t p_implementation_id);
             void implementation_unregister(const StringName &p_name);
+            /// The implementation registered as p_name, by its ObjectID; 0 for none
+            uint64_t implementation_get(const StringName &p_name) const;
             PackedStringArray implementation_get_list() const;
 
             /* One step of every vehicle: each implementation is handed its own vehicles, at once.

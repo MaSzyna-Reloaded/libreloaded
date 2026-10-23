@@ -103,7 +103,7 @@ func _enter_tree():
         "reloaded/tracks/look", "res://addons/libreloaded/tracks/track_look.tres", TYPE_STRING,
         PROPERTY_HINT_FILE, "*.tres,*.res"
     )
-    # ...and the traction (TractionRenderingServer.set_rendering_backend())
+    # ...and the traction (TractionData.rendering_backend)
     add_custom_project_setting(TRACTION.RENDERING_BACKEND_SETTING, TRACTION.PLAIN_BACKEND, TYPE_STRING_NAME)
     # How long the simulation's running speed takes to reach one set, like a tape's motor
     # (SimulationServer.simulation_get_current_speed())

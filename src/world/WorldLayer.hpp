@@ -30,7 +30,7 @@ namespace godot {
             TypedArray<ArrayMesh> meshes;
             /* How far the meshes are drawn from [m]; 0: the draw distance */
             double range_end = 0.0;
-            /* Models of whichever model renderer's backend (ModelData.model_provider) */
+            /* Models of whichever model renderer's backend (ModelData.rendering_backend) */
             TypedArray<ModelData> models;
             /* Lines - the wires of power lines */
             TypedArray<LinesData> lines;

@@ -27,7 +27,7 @@
 			Geometry, its surfaces named after the game's material they are drawn with or carrying a material of their own.
 		</member>
 		<member name="models" type="ModelData[]" setter="set_models" getter="get_models" default="[]">
-			Models of whichever model renderer's backend ([member ModelData.model_provider]).
+			Models of whichever model renderer's backend ([member ModelData.rendering_backend]).
 		</member>
 		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
 			The layer's name, the resource's own: what a tool keeps a layer by.

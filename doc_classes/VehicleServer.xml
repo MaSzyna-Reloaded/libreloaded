@@ -102,6 +102,13 @@
 				Frees [param controller].
 			</description>
 		</method>
+		<method name="implementation_get" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				The implementation registered as [param name], by its ObjectID; [code]0[/code] for none.
+			</description>
+		</method>
 		<method name="implementation_get_list" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>

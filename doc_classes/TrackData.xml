@@ -4,17 +4,11 @@
 		A segment of track or road: what it is and what it has.
 	</brief_description>
 	<description>
-		What a segment of track or road is and what it has - never how it is drawn: the renderer picks the materials and the section for its features. A plugin keeps what is only its own in [member meta] or in a subclass. Saved by its class name, it names no script.
+		What a segment of track or road is and what it has - never how it is drawn: the backend that draws it ([member rendering_backend]) picks the materials and the section for its features. A plugin keeps what is only its own in [member meta] or in a subclass. Saved by its class name, it names no script.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_rendering_backend" qualifiers="const">
-			<return type="StringName" />
-			<description>
-				The [TrackRenderingServer] backend that draws the segment, by its name; empty for the default one. A plugin's own data names its plugin's backend.
-			</description>
-		</method>
 		<method name="translated" qualifiers="const">
 			<return type="TrackData" />
 			<param index="0" name="offset" type="Vector3" />
@@ -62,6 +56,9 @@
 		</member>
 		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
 			Its name - the resource's own ([member Resource.resource_name]).
+		</member>
+		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
+			The name of the [TrackRenderingServer] backend that draws the segment; empty for the default one, set by [code]reloaded/tracks/backend[/code].
 		</member>
 		<member name="shoulder" type="bool" setter="set_shoulder" getter="get_shoulder" default="false">
 			A road has a shoulder.

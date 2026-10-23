@@ -14,7 +14,7 @@ namespace godot {
             GDCLASS(SceneryModelPlacement, Resource)
 
         private:
-            StringName model_provider;
+            StringName rendering_backend;
             String model;
             PackedStringArray skins;
             Transform3D transform;
@@ -27,10 +27,10 @@ namespace godot {
             static void _bind_methods();
 
         public:
-            /// The model renderer's backend the model is the one of (ModelData.model_provider); empty
+            /// The model renderer's backend the model is the one of (ModelData.rendering_backend); empty
             /// for the default one
-            void set_model_provider(const StringName &p_value);
-            StringName get_model_provider() const;
+            void set_rendering_backend(const StringName &p_value);
+            StringName get_rendering_backend() const;
             /// The model's name, which its backend finds it by (ModelData.model)
             void set_model(const String &p_value);
             String get_model() const;

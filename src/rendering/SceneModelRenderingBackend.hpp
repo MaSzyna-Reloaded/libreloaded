@@ -19,7 +19,7 @@ namespace godot {
             GDCLASS(SceneModelRenderingBackend, ModelRenderingBackend)
 
         public:
-            /// The name it is registered with in ModelRenderingServer (ModelData.model_provider)
+            /// The name it is registered with in ModelRenderingServer (ModelData.rendering_backend)
             static constexpr const char *NAME = "scene";
 
         private:

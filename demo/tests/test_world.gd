@@ -23,7 +23,7 @@ const MESH_RANGE:float = 300.0
 const LIGHTS_STATE:Dictionary = {"00": true}
 const LIGHTS_COLORS:Dictionary = {"00": Color.RED}
 ## The core's renderer of scenes (SceneModelRenderingBackend::NAME, not bound)
-const MODEL_PROVIDER:StringName = &"scene"
+const RENDERING_BACKEND:StringName = &"scene"
 ## How far off a placed point may be [m]
 const TOLERANCE:float = 0.001
 
@@ -113,7 +113,7 @@ func _section() -> WorldSection:
     geometry.meshes.append(mesh)
     var decorations:WorldLayer = WorldLayer.new()
     var model:ModelData = ModelData.new()
-    model.model_provider = MODEL_PROVIDER
+    model.rendering_backend = RENDERING_BACKEND
     model.model = "models/test/test"
     model.position = MODEL_POSITION
     model.lights_state = LIGHTS_STATE

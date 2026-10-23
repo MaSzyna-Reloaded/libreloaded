@@ -11,7 +11,7 @@ namespace godot {
                 PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_name",
                 "get_name");
         BIND_PROPERTY(ModelData, Variant::STRING, model);
-        BIND_PROPERTY(ModelData, Variant::STRING_NAME, model_provider);
+        BIND_PROPERTY(ModelData, Variant::STRING_NAME, rendering_backend);
         BIND_PROPERTY(ModelData, Variant::PACKED_STRING_ARRAY, skins);
         BIND_PROPERTY(ModelData, Variant::VECTOR3, position);
         BIND_PROPERTY(ModelData, Variant::VECTOR3, rotation);

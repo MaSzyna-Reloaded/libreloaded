@@ -2,9 +2,11 @@
 
 namespace godot {
     void SceneryModelPlacement::_bind_methods() {
-        ClassDB::bind_method(D_METHOD("set_model_provider", "value"), &SceneryModelPlacement::set_model_provider);
-        ClassDB::bind_method(D_METHOD("get_model_provider"), &SceneryModelPlacement::get_model_provider);
-        ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "model_provider"), "set_model_provider", "get_model_provider");
+        ClassDB::bind_method(D_METHOD("set_rendering_backend", "value"), &SceneryModelPlacement::set_rendering_backend);
+        ClassDB::bind_method(D_METHOD("get_rendering_backend"), &SceneryModelPlacement::get_rendering_backend);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::STRING_NAME, "rendering_backend"), "set_rendering_backend",
+                "get_rendering_backend");
         ClassDB::bind_method(D_METHOD("set_model", "value"), &SceneryModelPlacement::set_model);
         ClassDB::bind_method(D_METHOD("get_model"), &SceneryModelPlacement::get_model);
         ADD_PROPERTY(PropertyInfo(Variant::STRING, "model"), "set_model", "get_model");
@@ -28,12 +30,12 @@ namespace godot {
         ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "lights_colors"), "set_lights_colors", "get_lights_colors");
     }
 
-    void SceneryModelPlacement::set_model_provider(const StringName &p_value) {
-        model_provider = p_value;
+    void SceneryModelPlacement::set_rendering_backend(const StringName &p_value) {
+        rendering_backend = p_value;
     }
 
-    StringName SceneryModelPlacement::get_model_provider() const {
-        return model_provider;
+    StringName SceneryModelPlacement::get_rendering_backend() const {
+        return rendering_backend;
     }
 
     void SceneryModelPlacement::set_model(const String &p_value) {

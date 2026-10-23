@@ -2,8 +2,8 @@
 extends RefCounted
 class_name TractionRenderingBackend
 
-## What TractionRenderingServer forwards the drawing of its spans to (the backend named by
-## TractionRenderingServer.set_rendering_backend()). This one is the core's plain look: the contact
+## What TractionRenderingServer forwards the drawing of its spans to (the backend their data names,
+## TractionData.rendering_backend). This one is the core's plain look: the contact
 ## wire straight between its points and, when the span has one, the support wire straight between
 ## its own, of one dark metal. A plugin's backend derives from it and keeps what it draws in a
 ## TractionState of its own (make_state()); the wires are ribbons of segments (_create_segment_mesh()).

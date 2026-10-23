@@ -1,24 +1,22 @@
 extends ReloadedGutTest
 
-## TractionRenderingServer draws by the backend chosen; the core's own one draws plain wires
+## TractionRenderingServer draws by the backend the span's data names; the core's own one draws plain wires
 
 var _traction_rid: RID
 
 
 func before_each() -> void:
-    TractionRenderingServer.set_rendering_backend(TractionRenderingServer.PLAIN_BACKEND)
     _traction_rid = TractionRenderingServer.create_traction()
     TractionRenderingServer.set_traction_scenario(_traction_rid, get_tree().root.world_3d.scenario)
 
 
 func after_each() -> void:
     TractionRenderingServer.free_traction(_traction_rid)
-    TractionRenderingServer.set_rendering_backend(ProjectSettings.get_setting(
-        TractionRenderingServer.RENDERING_BACKEND_SETTING, TractionRenderingServer.PLAIN_BACKEND))
 
 
 func _span(wires: TractionRenderingServer.Wires) -> TractionData:
     var span: TractionData = TractionData.new()
+    span.rendering_backend = TractionRenderingServer.PLAIN_BACKEND
     span.contact_p1 = Vector3(0.0, 5.6, 0.0)
     span.contact_p2 = Vector3(60.0, 5.6, 0.0)
     span.support_p1 = Vector3(0.0, 7.0, 0.0)

@@ -16,6 +16,7 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("backend_register", "name", "backend_id"), &ModelRenderingServer::backend_register);
         ClassDB::bind_method(D_METHOD("backend_unregister", "name"), &ModelRenderingServer::backend_unregister);
+        ClassDB::bind_method(D_METHOD("backend_get", "name"), &ModelRenderingServer::backend_get);
         ClassDB::bind_method(D_METHOD("backend_get_list"), &ModelRenderingServer::backend_get_list);
         ClassDB::bind_method(D_METHOD("model_load", "provider", "name"), &ModelRenderingServer::model_load);
         ClassDB::bind_method(
@@ -130,7 +131,7 @@ namespace godot {
     RID ModelRenderingServer::_adopt_model(const Ref<SceneryModelPlacement> &p_placement, const RID &p_scenario) {
         ERR_FAIL_COND_V(p_placement.is_null(), RID());
         const RID instance = instance_register(
-                p_placement->get_model_provider(), p_placement->get_model(), p_placement->get_skins(),
+                p_placement->get_rendering_backend(), p_placement->get_model(), p_placement->get_skins(),
                 p_placement->get_transform(), p_placement->get_range_min(), p_placement->get_range_max(), p_scenario);
         if (instance.is_valid() && !p_placement->get_lights_state().is_empty()) {
             instance_set_lights_state(instance, p_placement->get_lights_state());
@@ -189,6 +190,11 @@ namespace godot {
         if (default_backend == p_name) {
             default_backend = StringName();
         }
+    }
+
+    uint64_t ModelRenderingServer::backend_get(const StringName &p_name) const {
+        ModelRenderingBackend *const *backend = backends.getptr(p_name);
+        return backend != nullptr ? static_cast<uint64_t>((*backend)->get_instance_id()) : 0;
     }
 
     PackedStringArray ModelRenderingServer::backend_get_list() const {

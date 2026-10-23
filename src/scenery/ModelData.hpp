@@ -15,11 +15,11 @@ namespace godot {
             GDCLASS(ModelData, Resource)
 
         private:
-            /* The model's name; the backend of model_provider finds its file */
+            /* The model's name; the backend of rendering_backend finds its file */
             String model;
             /* The name of the model renderer's backend the model is the one of
              * (ModelRenderingServer); empty for the default one */
-            StringName model_provider;
+            StringName rendering_backend;
             PackedStringArray skins;
             Vector3 position;
             /* Euler angles (radians), same order as Node3D.rotation */
@@ -40,7 +40,7 @@ namespace godot {
 
         public:
             MAKE_GS(String, model);
-            MAKE_GS(StringName, model_provider);
+            MAKE_GS(StringName, rendering_backend);
             MAKE_GS(PackedStringArray, skins);
             MAKE_GS(Vector3, position);
             MAKE_GS(Vector3, rotation);

@@ -18,6 +18,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("implementation_register", "name", "implementation"), &DriverServer::implementation_register);
         ClassDB::bind_method(D_METHOD("implementation_unregister", "name"), &DriverServer::implementation_unregister);
+        ClassDB::bind_method(D_METHOD("implementation_get", "name"), &DriverServer::implementation_get);
+        ClassDB::bind_method(D_METHOD("implementation_get_list"), &DriverServer::implementation_get_list);
         ClassDB::bind_method(D_METHOD("driver_get_rids"), &DriverServer::driver_get_rids);
         ClassDB::bind_method(
                 D_METHOD("driver_attach_implementation", "driver", "implementation"),
@@ -194,6 +196,19 @@ namespace godot {
         for (const RID &driver: declared) {
             _set_implementation(driver, p_implementation);
         }
+    }
+
+    Ref<DriverImplementation> DriverServer::implementation_get(const StringName &p_name) const {
+        const Ref<DriverImplementation> *implementation = implementations.getptr(p_name);
+        return implementation != nullptr ? *implementation : Ref<DriverImplementation>();
+    }
+
+    PackedStringArray DriverServer::implementation_get_list() const {
+        PackedStringArray result;
+        for (const KeyValue<StringName, Ref<DriverImplementation>> &entry: implementations) {
+            result.push_back(entry.key);
+        }
+        return result;
     }
 
     void DriverServer::implementation_unregister(const StringName &p_name) {

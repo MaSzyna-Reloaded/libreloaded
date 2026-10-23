@@ -10,7 +10,7 @@ class_name SceneryInfo
 ## Between the parts of a title, the scenery's name first and the scenario's after ("Bałtyk · SKM1")
 const TITLE_PART_SEPARATOR:String = " · "
 
-## The name it is registered with (SceneryServer.register_provider())
+## The name it is registered with (SceneryServer.provider_register())
 var provider:StringName = &""
 ## What the provider finds the scenery by (a .scn's file name, a world's name)
 var id:String = ""

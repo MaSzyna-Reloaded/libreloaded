@@ -25,9 +25,9 @@
 			Its lights on or off, by name: [code]{light: bool}[/code] ([method ModelRenderingServer.instance_set_lights_state]); a light not named is as the model has it.
 		</member>
 		<member name="model" type="String" setter="set_model" getter="get_model" default="&quot;&quot;">
-			The model's name; the backend of [member model_provider] finds its file.
+			The model's name; the backend of [member rendering_backend] finds its file.
 		</member>
-		<member name="model_provider" type="StringName" setter="set_model_provider" getter="get_model_provider" default="&amp;&quot;&quot;">
+		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
 			The name of the model renderer's backend the model is the one of ([ModelRenderingServer]); empty for the default one.
 		</member>
 		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">

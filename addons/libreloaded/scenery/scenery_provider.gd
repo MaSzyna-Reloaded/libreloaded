@@ -2,7 +2,7 @@
 extends Node
 class_name SceneryProvider
 
-## A source of sceneries (SceneryServer.register_provider()): it lists them, makes the node that
+## A source of sceneries (SceneryServer.provider_register()): it lists them, makes the node that
 ## loads one, reads one into a CompiledScenery, and registers with the servers what of it only it
 ## knows. A plugin's provider is an autoload deriving from this one.
 

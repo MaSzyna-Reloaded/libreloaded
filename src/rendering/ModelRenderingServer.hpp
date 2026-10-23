@@ -17,7 +17,7 @@ namespace godot {
 
     /* What draws the models of the world: a model loaded from a file, its instances placed, posed,
      * lit and picked by RID. It draws nothing itself - each model is the one of a backend, by the
-     * backend's name (backend_register(); ModelData.model_provider), and an instance's calls are
+     * backend's name (backend_register(); ModelData.rendering_backend), and an instance's calls are
      * forwarded to the backend that made it; a model of no backend named is the one of the project's
      * default (BACKEND_SETTING). The core draws vehicles, road traffic and what the player picks
      * through it. A part is a named piece of a model (a bogie, a wheel); the lights are the model's
@@ -80,6 +80,8 @@ namespace godot {
             void backend_register(const StringName &p_name, uint64_t p_backend_id);
             /// The backend's instances are forgotten with it
             void backend_unregister(const StringName &p_name);
+            /// The backend registered as p_name, by its ObjectID; 0 for none
+            uint64_t backend_get(const StringName &p_name) const;
             PackedStringArray backend_get_list() const;
 
             /// The model of the name of p_provider's (the default backend for none), shared by every

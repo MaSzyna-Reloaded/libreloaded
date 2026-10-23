@@ -2,6 +2,7 @@
 #include "macros.hpp"
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
 namespace godot {
@@ -38,6 +39,9 @@ namespace godot {
             String parallel;
             /* What a plugin keeps of its own about the span */
             Dictionary meta;
+            /* The name of the TractionRenderingServer backend that draws the span; empty for the
+             * default one (TractionRenderingServer.RENDERING_BACKEND_SETTING) */
+            StringName rendering_backend;
 
         protected:
             static void _bind_methods();
@@ -58,6 +62,7 @@ namespace godot {
             MAKE_GS_NR(int, wires);
             MAKE_GS_NR(double, wire_offset);
             MAKE_GS_NR(bool, visible);
+            MAKE_GS(StringName, rendering_backend);
             MAKE_GS(String, parallel);
             MAKE_GS(Dictionary, meta);
 

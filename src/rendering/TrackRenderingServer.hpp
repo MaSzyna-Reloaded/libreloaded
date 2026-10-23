@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 
@@ -10,7 +11,7 @@ namespace godot {
     /* Draws the tracks and roads of TrackServer, each by a render RID of its own, while the camera is
      * near (SceneryStreamingServer). It keeps a track's streaming, scenario, visibility and
      * description (what the track is, a TrackData) and forwards its drawing to the backend its data
-     * names (TrackData.get_rendering_backend(); BACKEND_SETTING's for none): the core's
+     * names (TrackData.rendering_backend; BACKEND_SETTING's for none): the core's
      * StandardTrackRenderingBackend, or one a plugin registers (backend_register()). */
     class TrackRenderingServer : public Object {
             GDCLASS(TrackRenderingServer, Object)
@@ -74,6 +75,7 @@ namespace godot {
             void backend_unregister(const StringName &p_name);
             /// The backend of the name, by its ObjectID; 0 for none
             uint64_t backend_get(const StringName &p_name) const;
+            PackedStringArray backend_get_list() const;
 
             /// TrackServer's p_track drawn under the render RID returned
             RID track_create(const RID &p_track);

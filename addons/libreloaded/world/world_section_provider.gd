@@ -80,7 +80,7 @@ static func append_layer_items(layer:WorldLayer, offset:Vector3, cell:Vector2i, 
                 if not cell_of(position) == cell:
                     continue
                 var placement:SceneryModelPlacement = SceneryModelPlacement.new()
-                placement.model_provider = model.model_provider
+                placement.rendering_backend = model.rendering_backend
                 placement.model = model.model
                 placement.skins = model.skins
                 placement.transform = Transform3D(Basis.from_euler(model.rotation), position)

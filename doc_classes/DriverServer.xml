@@ -80,6 +80,19 @@
 				[param implementation] thinks for the drivers declared with [param name], from now on those declared before it as well; a name registered again is thought with by the new one.
 			</description>
 		</method>
+		<method name="implementation_get" qualifiers="const">
+			<return type="DriverImplementation" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				The implementation registered as [param name]; [code]null[/code] for none.
+			</description>
+		</method>
+		<method name="implementation_get_list" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				The names of the registered implementations.
+			</description>
+		</method>
 		<method name="implementation_unregister">
 			<return type="void" />
 			<param index="0" name="name" type="StringName" />

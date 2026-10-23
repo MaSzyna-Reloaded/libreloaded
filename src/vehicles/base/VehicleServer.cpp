@@ -45,6 +45,7 @@ namespace godot {
                 D_METHOD("implementation_register", "name", "implementation_id"),
                 &VehicleServer::implementation_register);
         ClassDB::bind_method(D_METHOD("implementation_unregister", "name"), &VehicleServer::implementation_unregister);
+        ClassDB::bind_method(D_METHOD("implementation_get", "name"), &VehicleServer::implementation_get);
         ClassDB::bind_method(D_METHOD("implementation_get_list"), &VehicleServer::implementation_get_list);
         ClassDB::bind_method(D_METHOD("stepping_advance", "delta"), &VehicleServer::stepping_advance);
         ClassDB::bind_method(D_METHOD("stepping_set_enabled", "enabled"), &VehicleServer::stepping_set_enabled);
@@ -158,6 +159,11 @@ namespace godot {
 
     void VehicleServer::implementation_unregister(const StringName &p_name) {
         implementations.erase(p_name);
+    }
+
+    uint64_t VehicleServer::implementation_get(const StringName &p_name) const {
+        const ObjectID *implementation = implementations.getptr(p_name);
+        return implementation != nullptr ? static_cast<uint64_t>(*implementation) : 0;
     }
 
     PackedStringArray VehicleServer::implementation_get_list() const {

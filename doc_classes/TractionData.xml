@@ -45,6 +45,9 @@
 		<member name="power_supply_name" type="String" setter="set_power_supply_name" getter="get_power_supply_name" default="&quot;&quot;">
 			The power source feeding the span, by its name.
 		</member>
+		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
+			The name of the [code]TractionRenderingServer[/code] backend that draws the span; empty for the default one, set by [code]reloaded/traction/backend[/code].
+		</member>
 		<member name="resistivity" type="float" setter="set_resistivity" getter="get_resistivity" default="0.0">
 			[ohm/m].
 		</member>

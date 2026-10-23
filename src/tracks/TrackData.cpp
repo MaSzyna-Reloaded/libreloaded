@@ -77,12 +77,8 @@ namespace godot {
                         Variant::INT, "sleeper_kind", PROPERTY_HINT_ENUM, "Concrete,Wood,Steel",
                         PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "TrackData.SleeperKind"),
                 "set_sleeper_kind", "get_sleeper_kind");
-        ClassDB::bind_method(D_METHOD("get_rendering_backend"), &TrackData::get_rendering_backend);
+        BIND_PROPERTY(TrackData, Variant::STRING_NAME, rendering_backend);
         ClassDB::bind_method(D_METHOD("translated", "offset"), &TrackData::translated);
-    }
-
-    StringName TrackData::get_rendering_backend() const {
-        return {};
     }
 
     Ref<TrackData> TrackData::translated(const Vector3 &p_offset) const {

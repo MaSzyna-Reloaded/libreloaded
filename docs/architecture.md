@@ -222,6 +222,30 @@ calls these methods in order:
 The plugin's addon registers its GDScript side itself: autoloads, custom types, importers and
 project settings. The core's `addons/libreloaded/libreloaded.gd` does the same for the core.
 
+### Registering by name
+
+The extension points use three words:
+
+* an **implementation** simulates something (vehicles, an AI driver)
+* a **provider** supplies data or content (vehicles to choose from, sceneries)
+* a **backend** draws something (models, tracks, traction)
+
+A server that takes them by name has the same four methods for each:
+
+| Method | What it does |
+|---|---|
+| `<kind>_register(name, ...)` | registers the plugin's object under `name` |
+| `<kind>_unregister(name)` | removes it |
+| `<kind>_get(name)` | returns it, or nothing |
+| `<kind>_get_list()` | returns the registered names |
+
+`<kind>` is `implementation`, `provider` or `backend`. A `RefCounted` object is passed as itself.
+Any other object, such as a node or a server, is passed by its ObjectID (`get_instance_id()`).
+
+Streaming providers are not registered by name: many of them work at the same time, one per loaded
+world. `SceneryStreamingServer.provider_register()` returns an `RID`, and `provider_free()` removes
+the provider.
+
 ### Vehicles
 
 | Extension point | What the plugin provides | How it is registered |
@@ -242,7 +266,7 @@ project setting `reloaded/vehicles/provider` is used.
 
 | Extension point | What the plugin provides | How it is registered |
 |---|---|---|
-| Scenery provider | a `SceneryProvider` autoload that lists, compiles and loads sceneries and runs their scenarios | `SceneryServer.register_provider()` |
+| Scenery provider | a `SceneryProvider` autoload that lists, compiles and loads sceneries and runs their scenarios | `SceneryServer.provider_register()` |
 | Streaming provider | a `SceneryStreamingProvider` that loads the content of a map cell on demand | `SceneryStreamingServer.provider_register()` |
 | Streaming consumer | a consumer for a content kind the core does not handle (for example terrain) | `SceneryStreamingServer.content_set_consumer()` |
 | Signalling | a `SignallingImplementation` that decides what the signals show | `SignallingServer.system_attach_implementation()` |
@@ -259,12 +283,18 @@ The script runtime is always Lua. A script controls a cab through a
 
 ### Rendering
 
-| Extension point | What the plugin provides | How it is registered | Chosen by |
+A rendering backend draws one kind of data. The plugin registers it under a name. Which backend
+draws a piece of data is chosen by the data's `rendering_backend` property. If the property is
+empty, the project setting is used.
+
+| Backend | What the plugin provides | How it is registered | Chosen by |
 |---|---|---|---|
-| Model backend | a `ModelRenderingBackend` that loads models and draws their instances | `ModelRenderingServer.backend_register()` | `ModelData.model_provider`, or the setting `reloaded/models/backend` |
-| Track backend | a `TrackRenderingBackend` that builds the meshes of tracks | `TrackRenderingServer.backend_register()` | the track's `TrackData::get_rendering_backend()`, or the setting `reloaded/tracks/backend` |
-| Traction backend | a `TractionRenderingBackend` that builds the meshes of the overhead line | `TractionRenderingServer.register_rendering_backend()` | the setting `reloaded/traction/backend` |
-| Materials | a provider of materials and texture sizes | `ReloadedMaterialServer.material_set_provider()` | there is only one |
+| Models | a `ModelRenderingBackend` that loads models and draws their instances | `ModelRenderingServer.backend_register()` | `ModelData.rendering_backend`, or the setting `reloaded/models/backend` |
+| Tracks | a `TrackRenderingBackend` that builds the meshes of tracks | `TrackRenderingServer.backend_register()` | `TrackData.rendering_backend`, or the setting `reloaded/tracks/backend` |
+| Traction | a `TractionRenderingBackend` that builds the meshes of the overhead line | `TractionRenderingServer.backend_register()` | `TractionData.rendering_backend`, or the setting `reloaded/traction/backend` |
+
+Materials are not a backend. A plugin sets one provider of materials and texture sizes with
+`ReloadedMaterialServer.material_set_provider()`.
 
 The core has its own backends: `SceneModelRenderingBackend` for models, `standard` for tracks and
 `plain` for traction. A backend must unregister itself before it is freed.

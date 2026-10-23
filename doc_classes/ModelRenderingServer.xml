@@ -4,11 +4,18 @@
 		What draws the models of the world.
 	</brief_description>
 	<description>
-		A model loaded from a file, its instances placed, posed, lit and picked by RID. It draws nothing itself: each model is the one of a [ModelRenderingBackend], by the backend's name ([method backend_register], [member ModelData.model_provider]), and an instance's calls are forwarded to the backend that made it. A model of no backend named ([code]provider[/code] empty) is the one of the backend the project setting [code]reloaded/models/backend[/code] names. The core draws vehicles, road traffic and what the player picks through it. A part is a named piece of a model (a bogie, a wheel); the lights are the model's own, by name.
+		A model loaded from a file, its instances placed, posed, lit and picked by RID. It draws nothing itself: each model is the one of a [ModelRenderingBackend], by the backend's name ([method backend_register], [member ModelData.rendering_backend]), and an instance's calls are forwarded to the backend that made it. A model of no backend named ([code]provider[/code] empty) is the one of the backend the project setting [code]reloaded/models/backend[/code] names. The core draws vehicles, road traffic and what the player picks through it. A part is a named piece of a model (a bogie, a wheel); the lights are the model's own, by name.
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="backend_get" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				The backend registered as [param name], by its ObjectID; [code]0[/code] for none.
+			</description>
+		</method>
 		<method name="backend_get_list" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>

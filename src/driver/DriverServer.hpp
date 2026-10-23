@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <queue>
 #include <vector>
@@ -92,6 +93,9 @@ namespace godot {
             void implementation_register(const StringName &p_name, const Ref<DriverImplementation> &p_implementation);
             /// The drivers declared with p_name think with nothing until it is registered again
             void implementation_unregister(const StringName &p_name);
+            /// The implementation registered as p_name; null for none
+            Ref<DriverImplementation> implementation_get(const StringName &p_name) const;
+            PackedStringArray implementation_get_list() const;
             /// The person becomes a driver thinking with the implementation registered as
             /// p_implementation (implementation_register()), as soon as there is one; an empty name
             /// makes it none

@@ -70,8 +70,8 @@ func before_each() -> void:
     _other = TestProvider.new()
     _other.name = OTHER_PROVIDER
     _other.category = VehicleInfo.VehicleCategory.PASSENGER_CAR
-    VehicleCatalogServer.provider_register(PROVIDER, _provider)
-    VehicleCatalogServer.provider_register(OTHER_PROVIDER, _other)
+    VehicleCatalogServer.provider_register(PROVIDER, _provider.get_instance_id())
+    VehicleCatalogServer.provider_register(OTHER_PROVIDER, _other.get_instance_id())
 
 
 func after_each() -> void:

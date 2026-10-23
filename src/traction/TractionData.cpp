@@ -19,6 +19,7 @@ namespace godot {
         BIND_PROPERTY(TractionData, Variant::BOOL, visible);
         BIND_PROPERTY(TractionData, Variant::STRING, parallel);
         BIND_PROPERTY(TractionData, Variant::DICTIONARY, meta);
+        BIND_PROPERTY(TractionData, Variant::STRING_NAME, rendering_backend);
         ClassDB::bind_method(D_METHOD("translated", "offset"), &TractionData::translated);
     }
 

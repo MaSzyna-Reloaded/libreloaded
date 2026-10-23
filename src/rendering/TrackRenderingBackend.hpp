@@ -5,7 +5,7 @@
 
 namespace godot {
     /* What TrackRenderingServer forwards the drawing of a track to: the renderer of one kind of track
-     * data (TrackData.get_rendering_backend()), registered by its name
+     * data (TrackData.rendering_backend), registered by its name
      * (TrackRenderingServer::backend_register()). It keeps what it draws of each track under the
      * track's render RID, from track_create() to track_free(), and reads the track's curves from
      * TrackServer as it builds it. */

@@ -16,6 +16,7 @@ namespace godot {
                 D_METHOD("backend_register", "name", "backend_id"), &TrackRenderingServer::backend_register);
         ClassDB::bind_method(D_METHOD("backend_unregister", "name"), &TrackRenderingServer::backend_unregister);
         ClassDB::bind_method(D_METHOD("backend_get", "name"), &TrackRenderingServer::backend_get);
+        ClassDB::bind_method(D_METHOD("backend_get_list"), &TrackRenderingServer::backend_get_list);
         ClassDB::bind_method(D_METHOD("track_create", "track"), &TrackRenderingServer::track_create);
         ClassDB::bind_method(D_METHOD("track_free", "track_render"), &TrackRenderingServer::track_free);
         ClassDB::bind_method(D_METHOD("track_free_many", "track_renders"), &TrackRenderingServer::track_free_many);
@@ -104,6 +105,14 @@ namespace godot {
     uint64_t TrackRenderingServer::backend_get(const StringName &p_name) const {
         TrackRenderingBackend *const *backend = backends.getptr(p_name);
         return backend != nullptr ? (*backend)->get_instance_id() : 0;
+    }
+
+    PackedStringArray TrackRenderingServer::backend_get_list() const {
+        PackedStringArray result;
+        for (const KeyValue<StringName, TrackRenderingBackend *> &entry: backends) {
+            result.push_back(entry.key);
+        }
+        return result;
     }
 
     RID TrackRenderingServer::track_create(const RID &p_track) {

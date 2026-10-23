@@ -18,8 +18,8 @@
 		<member name="model" type="String" setter="set_model" getter="get_model" default="&quot;&quot;">
 			The model's name, which its backend finds it by ([member ModelData.model]).
 		</member>
-		<member name="model_provider" type="StringName" setter="set_model_provider" getter="get_model_provider" default="&amp;&quot;&quot;">
-			The model renderer's backend the model is the one of ([member ModelData.model_provider]); empty for the default one.
+		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
+			The model renderer's backend the model is the one of ([member ModelData.rendering_backend]); empty for the default one.
 		</member>
 		<member name="range_max" type="float" setter="set_range_max" getter="get_range_max" default="0.0">
 			The distance it is drawn up to [m]; [code]0[/code] or less is no limit of its own (the streaming's draw distance).

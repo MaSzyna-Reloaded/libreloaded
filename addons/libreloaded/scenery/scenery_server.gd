@@ -27,7 +27,8 @@ static var _last_report_msec:int = 0
 ## Queues working for a load, so a scenery leaving the tree can stop them (scenery_cancel()) - their
 ## tasks are GDScript and call GDScript handlers, which must not be reached once the scripts go away
 static var _active_queues:Array[WorkerTaskQueue] = []
-var _providers:Dictionary[StringName, SceneryProvider] = {}
+## The registered providers' ObjectIDs, by name
+var _providers:Dictionary[StringName, int] = {}
 ## The stations of each scenery loaded, by its node's ObjectID - kept from its CompiledScenery, which
 ## goes with the load
 var _stations:Dictionary[int, Array] = {}
@@ -47,22 +48,36 @@ func _ready() -> void:
     )
 
 
-func register_provider(provider_name:StringName, provider:SceneryProvider) -> void:
-    _providers[provider_name] = provider
+## A SceneryProvider, by its ObjectID, lists its sceneries under [param provider_name]
+func provider_register(provider_name:StringName, provider_id:int) -> void:
+    _providers[provider_name] = provider_id
 
 
-func unregister_provider(provider_name:StringName) -> void:
+func provider_unregister(provider_name:StringName) -> void:
     _providers.erase(provider_name)
 
 
-func get_provider(provider_name:StringName) -> SceneryProvider:
-    return _providers.get(provider_name)
+## The SceneryProvider registered as [param provider_name], by its ObjectID; 0 for none
+func provider_get(provider_name:StringName) -> int:
+    return _providers.get(provider_name, 0)
+
+
+func provider_get_list() -> PackedStringArray:
+    return PackedStringArray(_providers.keys())
+
+
+## Every registered provider
+func _get_providers() -> Array[SceneryProvider]:
+    var providers:Array[SceneryProvider] = []
+    for provider_id:int in _providers.values():
+        providers.append(instance_from_id(provider_id) as SceneryProvider)
+    return providers
 
 
 ## The sceneries of every provider
 func scenery_list() -> Array[SceneryInfo]:
     var sceneries:Array[SceneryInfo] = []
-    for provider:SceneryProvider in _providers.values():
+    for provider:SceneryProvider in _get_providers():
         sceneries.append_array(provider.list())
     return sceneries
 
@@ -100,13 +115,13 @@ func scenery_release(root:SceneryContentNode) -> void:
 ## Waiting here is safe, because here the scripts are still alive.
 func scenery_cancel() -> void:
     # a parse has to stop between tokens, or joining its worker means waiting out a whole file
-    for provider:SceneryProvider in _providers.values():
+    for provider:SceneryProvider in _get_providers():
         provider.set_parsing_cancelled(true)
     for queue:WorkerTaskQueue in _active_queues.duplicate():
         queue.drain()
     _active_queues.clear()
     # the workers are joined, so nothing is working and the next scenery may start clean
-    for provider:SceneryProvider in _providers.values():
+    for provider:SceneryProvider in _get_providers():
         provider.set_parsing_cancelled(false)
 
 
@@ -387,7 +402,7 @@ static func build_track(track_data:TrackData, world_3d:World3D) -> Dictionary:
 ## the data gives them (ModelData.lights_state, lights_colors)
 static func build_model(model_data:ModelData, model_name:String, world_3d:World3D) -> RID:
     var model_rid:RID = ModelRenderingServer.instance_register(
-        model_data.model_provider,
+        model_data.rendering_backend,
         model_name,
         model_data.skins,
         Transform3D(Basis.from_euler(model_data.rotation), model_data.position),

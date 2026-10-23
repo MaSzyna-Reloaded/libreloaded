@@ -16,6 +16,12 @@
 				The backend registered under [param name], by its [ObjectID]; 0 for none.
 			</description>
 		</method>
+		<method name="backend_get_list" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				The names of the registered backends.
+			</description>
+		</method>
 		<method name="backend_register">
 			<return type="void" />
 			<param index="0" name="name" type="StringName" />

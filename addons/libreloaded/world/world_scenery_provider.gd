@@ -21,11 +21,11 @@ func _init() -> void:
 
 
 func _ready() -> void:
-    SceneryServer.register_provider(provider_name, self)
+    SceneryServer.provider_register(provider_name, get_instance_id())
 
 
 func _exit_tree() -> void:
-    SceneryServer.unregister_provider(provider_name)
+    SceneryServer.provider_unregister(provider_name)
 
 
 ## The world `description` (World.read_description()) is this provider's: one not divided into a
