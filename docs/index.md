@@ -16,20 +16,21 @@ layout: home
 of a port of [MaSzyna Train Simulator](https://eu07.pl).
 
 Resposibilities of the core:
-* Implementation of High-Level APIs in core systems like **RailVehicleServer**, **CabinSystem**,
-  **Logging**, **EventSystem**.
-* **Physics systems**, like [bridge to the original train physics system (aka MOVER)](wrapping-mover)
-* Loaders, importers and exportes for legacy file formats: **E3D**,
-  **FIZ**, **Materials**, **Sceneries**, **Asset Databanks**.
+* Implementation of High-Level APIs in core systems like **VehicleServer**, **RailVehicleServer**,
+  **CabinSystem**, **Logging**, **EventSystem**.
+* **Physics systems**: the vehicle servers and the interfaces of a vehicle's parts, which a
+  plugin's simulation implements
 * Custom Godot nodes for developing vehicles, cabins, game objects and sceneries
 * Renderers for tracks, roads, tractions and other custom visual
-  elements
+  elements, with the backends a plugin draws its data with
+* [Plugins](architecture#plugins): what a simulation brings of its own - its vehicles, data
+  formats, sceneries and cabs - built into the core's library
 
 ## Important topics
 
 * [Overall architecture](architecture)
-* [API reference](api/) - every class of libmaszyna, C++ and GDScript
-* [Wrapping the original MaSzyna physics](wrapping-mover)
+* [API reference](api/) - every class of libreloaded and of the plugins this site was built with,
+  C++ and GDScript
 * [Lua scenario scripts](lua-scripting) - the scripting API for sceneries, with examples
 
 ## Knowledge base

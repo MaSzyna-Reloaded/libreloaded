@@ -22,8 +22,8 @@ title: "Overall Architecture"
 
 #### Communication example diagram
 
-A conceptual picture: "LegacyTrain" stands for a vehicle simulated on the vendored Mover, see
-[Wrapping the MOVER](wrapping-mover.html) for how it is actually built.
+A conceptual picture: "LegacyTrain" stands for a vehicle simulated by a plugin's implementation
+(see [Plugins](#plugins)).
 
 ![Overall architecture](assets/overall-architecture-2.png)
 
@@ -48,21 +48,19 @@ A High-Level Component is not implemented by its nodes. The node standing in the
 (an `RID`) to an object held by a server and builds that object, and the object is what simulates, configures and
 answers commands. A vehicle is the reference case:
 
-* `VehiclePhysicsNode` is the vehicle's presence in the tree. It builds the vehicle from a copy of its description (the
-  parsed `.fiz`, a `VehicleController` with its components, supplied by `MaszynaRailVehiclePhysicsNode`), owns its
-  `VehicleServer` handle and frees both with itself.
+* `VehiclePhysicsNode` is the vehicle's presence in the tree. It builds the vehicle from a copy of its description (a
+  `VehicleController` with its components, supplied by a plugin's subclass of the node from the plugin's data), owns
+  its `VehicleServer` handle and frees both with itself.
 * The vehicle - a `VehicleController` and the `VehicleComponent`s it is made of - is a `Resource`, not a node: its
   properties are its stored configuration. It is held through `VehicleServer`, stepped by its implementation once per
   rendered frame, and reached by its RID.
 * What draws the vehicle (`RailVehicleRenderingServer`), its cabin and its sounds read the vehicle's components; they
   do not own them. The rendering server holds where the vehicle stands; a node of another layer - a cab interior, a
   sound emitter, the node of a vehicle assembled by hand - rides on it (`vehicle_mount_node()`).
-* A vehicle needs no node at all. A scenery loaded from MaSzyna data builds its vehicles and trainsets through the
-  servers and holds them by their handles: `MaszynaVehicleSystem.vehicle_create()` makes a vehicle from a
-  `dynamic`, `RailVehicleServer.trainset_*` stands a trainset on its track and couples it. `MaszynaRailVehicle3D` and
-  `TrainSet3D` are for a vehicle or a trainset placed by hand in a scene - proxies over the same operations.
-
-The class diagrams are in [Wrapping the MOVER](wrapping-mover.html#class-diagrams).
+* A vehicle needs no node at all. A scenery a plugin loads builds its vehicles and trainsets through the servers and
+  holds them by their handles: the plugin makes a vehicle from its data, `RailVehicleServer.trainset_*` stands a
+  trainset on its track and couples it. A plugin's vehicle node and `TrainSet3D` are for a vehicle or a trainset
+  placed by hand in a scene - proxies over the same operations.
 
 #### Communication between game objects
 
@@ -177,3 +175,38 @@ So the choice follows from who acts:
 An operation another layer has to start is registered as a command and bound, even when one server alone sends it.
 The rule and its reasons are in `CODE_STYLE.md` ("A vehicle is commanded, not called"); what it cost when broken is in
 the [findings archive](findings-archive.html) (2026-10-05, the cab change in `RailVehicleServer`).
+
+### Plugins
+
+What a simulation brings of its own - its vehicles and their physics, its data formats, its sceneries, cabs and
+drawing - is a plugin of the core: a repository of its own whose C++ is compiled into this library (its
+`plugin.cmake`, taken by `CMakeLists.txt` through `LIBRELOADED_PLUGINS`) and whose addon stands beside
+`addons/libreloaded`. The core knows nothing of any plugin; a plugin reaches the core only through its public API,
+its signals, its base classes and its registrations.
+
+A plugin is a `ReloadedPlugin`, created and held by `ReloadedPluginServer`, which runs its stages at two points of the
+library's start and in reverse at its end:
+
+* `register_classes()` registers the plugin's classes, once every core class is registered - they derive from them -
+  and makes what the core leaves open the plugin's: the controller a vehicle with no description gets
+  (`VehiclePhysicsNode::set_controller_implementation`), the resolver of the data's paths
+  (`ReloadedPluginServer::data_path_set_resolver()`), the modules opened in every scenario script.
+* `create_servers()` creates the plugin's servers, once the vehicle servers exist and before the servers that follow
+  model instances, and hands them to the core:
+  * an **implementation or a backend** registered with a server of the core - a vehicle implementation with
+    `VehicleServer` (`implementation_register()`), a model backend with `ModelRenderingServer`, a track backend with
+    `TrackRenderingServer` (`backend_register()`);
+  * a **server of the core computed the plugin's way** - a subclass of the core's server registered as an engine
+    singleton under the core's name (`RailVehicleRenderingServer`, `TractionServer`), so whoever reaches the core's
+    server reaches the plugin's;
+  * the plugin's **own singletons**, under its own names.
+* `free_servers()` frees what `create_servers()` made, in reverse.
+
+The plugin's addon registers its GDScript side itself (its `<plugin>.gd`: autoloads, custom types, importers), as
+`addons/libreloaded/libreloaded.gd` does the core's.
+
+A build of the library is the core and the plugins it is built with, and so is its documentation: the editor shows
+under F1 the class reference of the core and of every plugin built in (CMake gathers their `doc_classes` into
+`DOC_XML`), and `make docs-site` assembles the site of the same set - the core's guides, each plugin's under its
+name, the class reference of all of them. Each repository keeps only its own: `make docs` refreshes every source's
+`doc_classes` from the library and hands each class's XML to the repository declaring it.

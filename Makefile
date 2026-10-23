@@ -1,4 +1,4 @@
-.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version docs compile watch-and-compile api-docs docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
+.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
 .DEFAULT_GOAL = compile-debug
 
 # The Godot project the library is built into (its bin/libreloaded/) and whose addons/ CMake links
@@ -60,8 +60,11 @@ generate-bindings: $(CMAKE_GODOTCPP_API_FILE)
 	cmake --build cmake-build-debug --target generate_bindings
 
 
+# Refreshes doc_classes/*.xml of libreloaded and of every plugin of LIBRELOADED_PLUGINS from the
+# library built into GODOT_PROJECT_DIR - each class's XML goes to the repository declaring it
+# (scripts/update-doc-classes)
 docs:
-	cd demo && $(GODOT) --doctool .. --gdextension-docs
+	LIBRELOADED_PLUGINS="$(LIBRELOADED_PLUGINS)" scripts/update-doc-classes $(GODOT) $(GODOT_PROJECT_DIR)
 
 
 cleanup:
@@ -238,41 +241,44 @@ $(ANDROID_TEMPLATES) &: | $(GODOT_SOURCE_DIR)
 	    && cd platform/android/java && ./gradlew generateGodotTemplates
 
 
-# The class reference pages of the Jekyll site in docs/ (docs/api/, not versioned): C++ classes
-# from doc_classes/*.xml - refresh those with `make docs` - and GDScript classes from their ##
-# comments
-api-docs:
-	scripts/make-api-docs docs/api
+# The documentation of libreloaded and the plugins of LIBRELOADED_PLUGINS, as the library is built
+# with them: libreloaded's docs/, each plugin's docs/ under its name and the class reference of all
+# of them (scripts/make-docs-site, make-api-docs) - assembled into DOCS_BUILD_DIR, not versioned. A
+# plugin or a game passes its own: make -C vendor/libreloaded docs-site LIBRELOADED_PLUGINS=<path>
+# DOCS_BUILD_DIR=$(CURDIR)/build-docs
+DOCS_BUILD_DIR?=$(CURDIR)/build-docs
+DOCS_SITE_DIR=$(DOCS_BUILD_DIR)/site
+docs-site:
+	LIBRELOADED_PLUGINS="$(LIBRELOADED_PLUGINS)" scripts/make-docs-site $(DOCS_SITE_DIR)
 
 
 docs-install:
 	cd docs && make install
 
 
-# Generates the class reference and serves the site; without Ruby on the host, both run in Docker
-docs-server:
-	cd docs && make runserver
+# Assembles the site and serves it; without Ruby on the host, Jekyll runs in Docker
+docs-server: docs-site
+	$(MAKE) -C docs runserver SITE=$(DOCS_SITE_DIR)
 
 
 # The site as one PDF: the home page, the guides in the order of its menu and the class reference
 # (scripts/make-docs-book). The diagrams are drawn by mermaid-cli and the book typeset by pandoc
-# with XeLaTeX, both in Docker, as the host user so that bin/docs stays the host's
-DOCS_PDF_DIR:=bin/docs
-DOCS_BOOK_DIR:=$(DOCS_PDF_DIR)/book
-DOCS_PDF:=$(DOCS_PDF_DIR)/maszyna-reloaded-core.pdf
+# with XeLaTeX, both in Docker, as the host user so that DOCS_BUILD_DIR stays the host's
+DOCS_BOOK_DIR=$(DOCS_BUILD_DIR)/book
+DOCS_PDF=$(DOCS_BUILD_DIR)/reloaded-docs.pdf
 DOCS_PANDOC_IMAGE:=pandoc/extra:3.7
 DOCS_MERMAID_IMAGE:=minlag/mermaid-cli:11.4.2
-DOCS_DOCKER_RUN:=docker run --rm --user "$(shell id -u):$(shell id -g)" -v "$(CURDIR):/data" -w /data
-docs-pdf:
+DOCS_DOCKER_RUN=docker run --rm --user "$(shell id -u):$(shell id -g)" -v "$(CURDIR):$(CURDIR)" \
+	-v "$(DOCS_BUILD_DIR):$(DOCS_BUILD_DIR)" -w $(DOCS_BUILD_DIR)
+docs-pdf: docs-site
 	rm -rf $(DOCS_BOOK_DIR)
 	mkdir -p $(DOCS_BOOK_DIR)
-	scripts/make-api-docs $(DOCS_BOOK_DIR)/api
-	scripts/make-docs-book $(DOCS_BOOK_DIR)
+	scripts/make-docs-book $(DOCS_SITE_DIR) $(DOCS_BOOK_DIR)
 	for diagram in $(DOCS_BOOK_DIR)/*.mmd; do \
-		$(DOCS_DOCKER_RUN) $(DOCS_MERMAID_IMAGE) -q -b white -s 2 -i "/data/$$diagram" -o "/data/$${diagram%.mmd}.png" || exit 1; \
+		$(DOCS_DOCKER_RUN) $(DOCS_MERMAID_IMAGE) -q -b white -s 2 -i "$$diagram" -o "$${diagram%.mmd}.png" || exit 1; \
 	done
-	$(DOCS_DOCKER_RUN) $(DOCS_PANDOC_IMAGE) $(DOCS_BOOK_DIR)/book.md --metadata-file=scripts/docs-pdf.yaml \
-		--resource-path=$(DOCS_BOOK_DIR):docs --pdf-engine=xelatex --toc --toc-depth=2 \
+	$(DOCS_DOCKER_RUN) $(DOCS_PANDOC_IMAGE) $(DOCS_BOOK_DIR)/book.md --metadata-file=$(CURDIR)/scripts/docs-pdf.yaml \
+		--resource-path=$(DOCS_BOOK_DIR):$(DOCS_SITE_DIR) --pdf-engine=xelatex --toc --toc-depth=2 \
 		--top-level-division=chapter -o $(DOCS_PDF)
 	@echo "Documentation: $(DOCS_PDF)"
 

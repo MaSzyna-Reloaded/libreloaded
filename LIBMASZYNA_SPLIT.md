@@ -113,7 +113,7 @@ Legend:
 - [ ] [LS-046](#ls-046) The game builds with both repositories
 - [ ] [LS-047](#ls-047) libreloaded's public headers for building plugins
 - [ ] [LS-048](#ls-048) The plugin's addon as a `.pck`
-- [ ] [LS-049](#ls-049) The plugin's class reference
+- [x] [LS-049](#ls-049) The plugin's class reference
 
 ### MaSzyna out of the core's text
 
@@ -289,6 +289,10 @@ References to plugin classes in code outside `addons/libmaszyna/legacy/`, commen
   `doc_classes/`)
 * **Fix:** the same reference for `plugins/libmaszyna` (`src/maszyna`, `addons/libmaszyna`,
   `doc_classes/`), generated in the plugin's repository.
+* **Done:** `scripts/make-api-docs` documents the core and every plugin of `LIBRELOADED_PLUGINS`
+  together (`scripts/reloaded_sources.py`), `make docs-site` assembles the site of that set (each
+  plugin's `docs/` under its name) and `make docs` hands each class's XML to the repository
+  declaring it; libmaszyna runs them with itself as the plugin.
 
 ## MaSzyna out of the core's text
 

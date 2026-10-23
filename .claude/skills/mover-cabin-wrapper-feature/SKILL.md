@@ -187,7 +187,7 @@ away.
 
 **A value with named cases is always an enum - ABSOLUTE.** Whatever the original keeps as a digit,
 a char, a bit or a string standing for a case (`PantographPresets=0|1|3|2`, a switch type, a start
-mode) becomes an enum of the interface, bound and documented as `docs/wrapping-mover.md` "Enums"
+mode) becomes an enum of the interface, bound and documented as libmaszyna's `docs/wrapping-mover.md` "Enums"
 requires. The FIZ parser maps each token to it (a `const` dictionary token -> enum), the
 component's default is written in it, and the cab logic compares and combines its constants -
 never a bare number or a `const` of its own for the same case (`RailVehicleSwitches.PantographPreset`,

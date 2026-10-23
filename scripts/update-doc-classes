@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Refresh every source's doc_classes/*.xml from the library as built (make docs).
+
+Godot's doctool dumps the class reference of every class the library registers - libreloaded's
+and those of each plugin built into it (LIBRELOADED_PLUGINS, scripts/reloaded_sources.py). It is
+run on a directory holding every source's current XML, so the descriptions written there are
+kept and only what the classes declare is brought up to date; each XML then goes back to the
+source whose src/ declares its GDCLASS, and nowhere else. A class no source declares is reported
+and left out.
+
+Usage: scripts/update-doc-classes <godot binary> <project dir>
+"""
+
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+from reloaded_sources import sources
+
+GDCLASS = re.compile(r"GDCLASS\(\s*(\w+)\s*,")
+
+
+def owners() -> dict:
+    """C++ class name -> the source whose src/ declares its GDCLASS"""
+    found = {}
+    for source in sources():
+        for path in source.src_dir.rglob("*.h*"):
+            for name in GDCLASS.findall(path.read_text(encoding="utf-8", errors="replace")):
+                found[name] = source
+    return found
+
+
+def main() -> None:
+    if not len(sys.argv) == 3:
+        sys.exit(__doc__)
+    godot, project = sys.argv[1], Path(sys.argv[2]).resolve()
+    with tempfile.TemporaryDirectory() as temporary:
+        dump = Path(temporary) / "doc_classes"
+        dump.mkdir()
+        for source in sources():
+            for path in source.xml_dir.glob("*.xml"):
+                shutil.copy2(path, dump / path.name)
+        # --doctool <path> --gdextension-docs writes the extension's classes to <path>/doc_classes
+        subprocess.run([godot, "--headless", "--doctool", temporary, "--gdextension-docs"], cwd=project, check=True)
+        found = owners()
+        for path in sorted(dump.glob("*.xml")):
+            source = found.get(path.stem)
+            if source is None:
+                print(f"{path.name}: no source declares GDCLASS({path.stem}, ...), left out", file=sys.stderr)
+                continue
+            source.xml_dir.mkdir(exist_ok=True)
+            shutil.copy2(path, source.xml_dir / path.name)
+    print("doc_classes updated: " + ", ".join(source.name for source in sources()))
+
+
+if __name__ == "__main__":
+    main()

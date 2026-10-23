@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""Generate the libmaszyna class reference for the Jekyll site in docs/.
+"""Generate the class reference of libreloaded and the plugins built into it, for the Jekyll site.
 
-C++ classes come from doc_classes/*.xml (Godot's class reference format, dumped by
-`make docs`); GDScript classes from the `##` doc comments of every script with a
-`class_name` under addons/libreloaded. Each class becomes docs/api/<Class>.md, and
-docs/api/index.md lists them all, grouped by namespace. C++ has no namespaces of its own, so a
-class's namespace is the directory of its source: src/<dir> for C++ (the header declaring its
-GDCLASS), addons/libreloaded/<dir> for GDScript. The two languages are listed apart, each with
-its own namespaces. The pages use docs/_layouts/api.html, whose sidebar lists them from the
-api_* keys of their front matter. The output is generated, not versioned.
+The sources are libreloaded and every plugin of LIBRELOADED_PLUGINS (scripts/reloaded_sources.py),
+as the library is built with them - so the reference documents what one build of the library
+holds, the same classes its editor shows under F1. C++ classes come from each source's
+doc_classes/*.xml (Godot's class reference format, dumped by `make docs`); GDScript classes from
+the `##` doc comments of every script with a `class_name` in its addon (addons/<name>). Each class
+becomes <output>/<Class>.md, and <output>/index.md lists them all, grouped by namespace. C++ has
+no namespaces of its own, so a class's namespace is its source's name and the directory of its
+file: <name>/<dir> of src/ for C++ (the header declaring its GDCLASS), of addons/<name>/ for
+GDScript. The two languages are listed apart, each with its own namespaces. The pages use the
+site's _layouts/api.html, whose sidebar lists them from the api_* keys of their front matter. The
+output is generated, not versioned.
 
-Usage: scripts/make-api-docs [output dir, default docs/api]
+Usage: scripts/make-api-docs [output dir, default build-docs/site/api]
 """
 
 import re
@@ -19,17 +22,11 @@ import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass, field
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-XML_DIR = ROOT / "doc_classes"
-SRC_DIR = ROOT / "src"
-GDSCRIPT_DIR = ROOT / "addons" / "libreloaded"
+from reloaded_sources import ROOT, Source, sources
+
 GODOT_CLASS_URL = "https://docs.godotengine.org/en/stable/classes/class_{}.html"
-PLUGIN = GDSCRIPT_DIR / "libmaszyna.gd"
 GODOT_API = ROOT / "godot-cpp" / "gdextension" / "extension_api-4-7.json"
-REGISTER_TYPES = ROOT / "src" / "register_types.cpp"
-PROJECT = ROOT / "demo" / "project.godot"
-# the namespace of a class declared at the top of src/ or addons/libreloaded/
-ROOT_NAMESPACE = "libmaszyna"
+ENGINE_SINGLETON = re.compile(r'register_singleton\(\s*"(\w+)"')
 # the namespace of a doc_classes XML whose GDCLASS is found nowhere in src/ (a stale dump)
 UNKNOWN_NAMESPACE = "unknown"
 LANGUAGES = ("C++", "GDScript")
@@ -74,22 +71,32 @@ def _params(node) -> list:
             for p in sorted(node.findall("param"), key=lambda p: int(p.get("index", 0)))]
 
 
-def _namespace(directory: Path, source_root: Path) -> str:
-    return directory.relative_to(source_root).as_posix() if directory != source_root else ROOT_NAMESPACE
+def _namespace(source: Source, directory: Path, source_root: Path) -> str:
+    if directory == source_root:
+        return source.name
+    return f"{source.name}/{directory.relative_to(source_root).as_posix()}"
 
 
-def cpp_namespaces() -> dict:
+def cpp_namespaces(source: Source) -> dict:
     """C++ class name -> namespace, the directory of the header declaring its GDCLASS."""
     found = {}
-    for path in sorted(SRC_DIR.rglob("*.h*")):
+    for path in sorted(source.src_dir.rglob("*.h*")):
         for name in re.findall(r"GDCLASS\(\s*(\w+)\s*,", path.read_text(encoding="utf-8", errors="replace")):
-            found[name] = _namespace(path.parent, SRC_DIR)
+            found[name] = _namespace(source, path.parent, source.src_dir)
     return found
 
 
-def read_xml(path: Path, namespace: str) -> ClassDoc:
+def engine_singletons(source: Source) -> set:
+    """The engine singletons the source's C++ registers"""
+    found = set()
+    for path in source.src_dir.rglob("*.cpp"):
+        found.update(ENGINE_SINGLETON.findall(path.read_text(encoding="utf-8", errors="replace")))
+    return found
+
+
+def read_xml(path: Path, namespace: str, source: Source) -> ClassDoc:
     root = ElementTree.parse(path).getroot()
-    doc = ClassDoc(root.get("name"), root.get("inherits", ""), "C++", f"doc_classes/{path.name}",
+    doc = ClassDoc(root.get("name"), root.get("inherits", ""), "C++", f"{source.name}/doc_classes/{path.name}",
                    _text(root.find("brief_description")), _text(root.find("description")),
                    namespace=namespace)
     for node in root.iterfind("members/member"):
@@ -150,14 +157,17 @@ def _statement(lines: list, start: int) -> str:
     return text.strip()
 
 
-def autoloads() -> dict:
-    """Autoload singleton name -> script, as the plugin and the project register them."""
+def autoloads(source: Source) -> dict:
+    """Script -> autoload singleton name, as the source's addon and its project register them."""
     found = {}
-    for match in re.finditer(r'add_autoload_singleton\("(\w+)",\s*"res://([^"]+\.gd)"\)', PLUGIN.read_text()):
-        found[match.group(2)] = match.group(1)
-    section = PROJECT.read_text().split("[autoload]", 1)
+    plugin = source.addon_dir / f"{source.name}.gd"
+    if plugin.exists():
+        for match in re.finditer(r'add_autoload_singleton\("(\w+)",\s*"res://([^"]+\.gd)"\)', plugin.read_text()):
+            found[match.group(2)] = match.group(1)
+    section = source.project.read_text().split("[autoload]", 1) if source.project.exists() else []
     if len(section) > 1:
-        for match in re.finditer(r'^(\w+)="\*?res://(addons/libreloaded/[^"]+\.gd)"', section[1].split("\n[", 1)[0], re.M):
+        pattern = r'^(\w+)="\*?res://(addons/%s/[^"]+\.gd)"' % re.escape(source.name)
+        for match in re.finditer(pattern, section[1].split("\n[", 1)[0], re.M):
             found[match.group(2)] = match.group(1)
     return found
 
@@ -173,7 +183,7 @@ def _is_virtual(lines: list, start: int) -> bool:
     return body == ["pass"]
 
 
-def read_gdscript(path: Path, singleton_name: str = "") -> ClassDoc | None:
+def read_gdscript(path: Path, source: Source, singleton_name: str = "") -> ClassDoc | None:
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     name, inherits = singleton_name, ""
     for line in lines:
@@ -183,8 +193,8 @@ def read_gdscript(path: Path, singleton_name: str = "") -> ClassDoc | None:
             inherits = match.group(1).strip('"')
     if not name:
         return None
-    doc = ClassDoc(name, inherits, "GDScript", str(path.relative_to(ROOT)), singleton=bool(singleton_name),
-                   namespace=_namespace(path.parent, GDSCRIPT_DIR))
+    doc = ClassDoc(name, inherits, "GDScript", path.relative_to(source.root).as_posix(),
+                   singleton=bool(singleton_name), namespace=_namespace(source, path.parent, source.addon_dir))
     pending: list = []
     class_doc_open = True
     enum_owner = ""
@@ -378,9 +388,10 @@ class Writer:
 
     def index(self) -> str:
         out = ["---", "layout: api", "title: API reference", "permalink: /api/", "---", "",
-               "Every class libmaszyna registers (C++) or declares with `class_name` (GDScript), generated from "
-               "`doc_classes/*.xml` and the scripts' `##` doc comments by `scripts/make-api-docs`. A namespace is "
-               "the directory of the class's source: `src/<namespace>` or `addons/libreloaded/<namespace>`.", "",
+               "Every class libreloaded and the plugins built into it register (C++) or declare with "
+               "`class_name` (GDScript), generated from their `doc_classes/*.xml` and the scripts' `##` doc "
+               "comments by libreloaded's `scripts/make-api-docs`. A namespace is the class's repository and "
+               "the directory of its source: `<repository>/<dir>` of `src/` or of `addons/<repository>/`.", "",
                " - ".join(f"[{language}](#{self.language_anchor(language)})" for language in LANGUAGES), ""]
         for language in LANGUAGES:
             namespaces = {}
@@ -405,19 +416,21 @@ class Writer:
 
 
 def main() -> None:
-    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "docs" / "api"
+    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "build-docs" / "site" / "api"
     classes: dict = {}
-    engine_singletons = set(re.findall(r'register_singleton\("(\w+)"', REGISTER_TYPES.read_text()))
-    namespaces = cpp_namespaces()
-    for path in sorted(XML_DIR.glob("*.xml")):
-        doc = read_xml(path, namespaces.get(path.stem, UNKNOWN_NAMESPACE))
-        doc.singleton = doc.name in engine_singletons
-        classes[doc.name] = doc
-    singletons = autoloads()
-    for path in sorted(GDSCRIPT_DIR.rglob("*.gd")):
-        doc = read_gdscript(path, singletons.get(str(path.relative_to(ROOT)), ""))
-        if doc is not None and doc.name not in classes:
+    for source in sources():
+        singletons = engine_singletons(source)
+        namespaces = cpp_namespaces(source)
+        for path in sorted(source.xml_dir.glob("*.xml")):
+            doc = read_xml(path, namespaces.get(path.stem, UNKNOWN_NAMESPACE), source)
+            doc.singleton = doc.name in singletons
             classes[doc.name] = doc
+    for source in sources():
+        scripts = autoloads(source)
+        for path in sorted(source.addon_dir.rglob("*.gd")):
+            doc = read_gdscript(path, source, scripts.get(path.relative_to(source.root).as_posix(), ""))
+            if doc is not None and doc.name not in classes:
+                classes[doc.name] = doc
     output.mkdir(parents=True, exist_ok=True)
     for stale in output.glob("*.md"):
         stale.unlink()
