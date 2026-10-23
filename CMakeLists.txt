@@ -249,29 +249,21 @@ SET(GODOT_PROJECT_BINARY_DIR "${GODOT_PROJECT_PATH}/bin/libreloaded/${GODOTCPP_P
 
 SET_TARGET_PROPERTIES(${LIBNAME} PROPERTIES OUTPUT_NAME "${_OUTPUT_NAME}" LIBRARY_OUTPUT_DIRECTORY "${GODOT_PROJECT_BINARY_DIR}")
 
-# Links (UNIX) or copies an addon into the Godot project's addons/<p_name> - again when it is there
-# but leads somewhere else, as after the addon moved
+# Links (UNIX, a relative link) or copies an addon into the Godot project's addons/<p_name> when it
+# has none. An addons/<p_name> already there - a link, a directory, a copy - is the project's: never
+# replaced, so a project that versions its links, or leads one to a checkout of its own, keeps them
 SET(ADDONS_DEMO_DIR "${GODOT_PROJECT_PATH}/addons")
-ADD_CUSTOM_COMMAND(TARGET ${LIBNAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${ADDONS_DEMO_DIR}"
-)
+FILE(MAKE_DIRECTORY "${ADDONS_DEMO_DIR}")
 FUNCTION(reloaded_link_addon p_source p_name)
     SET(_destination "${ADDONS_DEMO_DIR}/${p_name}")
-    GET_FILENAME_COMPONENT(_source_real "${p_source}" REALPATH)
-    GET_FILENAME_COMPONENT(_destination_real "${_destination}" REALPATH)
-    IF (IS_SYMLINK "${_destination}" AND _destination_real STREQUAL _source_real)
+    IF (EXISTS "${_destination}" OR IS_SYMLINK "${_destination}")
         RETURN ()
     ENDIF ()
     IF (UNIX)
-        ADD_CUSTOM_COMMAND(TARGET ${LIBNAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E rm -rf "${_destination}"
-                COMMAND ${CMAKE_COMMAND} -E create_symlink "${p_source}" "${_destination}"
-        )
+        FILE(RELATIVE_PATH _relative_source "${ADDONS_DEMO_DIR}" "${p_source}")
+        FILE(CREATE_LINK "${_relative_source}" "${_destination}" SYMBOLIC)
     ELSE ()
-        ADD_CUSTOM_COMMAND(TARGET ${LIBNAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E rm -rf "${_destination}"
-                COMMAND ${CMAKE_COMMAND} -E copy_directory "${p_source}" "${_destination}"
-        )
+        FILE(COPY "${p_source}/" DESTINATION "${_destination}")
     ENDIF ()
 ENDFUNCTION()
 
