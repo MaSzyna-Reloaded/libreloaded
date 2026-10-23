@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Fetch the double precision Godot built by libmaszyna's .github/workflows/godot-engine.yml instead
-# of building it - from libmaszyna's release in any repository, a game's CI included. The files
+# Fetch the double precision Godot built by libreloaded's .github/workflows/godot-engine.yml instead
+# of building it - from libreloaded's release in any repository, a plugin's or a game's CI included
+# (GODOT_RELEASE_REPOSITORY names another repository's release). The files
 # land in the Makefile's $(GODOT_BIN), exactly where its engine rules would put them, so nothing is
 # rebuilt; the editor is installed as godot-double and the templates where the export looks them up.
 #
@@ -11,7 +12,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(make -s -C "$REPO_DIR" godot-version)"
 TAG="godot-$VERSION-double"
-REPOSITORY="${GODOT_RELEASE_REPOSITORY:-MaSzyna-Reloaded/libmaszyna}"
+REPOSITORY="${GODOT_RELEASE_REPOSITORY:-MaSzyna-Reloaded/libreloaded}"
 GODOT_BIN="$REPO_DIR/build-godot-$VERSION/bin"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/$VERSION.stable.double"
