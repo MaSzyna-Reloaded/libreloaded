@@ -94,6 +94,10 @@ jobs:
 
   build:
     needs: godot-engine
+    # packages: the Linux SDK image, published to ghcr.io when its tag is not there yet
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -133,6 +137,17 @@ jobs:
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ matrix.platform }}
+
+      # The Linux release is built in an image tagged by its Dockerfile; a changed Dockerfile is a tag
+      # not on ghcr.io yet, so CI builds it once and publishes it, and later runs - here, in a plugin's
+      # or a game's CI - pull it. A pull request from a fork has a read-only token: it builds it for itself
+      - name: Publish the Linux SDK image
+        if: matrix.platform == 'linux' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          make linux-sdk-image-push
 
       - name: Build the ${{ matrix.platform }} library
         run: make ${{ matrix.make }}

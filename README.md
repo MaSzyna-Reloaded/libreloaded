@@ -119,14 +119,8 @@ sources as well. The rules of the code are in `AGENTS.md` and `CODE_STYLE.md`.
   there - in this repository's CI, a plugin's or a game's
 
 The Linux release library is built in the image `ghcr.io/maszyna-reloaded/linux-sdk`, tagged by the
-hash of `ci/docker/linux-sdk/Dockerfile`; CI pulls it. After changing the Dockerfile, build and
-publish the image yourself (a `gh` token with the `write:packages` scope:
-`gh auth refresh -h github.com -s write:packages`):
-
-```bash
-gh auth token | docker login ghcr.io -u <github user> --password-stdin
-make linux-sdk-image-push
-```
+hash of `ci/docker/linux-sdk/Dockerfile`; CI pulls it, and after a change of the Dockerfile builds
+the new tag once and publishes it (`make linux-sdk-image-push`), so nothing is published by hand.
 
 If you have found a bug, have a suggestion or want to join us - open an
 [issue](https://github.com/MaSzyna-Reloaded/libreloaded/issues) or start a

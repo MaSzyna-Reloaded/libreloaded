@@ -37,7 +37,7 @@ GODOT_VERSION:=4.7.2
 # it (the game's make libreloaded-local), and every plugin of LIBRELOADED_PLUGINS outside both (a
 # plugin is a repository of its own).
 # Published on ghcr.io and tagged by its Dockerfile: the CI pulls it rather than building it, and a
-# changed Dockerfile is a new tag, built here and published with make linux-sdk-image-push
+# changed Dockerfile is a new tag the CI builds once and publishes itself (make linux-sdk-image-push)
 LINUX_SDK_IMAGE:=ghcr.io/maszyna-reloaded/linux-sdk:$(shell sha256sum ci/docker/linux-sdk/Dockerfile | cut -c1-12)
 LINUX_SDK_MOUNT?=$(CURDIR)
 LINUX_SDK_OWN_MOUNT:=$(if $(filter $(LINUX_SDK_MOUNT)/%,$(CURDIR)/.),,-v $(CURDIR):$(CURDIR))
