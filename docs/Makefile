@@ -1,6 +1,6 @@
 .PHONY: install runserver
 
-BASEURL := /MaSzyna-API-wrapper
+BASEURL := /libreloaded
 # The site Jekyll serves: the one scripts/make-docs-site assembles (make docs-server passes it)
 SITE ?= $(abspath $(CURDIR)/../build-docs/site)
 # Without Ruby on the host Jekyll runs in the official Ruby image. The gems live in a named

@@ -1,234 +1,125 @@
-# MaSzyna-API-wrapper
+# libreloaded
 
-## About the project
+The core of Rails Reloaded: a C++ GDExtension for Godot Engine and its GDScript addon, holding what
+is common to a railway simulation - the servers, the vehicles' layers and their stepping, the cabin
+system, the player and the cameras, tracks, traction, signalling, sceneries and their streaming,
+scenario events and Lua scripts, and the test harness.
 
-This C++ GDExtension for Godot Engine offers a simplified interface to the MaSzyna train simulator API. Tailored for the MaSzyna Reloaded project, it enables developers to construct train components using Godot's Node-based system, providing a visual and intuitive approach to train creation and management. Key features include:
+What a particular simulation brings of its own - its vehicles and their physics, its data formats,
+sceneries, cabs and drawing - is a **plugin**: a repository of its own compiled into this library.
+libmaszyna, the port of the MaSzyna train simulator, is one; a game is built of the core and the
+plugins it needs.
 
-- Custom Node-based Classes: Create train elements using our premade and integrated classes based on Godot's familiar Node system.
-- Parameter Customization: Fine-tune train parameters directly within the Godot editor.
-- Simplified Integration: Seamlessly integrate the MaSzyna simulator physics into your Godot projects.
-- Enhanced Debugging: Streamline the debugging process for your train simulations.
+## Layout
 
-### Setup
+| Path | What it is |
+|------|------------|
+| `src/` | the C++ of the core, compiled into the library |
+| `addons/libreloaded/` | the Godot addon: GDScript, scenes, shaders, editor plugins |
+| `doc_classes/` | the class reference of the C++ classes (also shown by the editor under F1) |
+| `demo/` | the test project: the tests (`demo/tests/`), their harness and fixtures |
+| `docs/` | the guides of the documentation site |
+| `vendor/` | gut, gnd-sfx and Lua, as submodules |
+| `godot-cpp` | Godot's C++ bindings, as a submodule |
+| `ci/` | the Linux SDK image and `fetch-godot.sh` |
 
-1. Install Python 3
-2. Install CMake 3.30 or newer. CMake will automatically install its dependencies.
-3. Clone the repository and checkout submodules
+## Plugins
 
-```
-git clone <url>
-git submodule update --init --recursive
-```
-
-### Android development
-#### Set up the build system   
-For build system setup,
-please take a look at [official Godot Engine documentation for Android development](https://docs.godotengine.org/en/4.3/tutorials/export/exporting_for_android.html)
-### Compiling
-> [!IMPORTANT]
-> If you are using DEBUG macro, you should build CMake project with flag `-DLIBRELOADED_DEBUG=ON` and then compile it.
-> When using make ,add `LIBRELOADED_DEBUG=ON` to a command line, i.e. `make compile-debug LIBRELOADED_DEBUG=ON`. You can
-> also turn off DEBUG using `LIBRELOADED_DEBUG=OFF`.
+A plugin is a directory with a `plugin.cmake`, given to the build by `LIBRELOADED_PLUGINS`
+(`;`-separated, relative to this checkout or absolute):
 
 ```bash
-	cmake -B build-<platform> \
-          -DGODOTCPP_TARGET="template_release"
-	cmake --build build-<platform>
+make compile-debug LIBRELOADED_PLUGINS=<path to the plugin> GODOT_PROJECT_DIR=<its Godot project>
 ```
 
-Example:
-```bash
-	cmake -B build-linux64 \
-          -DGODOTCPP_TARGET="template_release"
-	cmake --build build-linux64
-```
+Its `plugin.cmake` adds the plugin's sources and `doc_classes` to the library, links its addon into
+the project and names its `ReloadedPlugin` class, whose stages the core runs at the library's start
+and end. How a plugin plugs into the core - its implementations, backends and providers - is in the
+documentation, "Overall architecture". A plugin is normally built from its own repository, whose
+`Makefile` runs this one's rules with itself as `LIBRELOADED_PLUGINS`.
 
-Cross-compiling (for Windows on Linux):
-```bash
-	cmake -B build-win64 \
-          -DGODOTCPP_TARGET="template_release" \
-          -DGODOTCPP_PLATFORM=windows \
-          -DCMAKE_SYSTEM_NAME=Windows \
-          -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
-          -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
-          -DCMAKE_SIZEOF_VOID_P=8
-	cmake --build build-win64
-```
+## Requirements
 
-#### Makefile
+- Godot 4.7, **double precision** (`godot-double`; another name with `GODOT=<binary>`) - the library
+  is built against double precision godot-cpp, and a single precision Godot does not load it
+- CMake 3.30 or newer, Python 3, a C++17 compiler
 
-You can use Makefile targets as shortcuts.
-
-For debug compilation:
-
-```
-make compile-debug
-```
-
-or just simply
-
-```
-make
-```
-
-For release compilation:
-
-```
-make compile-release
-```
-
-For cross compilation linux/windows:
-
-```
-make cross-compile-debug
-```
-
-or 
-
-```
-make cross-compile-release
-```
-
-#### Parallel compilation
-
-To enable parallel compilation add `--parallel <num_jobs>` argument to cmake calls, for example:
+## Getting started
 
 ```bash
-	cmake -B build-linux64 \
-          -DGODOTCPP_TARGET="template_release"
-          --parallel 4
-	cmake --build build-linux64 --parallel 4
+git clone --recursive https://github.com/MaSzyna-Reloaded/libreloaded
+cd libreloaded
+make compile-debug        # or just make
+make run-tests            # the GUT tests of demo/, headless
 ```
 
-If you're using `Makefile`, number of parralel jobs will be set automatically to `<cores count> - 2` for system with at
-least two cores.
+`make compile-release` builds the release library; the library lands in `demo/bin/libreloaded/`.
+Add `LIBRELOADED_DEBUG=ON` for the `DEBUG` macro (`make compile-debug LIBRELOADED_DEBUG=ON`).
+The number of parallel jobs is the number of cores less two.
 
-### Compatibility
+### Other platforms
 
-### Compiling
-> [!IMPORTANT]
-> Versions from 03.10.2026 onward will require Godot Engine's double precision build
+| Target | What it builds |
+|--------|----------------|
+| `make compile-release-linux` | the Linux release library, in the Linux SDK container (`ci/docker/linux-sdk`): an old glibc, so it starts on older distributions |
+| `make compile-windows-debug`, `compile-windows-release` | Windows, cross-compiled with MinGW |
+| `make cross-compile-debug`, `cross-compile-release` | Linux and Windows together |
+| `make compile-android-debug`, `compile-android-release` | Android, with the NDK of `ANDROID_NDK_ROOT` |
+| `make compile-profiling` | `template_debug` with `RelWithDebInfo`, for profiling |
 
-| Plugin Version | Godot Engine version     | Windows | Linux | Mac OS | Android                  | iOS | C++ Standard | MaSzyna Version     |
-|----------------|--------------------------|---------|-------|--------|--------------------------|-----|--------------|---------------------|
-| 25.08.2024     | 4.3                      | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06               |
-| 11.03.2025     | 4.4                      | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06               |
-| 11.04.2025     | 4.4                      | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06               |
-| 30.09.2025     | 4.5                      | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06               |
-| 30.11.2025     | 4.5.x                    | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06, 25.11        |
-| 27.01.2026     | 4.6                      | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06, 25.11, 26.01 |
-| 06.07.2026     | 4.7.x                    | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06, 25.11, 26.01 |
-| 03.10.2026     | 4.7.x (double precision) | ✅       | ✅     | ❌      | ✅ (Target API Level: 34) | ❌   | C++ 17       | 24.06, 25.11, 26.01 |
-### Documentation 
+For Android see also [Godot's documentation](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html).
 
-Project documentation: https://maszyna-reloaded.github.io/MaSzyna-API-wrapper/
+## Simulation timing
 
-If you have found any bug, have a suggestion or want to join us - feel free to open an [issue](https://github.com/MaSzyna-Reloaded/MaSzyna-API-wrapper/issues) or start a [discussion](https://github.com/MaSzyna-Reloaded/MaSzyna-API-wrapper/discussions)!
+**The simulation is stepped before anything that reads it.** `SimulationServer` advances its clock
+on `SceneTree`'s `process_frame`, which is emitted before every node's `_process`, and
+`VehicleServer::stepping_advance()` hands the frame to each vehicle implementation registered with
+it (`VehicleImplementationServer`). Drawing, the cabin, the HUD and the cameras therefore see the
+position of *this* frame. How an implementation steps its vehicles - in which phases, with what
+sub-steps - is its own business.
 
-### Simulation timing
+## Documentation
 
-Two rules decide when the vehicle simulation runs, and both matter enough to be stated here: the
-scenario's events are driven by time, and multiplayer will be.
-
-**The simulation is stepped before anything that reads it.** `SimulationServer` advances its
-clock on `SceneTree`'s `process_frame`, which is emitted *before* every node's `_process`
-(measured on Godot 4.7.2, `FINDINGS.md`), and `VehicleServer::stepping_advance()` hands the frame
-to each vehicle implementation (`MaszynaMoverVehicleServer`). Drawing, the cabin, the HUD and the
-cameras therefore see the position of *this* frame.
-
-**No simulation time is ever dropped, and no sub-step is ever oversized.** A frame hands its whole
-delta to `step_frame()`, which integrates as much of it as it honestly can and *owes* the rest to
-the frames that follow:
-
-* the sub-step stays at or below `PHYSICS_STEP` (10 ms), because that is what the coupler springs
-  were tuned for - a stiff spring integrated with a much larger step kicks the trainset;
-* one frame can therefore take at most `MAX_PHYSICS_ITERATIONS * PHYSICS_STEP` (0.2 s);
-* every frame still integrates at least its own delta, so nothing is quantised and the motion is
-  as smooth as the frame rate.
-
-A stall of, say, half a second is not taken in one go: 0.2 s is integrated now and the remaining
-0.3 s over the next frames. The clock and the simulation stay together, and nothing jumps.
-
-**Past `maszyna/physics/catch_up_limit` (1 s by default) the debt is taken in one step instead.**
-At that point the machine is not stalling, it is too slow to simulate in real time, and spreading
-the debt would only add work to frames that are already late. The step is then larger than the
-couplers can stand and the trainset visibly jumps - deliberately, because a jump that can be seen
-beats a clock that silently lies to the scenario. It is written to `GameLog`, so it is not
-mistaken for a physics bug.
-
-### Rendering transparent elements
-
-E3D submodels flagged `material_transparent` (the original engine's own translucent-pass flag)
-render with a hard alpha-scissor cutout by default (`MaterialManager.Transparency.AlphaScissor`,
-threshold 0.5, no real blending) - this matches how most such content actually looks (window
-light masks, foliage) and avoids transparency sorting issues.
-
-Some content needs real alpha blending instead - most commonly a self-contained cabin interior,
-where the scissor cutout looks visibly wrong across the board (glass, instrument backlight glow).
-Two opt-in overrides exist on `MaszynaE3DModelInstance` (libmaszyna's `addons/libmaszyna/e3d/maszyna_e3d_model_instance.gd`),
-both only affecting submodels already flagged `material_transparent` - opaque submodels are never
-pulled into the alpha-blended pass:
-
-- `force_alpha` (bool) - every `material_transparent` submodel in this model instance gets real
-  alpha blending. Set by `MmdCabinInstancer.build_into()` for every cabin's `CabModel`.
-- `force_alpha_submodel_paths` (`Array[NodePath]`) - a surgical alternative for forcing just one
-  named submodel subtree (and its descendants) within an otherwise alpha-scissor model. Submodel
-  names alone aren't unique across the tree, so entries are resolved via `MaszynaE3DModel.get_node_or_null`.
-  `MmdCabinInstancer._resolve_force_alpha_submodel_paths()` populates this automatically for MMD
-  `i-*:` indicator descriptors whose `MmdSemanticCatalog` entry has `force_alpha: true` set (e.g.
-  `i-instrumentlight`'s `<base>_on`/`<base>_off` pair).
-
-Known limitation: the original engine's own shader (`mat_default.frag`) combines an alpha-test
-discard against a per-*material* `opacity` threshold with real per-pixel blending in the same
-pass; this port only has the discard (alpha-scissor) and the blend (alpha) as two separate,
-mutually exclusive modes, with no per-material threshold. Real alpha blending on content whose
-alpha channel isn't clean binary data (e.g. padding colors baked outside the intended cutout, or a
-channel repurposed for something else like a specular mask) can bleed through as an unwanted halo
-or partial see-through - which is why it isn't applied to all `material_transparent` E3D content
-by default, only where explicitly opted in above.
-
-### Texture size and filtering
-
-DDS textures larger than a limit drop their top mipmap levels when loaded, as the original's
-`maxtexturesize`/`maxcabtexturesize` do (Globals.h:164-165):
-
-- `maszyna/import/dds_max_texture_size` (default 1024) - scenery and vehicles,
-- `maszyna/import/dds_max_cab_texture_size` (default 4096, the original's) - the cab, whose
-  instruments need the full resolution (Train.cpp:660).
-
-Anisotropic filtering (the original uses 8x, Texture.cpp:1191) is Godot's global
-`rendering/textures/default_filters/anisotropic_filtering_level`. It acts only on samplers
-declared `*_anisotropic`; most material shaders in libmaszyna's `addons/libmaszyna/materials/types/`
-use `filter_linear_mipmap`, so the setting does not reach them.
-
-### Code Quality
-
-#### Formatting and style
-
-Before opening a pull request, check formatting and clang-tidy issues:
+The documentation is a Jekyll site: the guides in `docs/` and the class reference generated from
+`doc_classes/` and the scripts' `##` comments. A build of the library is documented with the
+plugins it is built with - each plugin's guides go under its name, the class reference covers all
+of them:
 
 ```bash
-make style-check
+make docs-site [LIBRELOADED_PLUGINS=...]   # assembles it into build-docs/site
+make docs-server                           # and serves it (Jekyll, or Ruby's image in Docker)
+make docs-pdf                              # the same as one PDF, build-docs/reloaded-docs.pdf
+make docs                                  # refreshes doc_classes/ from the library
 ```
 
-To apply automatic formatting and clang-tidy fixes:
+`make docs` dumps the class reference of the whole library and hands each class's XML to the
+repository declaring it, so the core keeps only its own. The editor shows the same reference under
+F1: the library carries the `doc_classes` of the core and of every plugin built into it.
+
+## Code quality
 
 ```bash
-make style-fix
+make style-check [STYLE_FILE=<file>]   # clang-format and clang-tidy
+make style-fix [STYLE_FILE=<file>]     # clang-format; clang-tidy findings are fixed by hand
+make install-git-hooks                 # once per clone: the pre-commit hook checks staged .uid files
 ```
 
-Both targets use the repository `.clang-format` and `.clang-tidy` configuration. They skip generated code under `src/gen` and the vendored Mover of a plugin (`*/maszyna-mover/*`). A plugin's own files are checked with its repository's `make style-check`, which passes its directory as `LIBRELOADED_PLUGINS`.
+Both style targets use `.clang-format` and `.clang-tidy` of this repository and skip `src/gen` and a
+plugin's vendored code (`*/maszyna-mover/*`); with `LIBRELOADED_PLUGINS` they check the plugins'
+sources as well. The rules of the code are in `AGENTS.md` and `CODE_STYLE.md`.
 
-To check or fix a single file, use `./scripts/style-check <path>` and `./scripts/style-fix <path>`.
+## CI
 
-#### CI
-Clang-tidy checks are performed on CI. Those will fail automatically and publish results if any warning/error is found
+- `build` - the tests and the library of each platform, on pull requests
+- `style-check` - clang-format and clang-tidy, on pull requests
+- `docs` - builds the site, and publishes it on GitHub Pages from `main`
+- `godot-engine` - Godot publishes no double precision build, so the editor and the export
+  templates are built here, once per engine version (`GODOT_VERSION` in the `Makefile`), and kept
+  as this repository's release `godot-<version>-double`. `ci/fetch-godot.sh` installs them from
+  there - in this repository's CI, a plugin's or a game's
 
-CI uses no Docker Hub image. The double precision Godot comes from the release
-`godot-<version>-double` (`ci/fetch-godot.sh`), and the Linux release library is built in the
-Linux SDK image `ghcr.io/maszyna-reloaded/linux-sdk`, which CI pulls. The image is tagged by the
-hash of `ci/docker/linux-sdk/Dockerfile`, so a changed Dockerfile is a new tag that is not on
-ghcr.io yet - CI then builds the image on every run. After changing the Dockerfile, build and
+The Linux release library is built in the image `ghcr.io/maszyna-reloaded/linux-sdk`, tagged by the
+hash of `ci/docker/linux-sdk/Dockerfile`; CI pulls it. After changing the Dockerfile, build and
 publish the image yourself (a `gh` token with the `write:packages` scope:
 `gh auth refresh -h github.com -s write:packages`):
 
@@ -237,45 +128,6 @@ gh auth token | docker login ghcr.io -u <github user> --password-stdin
 make linux-sdk-image-push
 ```
 
-### Testing
-
-#### Testing locally
-
-First, ensure you have checked out submodules:
-
-```bash
-git submodule update --init
-```
-
-Then run tests from the command line (if you have `make` installed, you can use shortcut `make run-tests`):
-
-```bash
-godot --path demo --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests/ -gexit
-```
-
-
-Or use Godot Editor, but before that ensure you have configured test dirs.
-GUT is storing the config in `user://` filesystem, so you have to do this manually.
-
-![Godot GUT Configuration](docs/assets/gut-gui-tests-config.png)
-
-Then run all tests:
-
-![Godot GUT Running Tests](docs/assets/gut-gui-tests-running.png)
-
-
-#### Testing using docker
-
-From the command line, build the image first:
-
-```bash
-docker build-t godot-tests .
-```
-
-then run the image:
-
-```bash
-docker run --rm godot-tests
-```
-
-If you have `make`, you can simply use the shortcut `make docker-run-tests`.
+If you have found a bug, have a suggestion or want to join us - open an
+[issue](https://github.com/MaSzyna-Reloaded/libreloaded/issues) or start a
+[discussion](https://github.com/MaSzyna-Reloaded/libreloaded/discussions).

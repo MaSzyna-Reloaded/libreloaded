@@ -44,7 +44,8 @@ jobs:
 
       - name: Build the site
         working-directory: docs
-        run: bundle exec jekyll build --source ../build-docs/site --destination ../_site
+        run: bundle exec jekyll build --source ../build-docs/site --destination ../_site --baseurl "/${{ github.event.repository.name }}"
+        # Pages serves a project's site under its repository's name, whatever docs/_config.yml says
         env:
           JEKYLL_ENV: production
           # jekyll-github-metadata (part of github-pages) names the repository itself only on
