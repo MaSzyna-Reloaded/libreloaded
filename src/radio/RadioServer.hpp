@@ -37,10 +37,16 @@ namespace godot {
             static const char *transmitted_signal;
 
             static RadioServer *get_instance() {
-                return Object::cast_to<RadioServer>(Engine::get_singleton()->get_singleton("RadioServer"));
+                return singleton;
             }
+            RadioServer();
+            ~RadioServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline RadioServer *singleton = nullptr;
+
             struct Radio {
                     /// The vehicle it is in, or none for one standing at `position`
                     RID vehicle;

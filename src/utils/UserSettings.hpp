@@ -57,9 +57,16 @@ namespace godot {
             UserSettings();
 
             static UserSettings *get_instance() {
-                return dynamic_cast<UserSettings *>(Engine::get_singleton()->get_singleton("UserSettings"));
+                return singleton;
             }
+            ~UserSettings() override;
 
+        private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline UserSettings *singleton = nullptr;
+
+        public:
             void load_config();
 
             /// Set in memory and in effect at once; saved by save_config(), dropped by load_config()

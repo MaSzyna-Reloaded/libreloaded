@@ -87,11 +87,15 @@ namespace godot {
             static const char *script_error_signal;
 
             static ScenarioScriptServer *get_instance() {
-                return Object::cast_to<ScenarioScriptServer>(
-                        Engine::get_singleton()->get_singleton("ScenarioScriptServer"));
+                return singleton;
             }
+            ~ScenarioScriptServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline ScenarioScriptServer *singleton = nullptr;
+
             enum HookKind {
                 /// An event a script created
                 HOOK_EVENT,

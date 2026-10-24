@@ -26,10 +26,14 @@ namespace godot {
             static const char *player_vehicle_entered_signal;
 
             static PlayerServer *get_instance() {
-                return Object::cast_to<PlayerServer>(Engine::get_singleton()->get_singleton("PlayerServer"));
+                return singleton;
             }
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline PlayerServer *singleton = nullptr;
+
             RID person;
             /// The vehicle last announced as the player's (player_vehicle_changed) - kept, for a
             /// vehicle freed with the player in it has taken the player's seat along already

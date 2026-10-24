@@ -77,6 +77,7 @@ namespace godot {
     /// callable_mp reports this instance as the callable's object, so the engine drops the
     /// connection when it dies.
     PlayerServer::PlayerServer() {
+        singleton = this;
         PersonServer *persons = PersonServer::get_instance();
         ERR_FAIL_NULL(persons);
         person = persons->person_create();
@@ -113,6 +114,7 @@ namespace godot {
         if (PersonServer *persons = PersonServer::get_instance(); persons != nullptr) {
             persons->person_free(person);
         }
+        singleton = nullptr;
     }
 
     /// The player's vehicle is kept streamed in where it stands - an AI may drive it on while the

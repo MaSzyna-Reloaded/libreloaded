@@ -327,6 +327,10 @@ anything. Open work belongs in `TODO.md`.
   announced to nobody. *(10-05 cab change in RailVehicleServer)*
 
 ## Godot / GDExtension
+* A server keeps its own instance as Godot's servers do (`static X *singleton`, set by the
+  constructor, cleared by the destructor, the class registered abstract); `get_instance()` never
+  asks `Engine` by name - a lookup per axle and step took a fifth of the main thread on Wrzosy.
+  *(10-24 servers looked up by name)*
 * A compute effect never samples the texture it writes in the same dispatch: D3D12 refuses the
   command list (`Close` E_INVALIDARG) and removes the device - every allocation after fails with
   `0x887a0005`. Copy the source first. *(10-06 crash at 0% loading on D3D12)*

@@ -79,6 +79,7 @@ namespace godot {
     }
 
     SceneryStreamingServer::SceneryStreamingServer() {
+        singleton = this;
         semaphore.instantiate();
         preload_queue.instantiate();
         draw_distance = ProjectSettings::get_singleton()->get_setting(DRAW_DISTANCE_SETTING, DEFAULT_DRAW_DISTANCE_M);
@@ -113,6 +114,7 @@ namespace godot {
     SceneryStreamingServer::~SceneryStreamingServer() {
         streaming_set_camera(0);
         streaming_drain();
+        singleton = nullptr;
     }
 
     void SceneryStreamingServer::streaming_drain() {

@@ -39,11 +39,15 @@ namespace godot {
             static const char *camera_placed_signal;
 
             static PlayerCameraServer *get_instance() {
-                return Object::cast_to<PlayerCameraServer>(
-                        Engine::get_singleton()->get_singleton("PlayerCameraServer"));
+                return singleton;
             }
+            ~PlayerCameraServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline PlayerCameraServer *singleton = nullptr;
+
             CameraMode mode = CAMERA_MODE_FREE;
             RID target;
             CameraFollowView follow_view = CAMERA_FOLLOW_VIEW_TRAINSET_FRONT;

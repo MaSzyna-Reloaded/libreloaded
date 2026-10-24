@@ -39,10 +39,15 @@ namespace godot {
             ~SceneryMeshRenderingServer() override;
 
             static SceneryMeshRenderingServer *get_instance() {
-                return Object::cast_to<SceneryMeshRenderingServer>(
-                        Engine::get_singleton()->get_singleton("SceneryMeshRenderingServer"));
+                return singleton;
             }
 
+        private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline SceneryMeshRenderingServer *singleton = nullptr;
+
+        public:
             /* `p_mesh` placed by `p_transform` in `p_scenario`, drawn while the camera is within
              * `p_range_end` of its centre (0: the draw distance) */
             RID mesh_create(

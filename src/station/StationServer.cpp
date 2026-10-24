@@ -199,6 +199,7 @@ namespace godot {
     /// dies.
     /// A run hears its train on its tracks and follows its trainset.
     StationServer::StationServer() {
+        singleton = this;
         VehicleServer *vehicles = VehicleServer::get_instance();
         ERR_FAIL_NULL(vehicles);
         vehicles->connect(VehicleServer::vehicle_freed_signal, callable_mp(this, &StationServer::_on_vehicle_freed));
@@ -219,6 +220,10 @@ namespace godot {
                 RailVehicleServer::trainset_merged_signal, callable_mp(this, &StationServer::_on_trainset_merged));
         rail_vehicles->connect(
                 RailVehicleServer::trainset_freed_signal, callable_mp(this, &StationServer::_on_trainset_freed));
+    }
+
+    StationServer::~StationServer() {
+        singleton = nullptr;
     }
 
     RID StationServer::station_create() {

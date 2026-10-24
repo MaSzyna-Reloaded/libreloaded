@@ -32,11 +32,15 @@ namespace godot {
             static const char *vehicle_pressed_signal;
 
             static SceneryHUDMouseServer *get_instance() {
-                return Object::cast_to<SceneryHUDMouseServer>(
-                        Engine::get_singleton()->get_singleton("SceneryHUDMouseServer"));
+                return singleton;
             }
+            ~SceneryHUDMouseServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline SceneryHUDMouseServer *singleton = nullptr;
+
             struct Pickable {
                     RID instance;
                     String caption;

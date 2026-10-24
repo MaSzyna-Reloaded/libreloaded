@@ -14,10 +14,16 @@ namespace godot {
 
         public:
             static PersonServer *get_instance() {
-                return Object::cast_to<PersonServer>(Engine::get_singleton()->get_singleton("PersonServer"));
+                return singleton;
             }
+            PersonServer();
+            ~PersonServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline PersonServer *singleton = nullptr;
+
             /* Every person and its name */
             HashMap<RID, String> persons;
 

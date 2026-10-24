@@ -55,10 +55,13 @@ namespace godot {
         ADD_SIGNAL(MethodInfo(event_freed_signal, PropertyInfo(Variant::RID, "event")));
     }
 
-    ScenarioEventServer::ScenarioEventServer() = default;
+    ScenarioEventServer::ScenarioEventServer() {
+        singleton = this;
+    }
 
     ScenarioEventServer::~ScenarioEventServer() {
         _set_processing(false);
+        singleton = nullptr;
     }
 
     /// Queued, it holds the runtime's clock, so the time the queue waits for passes

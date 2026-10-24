@@ -91,10 +91,15 @@ namespace godot {
             static String route_state_hint();
 
             static SignallingServer *get_instance() {
-                return Object::cast_to<SignallingServer>(Engine::get_singleton()->get_singleton("SignallingServer"));
+                return singleton;
             }
+            ~SignallingServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline SignallingServer *singleton = nullptr;
+
             /// A blinking light's cycle (signal_head_light_blink())
             struct LightBlink {
                     float on_time = 0.0;

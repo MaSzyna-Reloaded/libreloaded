@@ -17,6 +17,7 @@ namespace godot {
     } // namespace
 
     ReloadedTranslationServer::ReloadedTranslationServer() {
+        singleton = this;
         GameDataServer *game_data = GameDataServer::get_instance();
         ERR_FAIL_NULL(game_data);
         game_data->connect(
@@ -32,6 +33,7 @@ namespace godot {
         if (translation.is_valid()) {
             TranslationServer::get_singleton()->remove_translation(translation);
         }
+        singleton = nullptr;
     }
 
     void ReloadedTranslationServer::_bind_methods() {

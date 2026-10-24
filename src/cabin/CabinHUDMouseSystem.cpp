@@ -55,8 +55,13 @@ namespace godot {
     const char *CabinHUDMouseSystem::control_state_changed_signal = "control_state_changed";
 
     CabinHUDMouseSystem::CabinHUDMouseSystem() {
+        singleton = this;
         small_outline_material = mouse_picking::outline_material(SMALL_OUTLINE_WIDTH, SMALL_OUTLINE_FILL_ALPHA);
         large_outline_material = mouse_picking::outline_material(LARGE_OUTLINE_WIDTH, 0.0);
+    }
+
+    CabinHUDMouseSystem::~CabinHUDMouseSystem() {
+        singleton = nullptr;
     }
 
     void CabinHUDMouseSystem::_bind_methods() {

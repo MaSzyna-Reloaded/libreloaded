@@ -4,6 +4,20 @@ The full entries behind the rules in `FINDINGS.md`: the symptom, what proved the
 and the rule. Headings keep their date and title, because comments in the code cite them
 (`see FINDINGS.md, 2026-09-23`). Open work belongs in `TODO.md`, not here.
 
+## 2026-10-24 - Servers looked up by name
+
+* **Symptom:** Wrzosy at 15 fps standing (profiling build, gamescope headless, 1920x1080), a
+  frame of 66 ms of which the renderer took 6.5 ms (MaSzyna-Reloaded/reports#49).
+* **What proved it:** `perf` of the main thread: `X::get_instance()` 20.7% and
+  `Engine::get_singleton()` 16.9% inclusive, called per axle and per step from
+  `vehicle_process_movement()`, `_walk_axle()`, `_update_neighbours()`, `_find_vehicle()`.
+* **Cause:** 22 servers answered `get_instance()` with `Engine::get_singleton("Name")` - a
+  call into the engine, a hash lookup and a lock - a pattern copied since 2024-12 (TrainSystem).
+* **Fix:** each keeps `static inline X *singleton`, set by its constructor and cleared by its
+  destructor, and is registered abstract, as the engine's servers (`RenderingServer`). Same run:
+  15 -> 23 fps, the frame 66 -> 43.5 ms; `get_singleton` 0.01%.
+* **Rule:** a server keeps its own instance; nothing in a hot path asks `Engine` for one by name.
+
 ## 2026-10-24 - The streaming at 20 km
 
 * **Symptom:** the game on libreloaded and libmaszyna as its plugin ran at 37-40 fps once the train

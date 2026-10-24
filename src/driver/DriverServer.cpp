@@ -51,6 +51,7 @@ namespace godot {
     /// explicit disconnect: callable_mp reports this instance as the callable's object, so the
     /// engine drops the connection when it dies.
     DriverServer::DriverServer() {
+        singleton = this;
         PersonServer *persons = PersonServer::get_instance();
         VehicleServer *vehicles = VehicleServer::get_instance();
         ERR_FAIL_NULL(persons);
@@ -63,6 +64,7 @@ namespace godot {
 
     DriverServer::~DriverServer() {
         _set_processing(false);
+        singleton = nullptr;
     }
 
     /// Scheduled, it holds the runtime's clock, so the time it waits for passes

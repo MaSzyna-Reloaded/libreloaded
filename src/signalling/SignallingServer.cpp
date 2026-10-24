@@ -266,6 +266,7 @@ namespace godot {
 
     /// A switch of a system reports to its implementation where it came to lie, and when it comes or goes
     SignallingServer::SignallingServer() {
+        singleton = this;
         TrackServer *tracks = TrackServer::get_instance();
         ERR_FAIL_NULL(tracks);
         tracks->connect(
@@ -279,6 +280,10 @@ namespace godot {
         tracks->connect(
                 TrackServer::isolated_freed_signal,
                 callable_mp(this, &SignallingServer::_on_isolated_changed).bind(StringName(SOURCE_FREED_EVENT)));
+    }
+
+    SignallingServer::~SignallingServer() {
+        singleton = nullptr;
     }
 
     void SignallingServer::_on_isolated_changed(

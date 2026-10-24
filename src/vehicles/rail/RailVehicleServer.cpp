@@ -42,6 +42,7 @@ namespace godot {
     const char *RailVehicleServer::vehicle_pantograph_contact_lost_signal = "vehicle_pantograph_contact_lost";
 
     RailVehicleServer::RailVehicleServer() {
+        singleton = this;
         ProjectSettings *settings = ProjectSettings::get_singleton();
         diagnostics = settings->get_setting(DIAGNOSTICS_SETTING, false);
         settings->connect("settings_changed", callable_mp(this, &RailVehicleServer::_on_project_settings_changed));
@@ -85,6 +86,10 @@ namespace godot {
                 TrackServer::tracks_changed_signal, callable_mp(this, &RailVehicleServer::_on_topology_changed));
         tracks->connect(
                 TrackServer::topology_changed_signal, callable_mp(this, &RailVehicleServer::_on_topology_changed));
+    }
+
+    RailVehicleServer::~RailVehicleServer() {
+        singleton = nullptr;
     }
 
     void RailVehicleServer::_bind_methods() {
@@ -2306,6 +2311,8 @@ namespace godot {
             power_source.is_valid() && placement->axles[placement->primary_axle].track.is_valid()) {
             const VehicleServer *vehicle_server = VehicleServer::get_instance();
             ERR_FAIL_NULL(vehicle_server);
+            // taken once for every pantograph below
+            TractionServer *traction = TractionServer::get_instance();
             const Transform3D frame = vehicle_get_transform(p_vehicle);
             VehiclePlacement *powered = vehicles.getptr(p_vehicle);
             // half the FIZ's slider (Power: CSW=, DynObj.cpp:5630) - none without it, as in the original
@@ -2367,8 +2374,7 @@ namespace godot {
                 if (collector.touching && !collector.present) {
                     wire = _find_pantograph_wire(p_vehicle, collector, pantograph, frame, half_width)["rid"];
                 }
-                if (TractionServer *traction = TractionServer::get_instance();
-                    collector.touching && wire.is_valid() && traction != nullptr) {
+                if (collector.touching && wire.is_valid() && traction != nullptr) {
                     voltage = traction->wire_get_voltage(wire, assumed_voltage, current);
                     traction->wire_draw_current(wire, assumed_voltage, current);
                     /* A span overhead that carries nothing is another defect than a hole in the

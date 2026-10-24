@@ -21,10 +21,15 @@ namespace godot {
 
         public:
             static TractionServer *get_instance() {
-                return Object::cast_to<TractionServer>(Engine::get_singleton()->get_singleton("TractionServer"));
+                return singleton;
             }
+            ~TractionServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline TractionServer *singleton = nullptr;
+
             static void _bind_methods();
 
             static constexpr double GRID_CELL_SIZE = 500.0;

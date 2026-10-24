@@ -44,6 +44,7 @@ namespace godot {
     }
 
     TrackRenderingServer::TrackRenderingServer() {
+        singleton = this;
         SceneryStreamingServer *streaming = SceneryStreamingServer::get_instance();
         ERR_FAIL_NULL(streaming);
         // the owner lives as long as the streaming does
@@ -80,6 +81,7 @@ namespace godot {
                     GameDataServer::data_reload_requested_signal,
                     callable_mp(this, &TrackRenderingServer::_on_data_reload_requested));
         }
+        singleton = nullptr;
     }
 
     void TrackRenderingServer::backend_register(const StringName &p_name, const uint64_t p_backend_id) {

@@ -26,10 +26,14 @@ namespace godot {
 
         public:
             static VehicleServer *get_instance() {
-                return Object::cast_to<VehicleServer>(Engine::get_singleton()->get_singleton("VehicleServer"));
+                return singleton;
             }
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline VehicleServer *singleton = nullptr;
+
             /* A controller this server holds (controller_create()): the copy of a description it
              * was configured with, and the vehicle it drives while bound */
             struct Controller {

@@ -106,10 +106,14 @@ namespace godot {
             static constexpr int INVALID_NODE_ID = -1;
 
             static TrackServer *get_instance() {
-                return Object::cast_to<TrackServer>(Engine::get_singleton()->get_singleton("TrackServer"));
+                return singleton;
             }
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline TrackServer *singleton = nullptr;
+
             static constexpr const char *CURVE_BAKE_INTERVAL_SETTING = "reloaded/scenery/track_curve_bake_interval";
             static constexpr double DEFAULT_CURVE_BAKE_INTERVAL = 10.0;
             /* The first blade's travel [m] (LIBMASZYNA_SPLIT_SPECS.md, 4) */

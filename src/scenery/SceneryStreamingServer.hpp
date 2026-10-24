@@ -90,11 +90,14 @@ namespace godot {
             static const char *area_ready_signal;
 
             static SceneryStreamingServer *get_instance() {
-                return Object::cast_to<SceneryStreamingServer>(
-                        Engine::get_singleton()->get_singleton("SceneryStreamingServer"));
+                return singleton;
             }
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline SceneryStreamingServer *singleton = nullptr;
+
             struct Owner {
                     String name;      // what the debug window calls it
                     Callable preload; // (rid) -> Variant, on the worker thread; may be invalid

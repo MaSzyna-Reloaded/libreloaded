@@ -42,11 +42,15 @@ namespace godot {
             static constexpr int DRAG_STEP_PIXELS = 28;
 
             static CabinHUDMouseSystem *get_instance() {
-                return Object::cast_to<CabinHUDMouseSystem>(
-                        Engine::get_singleton()->get_singleton("CabinHUDMouseSystem"));
+                return singleton;
             }
+            ~CabinHUDMouseSystem() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline CabinHUDMouseSystem *singleton = nullptr;
+
             /// A mesh the cursor ray can hit: its triangles, taken once, in its own space
             struct Part {
                     ObjectID mesh;

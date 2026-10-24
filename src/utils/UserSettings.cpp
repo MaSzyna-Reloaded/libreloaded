@@ -16,6 +16,7 @@ namespace godot {
     const char *UserSettings::data_dir_changed_signal = "data_dir_changed";
 
     UserSettings::UserSettings() {
+        singleton = this;
         config.instantiate();
 
         Dictionary e3d;
@@ -36,6 +37,10 @@ namespace godot {
         defaults["render"] = render;
 
         load_config();
+    }
+
+    UserSettings::~UserSettings() {
+        singleton = nullptr;
     }
 
     void UserSettings::_bind_methods() {

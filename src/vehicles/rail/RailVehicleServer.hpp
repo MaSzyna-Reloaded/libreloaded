@@ -66,10 +66,15 @@ namespace godot {
             };
 
             static RailVehicleServer *get_instance() {
-                return Object::cast_to<RailVehicleServer>(Engine::get_singleton()->get_singleton("RailVehicleServer"));
+                return singleton;
             }
+            ~RailVehicleServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline RailVehicleServer *singleton = nullptr;
+
             /* Distance the neighbour scan steps past a track endpoint to enter the next track */
             static constexpr double SCAN_ENDPOINT_EPSILON = 0.001;
             /* 10 m is about 140 km/h at 4 fps, plus a safety margin (DynObj.cpp:7160) */

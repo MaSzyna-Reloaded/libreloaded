@@ -47,9 +47,16 @@ namespace godot {
             static const char *GAME_LOGGER;
 
             static GameLog *get_instance() {
-                return dynamic_cast<GameLog *>(Engine::get_singleton()->get_singleton("GameLog"));
+                return singleton;
             }
+            ~GameLog() override;
 
+        private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline GameLog *singleton = nullptr;
+
+        public:
             enum LogLevel {
                 DEBUG = 0,
                 INFO,

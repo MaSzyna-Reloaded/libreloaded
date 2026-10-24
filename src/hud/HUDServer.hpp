@@ -22,10 +22,15 @@ namespace godot {
             static const char *card_changed_signal;
 
             static HUDServer *get_instance() {
-                return Object::cast_to<HUDServer>(Engine::get_singleton()->get_singleton("HUDServer"));
+                return singleton;
             }
+            ~HUDServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline HUDServer *singleton = nullptr;
+
             HashMap<StringName, bool> panels;
             bool hud_visible = true;
             RID card_vehicle;

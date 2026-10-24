@@ -65,10 +65,15 @@ namespace godot {
             ~TrackRenderingServer() override;
 
             static TrackRenderingServer *get_instance() {
-                return Object::cast_to<TrackRenderingServer>(
-                        Engine::get_singleton()->get_singleton("TrackRenderingServer"));
+                return singleton;
             }
 
+        private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline TrackRenderingServer *singleton = nullptr;
+
+        public:
             /// A backend tracks can be drawn by, by its name; it unregisters before it goes
             void backend_register(const StringName &p_name, uint64_t p_backend_id);
             /// Its tracks are given to the backends their data names now

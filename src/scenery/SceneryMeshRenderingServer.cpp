@@ -17,6 +17,7 @@ namespace godot {
     }
 
     SceneryMeshRenderingServer::SceneryMeshRenderingServer() {
+        singleton = this;
         SceneryStreamingServer *streaming = SceneryStreamingServer::get_instance();
         ERR_FAIL_NULL(streaming);
         // the owner lives as long as the streaming does
@@ -32,6 +33,7 @@ namespace godot {
                 rendering->free_rid(item.value.instance);
             }
         }
+        singleton = nullptr;
     }
 
     RID SceneryMeshRenderingServer::mesh_create(

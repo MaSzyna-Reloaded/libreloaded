@@ -78,10 +78,15 @@ namespace godot {
             static const char *dispatch_finished_signal;
 
             static StationServer *get_instance() {
-                return Object::cast_to<StationServer>(Engine::get_singleton()->get_singleton("StationServer"));
+                return singleton;
             }
+            ~StationServer() override;
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline StationServer *singleton = nullptr;
+
             struct Station {
                     String name;
                     StationType type = STATION_TYPE_STATION;

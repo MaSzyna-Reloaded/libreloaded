@@ -19,10 +19,15 @@ namespace godot {
 
         public:
             static ReloadedTranslationServer *get_instance() {
-                return Object::cast_to<ReloadedTranslationServer>(
-                        Engine::get_singleton()->get_singleton("ReloadedTranslationServer"));
+                return singleton;
             }
 
+        private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline ReloadedTranslationServer *singleton = nullptr;
+
+        public:
             /// The wrapper's own .po files, merged under the game's catalogue
             static constexpr const char *TRANSLATIONS_SETTING = "reloaded/locale/translations";
             /// The original's own strings, untranslated - no catalogue needed.

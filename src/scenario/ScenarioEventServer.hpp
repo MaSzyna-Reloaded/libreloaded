@@ -35,11 +35,14 @@ namespace godot {
             static const char *event_freed_signal;
 
             static ScenarioEventServer *get_instance() {
-                return Object::cast_to<ScenarioEventServer>(
-                        Engine::get_singleton()->get_singleton("ScenarioEventServer"));
+                return singleton;
             }
 
         private:
+            /// The one instance, as the engine's servers keep theirs (RenderingServer::singleton):
+            /// set by the constructor, cleared by the destructor
+            static inline ScenarioEventServer *singleton = nullptr;
+
             struct EventData {
                     StringName name;
                     double delay = 0.0;

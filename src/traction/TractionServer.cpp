@@ -48,8 +48,13 @@ namespace godot {
     }
 
     TractionServer::TractionServer() {
+        singleton = this;
         spatial_index.instantiate();
         spatial_index->set_cell_size(GRID_CELL_SIZE);
+    }
+
+    TractionServer::~TractionServer() {
+        singleton = nullptr;
     }
 
     void TractionServer::_on_simulation_advanced(const double p_seconds) {
