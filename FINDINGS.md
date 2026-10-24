@@ -334,6 +334,9 @@ anything. Open work belongs in `TODO.md`.
 * A map or a set keyed by RID is `RIDMap`/`RIDSet` (`utils/RIDHash.hpp`): godot-cpp's
   `RID::operator==` and `RID::get_id()` are calls into the engine, made on every hash and
   compare of a `HashMap<RID, ...>`. *(10-24 servers looked up by name)*
+* What runs every physics sub-step for every vehicle computes only what the step needs: a value
+  that is drawn (a bogie's basis) is made when it is read. Fewer milliseconds a frame are also
+  fewer sub-steps a frame. *(10-24 servers looked up by name)*
 * A compute effect never samples the texture it writes in the same dispatch: D3D12 refuses the
   command list (`Close` E_INVALIDARG) and removes the device - every allocation after fails with
   `0x887a0005`. Copy the source first. *(10-06 crash at 0% loading on D3D12)*

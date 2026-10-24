@@ -1490,6 +1490,7 @@ namespace godot {
         const AxleFollower previous[AXLE_COUNT] = {placement->axles[AXLE_FRONT], placement->axles[AXLE_REAR]};
         const RID previous_listed = previous[placement->primary_axle].track;
         placement->axle_distance = axle_distance;
+        placement->bogie_pivot_spacing = wheels.is_valid() ? wheels->get_bogie_pivot_spacing() : 0.0;
         placement->moved = true;
         placement->location_stale = true;
         placement->placement_unreported = true;
@@ -1944,17 +1945,20 @@ namespace godot {
         const bool on_track = tracks != nullptr && tracks->track_exists(primary.track);
         Transform3D body;
         if (on_track) {
-            p_placement.axle_transforms[AXLE_FRONT] = _axle_transform(front);
-            p_placement.axle_transforms[AXLE_REAR] = _axle_transform(rear);
+            Vector3 front_origin;
+            Vector3 front_heading;
+            Vector3 rear_origin;
+            Vector3 rear_heading;
+            _axle_origin_heading(front, front_origin, front_heading);
+            _axle_origin_heading(rear, rear_origin, rear_heading);
             // the axles' cants, each signed for the way it stands on its track, and the body
             // leaning by their mean (Roll() * 0.5, DynObj.cpp:2690; ts.dHrail, :3167)
             const double cant = Math::deg_to_rad(AXLE_ROLL_MEAN_FACTOR * (_axle_roll(front) + _axle_roll(rear)));
-            const Vector3 front_origin = p_placement.axle_transforms[AXLE_FRONT].origin;
-            const Vector3 rear_origin = p_placement.axle_transforms[AXLE_REAR].origin;
             Vector3 body_forward = front_origin - rear_origin;
-            // axles at one point - a vehicle whose spacings are unknown yet - is the track there
-            body = p_placement.axle_transforms[AXLE_FRONT];
-            if (!body_forward.is_zero_approx()) {
+            if (body_forward.is_zero_approx()) {
+                // axles at one point - a vehicle whose spacings are unknown yet - is the track there
+                body = _axle_transform(front);
+            } else {
                 // vFront between the outer axles, vLeft level, vUp square to both, then the
                 // cant about vFront; the centre midway between the axles (DynObj.cpp:2673-2697).
                 // The original also takes fAdjustment = |vFront| - fAxleDist here (:2677) and uses
@@ -1974,16 +1978,11 @@ namespace godot {
             // ts.R from the yaw difference of the axles - over the pivot spacing (BDist), not
             // the axle distance it was measured over, as the original divides it
             // (DynObj.cpp:3145-3161, MASZYNA_ORIGINAL_QUIRKS.md)
-            const Vector3 front_heading = -p_placement.axle_transforms[AXLE_FRONT].basis.get_column(2);
-            const Vector3 rear_heading = -p_placement.axle_transforms[AXLE_REAR].basis.get_column(2);
             // yaw as the original turns its models, atan2(-x, z) (modelRot.z, DynObj.cpp:2687)
             const double yaw_difference = Math::wrapf(
                     Math::atan2(-front_heading.x, front_heading.z) - Math::atan2(-rear_heading.x, rear_heading.z),
                     -Math::PI, Math::PI);
-            const Ref<RailVehicleWheels> wheels =
-                    controller != nullptr ? controller->get_component(VehicleComponentType::COMPONENT_WHEELS)
-                                          : Ref<VehicleComponent>();
-            const double pivot_spacing = wheels.is_valid() ? wheels->get_bogie_pivot_spacing() : 0.0;
+            const double pivot_spacing = p_placement.bogie_pivot_spacing;
             double radius = 0.0;
             if (!Math::is_zero_approx(Math::sin(yaw_difference * CURVE_RADIUS_HALF_FACTOR))) {
                 radius = -CURVE_RADIUS_HALF_FACTOR * pivot_spacing /
@@ -1994,8 +1993,6 @@ namespace godot {
             }
             p_placement.track_curve = Vector2(radius, cant);
         } else {
-            p_placement.axle_transforms[AXLE_FRONT] = body;
-            p_placement.axle_transforms[AXLE_REAR] = body;
             p_placement.track_curve = Vector2();
         }
         if (controller != nullptr) {
@@ -2043,20 +2040,24 @@ namespace godot {
         // the bogie comes from scripts as a bare int
         ERR_FAIL_INDEX_V(p_bogie, AXLE_COUNT, Transform3D());
         const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        const TrackServer *tracks = TrackServer::get_instance();
+        if (placement == nullptr || tracks == nullptr ||
+            !tracks->track_exists(placement->axles[placement->primary_axle].track)) {
+            return Transform3D();
+        }
         // BOGIE_FRONT is the front axle's, BOGIE_REAR the rear one's
-        return placement != nullptr ? placement->axle_transforms[p_bogie] : Transform3D();
+        return _axle_transform(placement->axles[p_bogie]);
     }
 
-    Transform3D RailVehicleServer::_axle_transform(const AxleFollower &p_axle) const {
-        TrackServer *tracks = TrackServer::get_instance();
-        ERR_FAIL_NULL_V(tracks, Transform3D());
+    bool RailVehicleServer::_axle_track_frame(const AxleFollower &p_axle, Vector3 &r_point, Vector3 &r_forward) const {
+        const TrackServer *tracks = TrackServer::get_instance();
+        ERR_FAIL_NULL_V(tracks, false);
         // linear on purpose: the cubic interpolation has no neighbour point at the curve ends, so
         // the position advanced there only about 60% of the offset - every vehicle lost
         // centimetres at each track joint, which kicked the trainset through its couplers
         // (track_sample_position() is Curve3D::sample_baked(offset, false))
-        Vector3 origin;
-        if (!tracks->track_sample_position(p_axle.track, p_axle.switch_track, p_axle.track_offset, origin)) {
-            return Transform3D();
+        if (!tracks->track_sample_position(p_axle.track, p_axle.switch_track, p_axle.track_offset, r_point)) {
+            return false;
         }
         const double length = tracks->track_get_length(p_axle.track, p_axle.switch_track);
         const double safe_offset = CLAMP(p_axle.track_offset, 0.0, length);
@@ -2071,12 +2072,39 @@ namespace godot {
         Vector3 previous_point;
         tracks->track_sample_position(p_axle.track, p_axle.switch_track, next_offset, next_point);
         tracks->track_sample_position(p_axle.track, p_axle.switch_track, previous_offset, previous_point);
-        Vector3 forward = next_point - previous_point;
-        if (forward.length_squared() <= HEADING_MIN_LENGTH_SQUARED) {
-            forward = Vector3(0.0, 0.0, -1.0);
+        r_forward = next_point - previous_point;
+        if (r_forward.length_squared() <= HEADING_MIN_LENGTH_SQUARED) {
+            r_forward = Vector3(0.0, 0.0, -1.0);
         } else {
-            forward = forward.normalized();
+            r_forward = r_forward.normalized();
         }
+        return true;
+    }
+
+    /* The cant turns the basis about the forward and the reversal by a half turn about its up,
+     * so -Z of _axle_transform() is the forward, or its opposite on a reversed axle */
+    void
+    RailVehicleServer::_axle_origin_heading(const AxleFollower &p_axle, Vector3 &r_origin, Vector3 &r_heading) const {
+        Vector3 forward;
+        if (!_axle_track_frame(p_axle, r_origin, forward)) {
+            r_origin = Vector3();
+            r_heading = Vector3(0.0, 0.0, -1.0);
+            return;
+        }
+        r_origin.y += static_cast<real_t>(TrackServer::get_instance()->get_rail_height());
+        r_heading = p_axle.track_direction == TrackServer::DIRECTION_REVERSED ? -forward : forward;
+    }
+
+    Transform3D RailVehicleServer::_axle_transform(const AxleFollower &p_axle) const {
+        TrackServer *tracks = TrackServer::get_instance();
+        ERR_FAIL_NULL_V(tracks, Transform3D());
+        Vector3 origin;
+        Vector3 forward;
+        if (!_axle_track_frame(p_axle, origin, forward)) {
+            return Transform3D();
+        }
+        const double length = tracks->track_get_length(p_axle.track, p_axle.switch_track);
+        const double safe_offset = CLAMP(p_axle.track_offset, 0.0, length);
 
         Vector3 reference_up(0.0, 1.0, 0.0);
         if (Math::abs(forward.dot(reference_up)) > UP_PARALLEL_DOT_LIMIT) {

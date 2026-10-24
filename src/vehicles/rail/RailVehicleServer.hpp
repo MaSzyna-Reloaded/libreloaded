@@ -231,6 +231,9 @@ namespace godot {
                     /* fAxleDist: the larger of the pivot and the axle spacing, within the margins -
                      * taken when the vehicle is placed, as the original takes it once (DynObj.cpp:2499) */
                     double axle_distance = 0.0;
+                    /* BDist, the wheels' bogie pivot spacing the curve radius is measured over
+                     * (_place_body()) - taken with the axle distance, from the same component */
+                    double bogie_pivot_spacing = 0.0;
                     /* The listed track and the travel along it last reported to TrackServer -
                      * it stood there, or went that way */
                     RID reported_track;
@@ -249,10 +252,6 @@ namespace godot {
                      * RadioServer */
                     ObjectID radio_component_id;
                     RID radio;
-                    /* Where the axles are (AXLE_FRONT, AXLE_REAR), sampled with the body above and
-                     * handed out as the bogies' - the original turns its bogie models by the axles
-                     * (DynObj.cpp:1508-1519) */
-                    Transform3D axle_transforms[AXLE_COUNT];
                     /* The running shape handed to the physics with the body: radius [m] and cant
                      * [rad] (ts.R, ts.dHrail) */
                     Vector2 track_curve;
@@ -422,6 +421,15 @@ namespace godot {
             /* Where the vehicle's body is, for the axles as they now are: into the placement and
              * to its controller */
             void _place_body(VehiclePlacement &p_placement);
+            /* Where an axle stands on its track (no rail height) and the track's forward there,
+             * sampled as the axle's transform is built from them; false without the track */
+            bool _axle_track_frame(const AxleFollower &p_axle, Vector3 &r_point, Vector3 &r_forward) const;
+            /* An axle's origin and heading as its transform has them (the rail height up, -Z of
+             * its basis), without building that basis - what the step needs of an axle */
+            void _axle_origin_heading(const AxleFollower &p_axle, Vector3 &r_origin, Vector3 &r_heading) const;
+            /* An axle's whole transform, the cant and the reversal turned in - made when a bogie is
+             * read (vehicle_get_bogie_transform()), not on every step: the original turns its
+             * bogie models by the axles (DynObj.cpp:1508-1519) */
             Transform3D _axle_transform(const AxleFollower &p_axle) const;
             /* The track's cant under the axle [deg], signed for the way the axle stands on it */
             double _axle_roll(const AxleFollower &p_axle) const;

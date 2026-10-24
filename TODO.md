@@ -419,6 +419,16 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
   once per vehicle type, not per submodel and vehicle.
 * **Road vehicles return with roads:** a vehicle on an unregistered track (every road) is left out
   at load (`MaszynaSceneryProvider._attach_objects()`).
+* **The vehicle step on Wrzosy after 2026-10-24** (profiling build, ~350 vehicles moving, 5
+  sub-steps a frame at 20 fps): 28.5% of the main thread, the Mover's own physics a third of it.
+  Left of the wrapper: the neighbour scans (`_find_vehicle()` 3.2%) run again whenever anything
+  moves on a scanned track - with no vehicle entering or leaving those tracks and no switch thrown,
+  the neighbour is the same and only its distance changes, which the offsets give without walking
+  the route (the range and the "none found" case have to come out as the walk does); the
+  placement reported by a signal per moved vehicle per frame (`vehicle_report_placement()`, 1.9%);
+  a component taken as a `Ref` per call (`get_rail_component()` in `vehicle_collect_current()`,
+  ~1%) - godot-cpp's `init_ref()`/`reference()` are engine calls, and a bound method cannot return
+  `const Ref<T> &` (`PtrToArg<const Ref<T> &>` has no `encode`).
 * **The stepping of parked vehicles** (Wrzosy, profiling build, after the neighbour scan cache):
   the step is 30.9% of the main thread - forces and movement ~8%, the remaining neighbour scans
   ~4% (vehicles near moving ones), placements reported to rendering ~5%. Parked EMUs/DMUs keep
