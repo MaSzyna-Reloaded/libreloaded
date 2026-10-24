@@ -396,6 +396,10 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         standard_track_rendering_backend = memnew(StandardTrackRenderingBackend);
         track_rendering_server_singleton->backend_register(
                 StandardTrackRenderingBackend::NAME, standard_track_rendering_backend->get_instance_id()); // 13d
+        // after ModelRenderingServer is registered: it outlines and picks its instances; before the
+        // plugins' servers, whose vehicle renderer frees its vehicles' pickables when it is freed
+        scenery_hud_mouse_server_singleton = memnew(SceneryHUDMouseServer);
+        Engine::get_singleton()->register_singleton("SceneryHUDMouseServer", scenery_hud_mouse_server_singleton); // 13e
         /* after RailVehicleServer, SceneryStreamingServer, SignallingServer and ScenarioEventServer are
          * registered, before the servers that follow model instances: the plugins' servers (a vehicle
          * backend, a model renderer) */
@@ -409,9 +413,6 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         // after RailVehicleServer is registered: the constructor follows its freed vehicles
         driver_server_singleton = memnew(DriverServer);
         Engine::get_singleton()->register_singleton("DriverServer", driver_server_singleton); // 17
-        // after ModelRenderingServer is registered: it outlines and picks its instances
-        scenery_hud_mouse_server_singleton = memnew(SceneryHUDMouseServer);
-        Engine::get_singleton()->register_singleton("SceneryHUDMouseServer", scenery_hud_mouse_server_singleton); // 18
         // after RailVehicleServer, the model renderer and SceneryHUDMouseServer: the constructor follows
         // their vehicles and instances, and it registers what the player picks. A plugin's renderer
         // registered itself under the name already (10c); without one the core draws the models
@@ -502,14 +503,6 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         rail_vehicle_rendering_server_singleton = nullptr;
     }
 
-    if (Engine::get_singleton()->has_singleton("SceneryHUDMouseServer")) {
-        Engine::get_singleton()->unregister_singleton("SceneryHUDMouseServer"); // 18
-    }
-    if (scenery_hud_mouse_server_singleton != nullptr) {
-        memdelete(scenery_hud_mouse_server_singleton);
-        scenery_hud_mouse_server_singleton = nullptr;
-    }
-
     if (Engine::get_singleton()->has_singleton("DriverServer")) {
         Engine::get_singleton()->unregister_singleton("DriverServer"); // 17
     }
@@ -528,6 +521,14 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
     if (reloaded_plugin_server_singleton != nullptr) {
         reloaded_plugin_server_singleton->plugins_free_servers(); // 10c
+    }
+
+    if (Engine::get_singleton()->has_singleton("SceneryHUDMouseServer")) {
+        Engine::get_singleton()->unregister_singleton("SceneryHUDMouseServer"); // 13e
+    }
+    if (scenery_hud_mouse_server_singleton != nullptr) {
+        memdelete(scenery_hud_mouse_server_singleton);
+        scenery_hud_mouse_server_singleton = nullptr;
     }
 
     if (standard_track_rendering_backend != nullptr) {
