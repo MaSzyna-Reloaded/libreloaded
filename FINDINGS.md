@@ -576,6 +576,9 @@ anything. Open work belongs in `TODO.md`.
   empty `demo/.godot/exported`. *(09-29 vehicle card missing in release)*
 * The export is run by the editor, and the editor loads the debug library whatever the export:
   every `release-*` export builds `compile-debug` too. *(09-30 release export without CabinSystem)*
+* The streaming's draw distance is not how far the camera sees: a far view (a world's far terrain)
+  is the camera's own setting, never the streaming's default. A setting moved to another key is
+  set again under the new one, or its default applies unnoticed. *(10-24 the streaming at 20 km)*
 
 ## Tests
 * `user://` is `~/.local/share/MaSzyna-Reloaded/` (`custom_user_dir_name`); a killed test may

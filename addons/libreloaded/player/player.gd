@@ -65,6 +65,10 @@ const RADIO_STOP_TRANSCRIPT_SECONDS:float = 10.0
 ## world around it may not be built yet and the flight crosses nothing [m]
 const FOLLOW_JUMP_DISTANCE_SETTING:StringName = &"reloaded/camera/follow_jump_distance"
 const FOLLOW_JUMP_DISTANCE_DEFAULT:float = 1000.0
+## How far the camera sees: a world's far terrain, drawn outside the streaming, which keeps its own
+## shorter reach (SceneryStreamingServer's draw distance, #47) [m]
+const FAR_DISTANCE_SETTING:StringName = &"reloaded/scenery/far_distance"
+const FAR_DISTANCE_DEFAULT:float = 20000.0
 
 func _ready() -> void:
     sfx_player.bank = sfx_bank
@@ -148,9 +152,7 @@ func _initialization_complete() -> void:
     if not camera:
         camera = Camera3D.new()
         camera.name = "Camera"
-        # as far as the scenery is drawn (SceneryStreamingServer's draw distance) - what a plugin
-        # draws farther, a world's far terrain, stands within it
-        camera.far = SceneryStreamingServer.streaming_get_draw_distance()
+        camera.far = ProjectSettings.get_setting(FAR_DISTANCE_SETTING, FAR_DISTANCE_DEFAULT)
         _mode_view().add_child(camera)
         CabinHUDMouseSystem.mouse_set_camera(camera.get_instance_id())
     _show_view(_mode_view())

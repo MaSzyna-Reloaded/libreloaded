@@ -80,10 +80,17 @@ func _enter_tree():
     # scenery and kept, and the streaming only builds and clears their instances. The
     # --enable-lazy-loading command-line switch turns it on (read at startup)
     add_custom_project_setting("reloaded/resources/lazy_loading", true, TYPE_BOOL)
-    # MaszynaE3DRenderingServer streams registered scenery models in and out around the camera; this caps
-    # every node's own range and stands in for the nodes that declare none (read at startup)
+    # SceneryStreamingServer's own reach: it streams the scenery's pieces and the vehicles in and out
+    # around the camera, caps every piece's own range and stands in for the pieces that declare none
+    # (read at startup)
     add_custom_project_setting(
-        "reloaded/scenery/draw_distance", 20000.0, TYPE_FLOAT,
+        "reloaded/scenery/draw_distance", 2500.0, TYPE_FLOAT,
+        PROPERTY_HINT_RANGE, "100.0,50000.0,10.0,suffix:m"
+    )
+    # How far the camera sees (Player.FAR_DISTANCE_SETTING): a world's far terrain, drawn outside the
+    # streaming, past its draw distance
+    add_custom_project_setting(
+        Player.FAR_DISTANCE_SETTING, Player.FAR_DISTANCE_DEFAULT, TYPE_FLOAT,
         PROPERTY_HINT_RANGE, "100.0,50000.0,10.0,suffix:m"
     )
     # The game's settings (its JSON, UserSettings.DECLARATIONS_SETTING): only the project settings

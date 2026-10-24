@@ -70,11 +70,11 @@ namespace godot {
             /// Pieces cleared before the memory they held is given back to the system, once the
             /// clearing is done (ProcessMemory::release_unused())
             static constexpr int RELEASE_CLEARED_PIECES = 256;
-            /// Fallback for reloaded/scenery/draw_distance, also the range of the pieces
-            /// that declare none of their own: 20 km, a world's far terrain and what declares
-            /// a range of its own seen within it (the operator, 2026-10-17); what a plugin loads
-            /// around the camera (a world's sectors) may reach less far
-            static constexpr float DEFAULT_DRAW_DISTANCE_M = 20000.0;
+            /// Fallback for reloaded/scenery/draw_distance, the streaming's own reach: the range of
+            /// the pieces that declare none of their own, the cap of those that do, and how far the
+            /// vehicles are drawn. Not how far the camera sees - a world's far terrain is drawn
+            /// past it, outside the streaming (Player.FAR_DISTANCE_SETTING, #47)
+            static constexpr float DEFAULT_DRAW_DISTANCE_M = 2500.0;
             static constexpr const char *DRAW_DISTANCE_SETTING = "reloaded/scenery/draw_distance";
 
             /// Pieces in range started waiting to be built...

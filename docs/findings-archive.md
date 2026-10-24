@@ -4,6 +4,24 @@ The full entries behind the rules in `FINDINGS.md`: the symptom, what proved the
 and the rule. Headings keep their date and title, because comments in the code cite them
 (`see FINDINGS.md, 2026-09-23`). Open work belongs in `TODO.md`, not here.
 
+## 2026-10-24 - The streaming at 20 km
+
+* **Symptom:** the game on libreloaded and libmaszyna as its plugin ran at 37-40 fps once the train
+  moved (vsync 60), the game before the split at ~44 fps. Render thread CPU 6.6 -> 8.8 ms, GPU
+  10.8 -> 12.3 ms, a regular comb of frames up to ~110 ms (#47).
+* **What proved it:** the report's streaming statistics: draw distance 20 000 m, 77 active
+  1 km chunks. The game had set 2500 m under the setting's old key; the split moved the setting
+  to `reloaded/scenery/draw_distance`, the game set nothing under it, and the core's
+  default was 20 km - chosen for a world's far terrain, which is drawn outside the streaming.
+* **Cause:** one number for two things: the streaming's reach (the pieces without a range of their
+  own, the cap of those with one, the vehicles drawn) and the camera's far plane. A scenery's
+  pieces and every vehicle were built and drawn 20 km around the camera.
+* **Fix:** `reloaded/scenery/draw_distance` is the streaming's alone, 2500 m by default; the
+  camera's far plane is `reloaded/scenery/far_distance`, 20 km
+  (`Player.FAR_DISTANCE_SETTING`).
+* **Rule:** how far the camera sees is never the streaming's reach; a setting moved to another key
+  is set again under the new one.
+
 ## 2026-10-16 - A world's tracks freed in 99 s
 
 * **Symptom:** closing the scenery importer's editor scene with a large world (trzebinia, 91 357
