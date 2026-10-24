@@ -1801,10 +1801,7 @@ namespace godot {
         const double request_sign = p_distance < 0.0 ? -1.0 : 1.0;
         Vector3 start_point;
         if (diagnostics && p_force_switch_state) {
-            const Ref<Curve3D> curve = tracks->track_get_domain_curve(current_track, current_switch_track);
-            if (curve.is_valid()) {
-                start_point = curve->sample_baked(static_cast<real_t>(current_track_offset), false);
-            }
+            tracks->track_sample_position(current_track, current_switch_track, current_track_offset, start_point);
         }
         // Convert movement relative to the vehicle front into curve offset movement. Positive sign
         // moves toward the branch end, negative toward the branch start.
@@ -1911,11 +1908,10 @@ namespace godot {
     RailVehicleServer::_check_movement(const AxleFollower &p_axle, const Vector3 &p_start, const double p_moved) const {
         TrackServer *tracks = TrackServer::get_instance();
         ERR_FAIL_NULL(tracks);
-        const Ref<Curve3D> curve = tracks->track_get_domain_curve(p_axle.track, p_axle.switch_track);
-        if (curve.is_null()) {
+        Vector3 end_point;
+        if (!tracks->track_sample_position(p_axle.track, p_axle.switch_track, p_axle.track_offset, end_point)) {
             return;
         }
-        const Vector3 end_point = curve->sample_baked(static_cast<real_t>(p_axle.track_offset), false);
         const double world_moved = p_start.distance_to(end_point);
         if (Math::abs(world_moved - p_moved) > DIAGNOSTICS_MOVE_TOLERANCE) {
             UtilityFunctions::push_error(
@@ -2054,17 +2050,16 @@ namespace godot {
     Transform3D RailVehicleServer::_axle_transform(const AxleFollower &p_axle) const {
         TrackServer *tracks = TrackServer::get_instance();
         ERR_FAIL_NULL_V(tracks, Transform3D());
-        const Ref<Curve3D> curve = tracks->track_get_domain_curve(p_axle.track, p_axle.switch_track);
-        if (curve.is_null()) {
-            return Transform3D();
-        }
-
-        const double length = curve->get_baked_length();
-        const double safe_offset = CLAMP(p_axle.track_offset, 0.0, length);
         // linear on purpose: the cubic interpolation has no neighbour point at the curve ends, so
         // the position advanced there only about 60% of the offset - every vehicle lost
         // centimetres at each track joint, which kicked the trainset through its couplers
-        const Vector3 origin = curve->sample_baked(static_cast<real_t>(safe_offset), false);
+        // (track_sample_position() is Curve3D::sample_baked(offset, false))
+        Vector3 origin;
+        if (!tracks->track_sample_position(p_axle.track, p_axle.switch_track, p_axle.track_offset, origin)) {
+            return Transform3D();
+        }
+        const double length = tracks->track_get_length(p_axle.track, p_axle.switch_track);
+        const double safe_offset = CLAMP(p_axle.track_offset, 0.0, length);
         const double sample_distance = MIN(HEADING_SAMPLE_DISTANCE, length);
         double previous_offset = CLAMP(safe_offset - sample_distance, 0.0, length);
         double next_offset = CLAMP(safe_offset + sample_distance, 0.0, length);
@@ -2072,8 +2067,11 @@ namespace godot {
             previous_offset = 0.0;
             next_offset = length;
         }
-        Vector3 forward = curve->sample_baked(static_cast<real_t>(next_offset), false) -
-                          curve->sample_baked(static_cast<real_t>(previous_offset), false);
+        Vector3 next_point;
+        Vector3 previous_point;
+        tracks->track_sample_position(p_axle.track, p_axle.switch_track, next_offset, next_point);
+        tracks->track_sample_position(p_axle.track, p_axle.switch_track, previous_offset, previous_point);
+        Vector3 forward = next_point - previous_point;
         if (forward.length_squared() <= HEADING_MIN_LENGTH_SQUARED) {
             forward = Vector3(0.0, 0.0, -1.0);
         } else {

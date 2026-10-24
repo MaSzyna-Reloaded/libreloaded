@@ -10,6 +10,7 @@
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/local_vector.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
@@ -158,6 +159,15 @@ namespace godot {
                     double roll2 = 0.0;
             };
 
+            /* A domain curve's baked points and the distance along it to each (Curve3D's
+             * baked_point_cache and baked_dist_cache, scene/resources/curve.cpp:1688-1692), kept so
+             * that a position along it is read without a call into the engine
+             * (track_sample_position()) - one is asked for every axle on every step */
+            struct BakedPath {
+                    LocalVector<Vector3> points;
+                    LocalVector<real_t> distances;
+            };
+
             struct TrackSegment {
                     RID track_rid;
                     TrackType type = TRACK_NORMAL;
@@ -197,6 +207,9 @@ namespace godot {
                     double length = 0.0;
                     double length1 = 0.0;
                     double length2 = 0.0;
+                    /* The domain curves' baked points, read once when the curves are set */
+                    BakedPath baked_path1;
+                    BakedPath baked_path2;
                     int graph_id = -1;
                     SwitchCommonPoint switch_common_endpoint_index = POINT_NONE;
                     PackedInt32Array switch_common_endpoints;
@@ -298,6 +311,7 @@ namespace godot {
 
             void _read_curve_points(const Ref<Resource> &p_curve, CurvePoints &p_points) const;
             Ref<Curve3D> _build_domain_curve(const CurvePoints &p_points) const;
+            static void _bake_path(const Ref<Curve3D> &p_curve, BakedPath &r_path);
             void _set_curves(TrackSegment &p_track, const Ref<Resource> &p_curve1, const Ref<Resource> &p_curve2);
             /// The tracks' curves are baked again at the interval the setting says now
             void _on_project_settings_changed();
@@ -437,6 +451,12 @@ namespace godot {
              * curve resource when it was set */
             Vector2 track_get_roll(const RID &p_track, SwitchTrack p_branch = TRACK_COMMON) const;
             Ref<Curve3D> track_get_domain_curve(const RID &p_track, SwitchTrack p_branch = TRACK_COMMON) const;
+            /* The point at `offset` along the domain curve of the branch (the diverging one when it
+             * has one, the first otherwise - as track_get_domain_curve()), as
+             * Curve3D::sample_baked(offset, false) gives it, read from the points baked when the
+             * curves were set. False, and nothing written, for a track without that curve. */
+            bool
+            track_sample_position(const RID &p_track, SwitchTrack p_branch, double p_offset, Vector3 &r_position) const;
             /* The endpoints the two branches of a two-curve track share */
             PackedInt32Array track_get_common_endpoints(const RID &p_track) const;
             EndpointIndex track_get_branch_start_endpoint(const RID &p_track, SwitchTrack p_branch) const;

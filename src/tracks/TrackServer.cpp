@@ -4,6 +4,7 @@
 #include "utils/RIDHash.hpp"
 #include "utils/Units.hpp"
 
+#include <cfloat>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -406,6 +407,8 @@ namespace godot {
         _read_curve_points(p_curve2, p_track.points2);
         p_track.domain_curve1 = p_curve1.is_valid() ? _build_domain_curve(p_track.points1) : Ref<Curve3D>();
         p_track.domain_curve2 = p_curve2.is_valid() ? _build_domain_curve(p_track.points2) : Ref<Curve3D>();
+        _bake_path(p_track.domain_curve1, p_track.baked_path1);
+        _bake_path(p_track.domain_curve2, p_track.baked_path2);
         p_track.cached_endpoints.clear();
         p_track.switch_is_right = false;
         p_track.length = 0.0;
@@ -1075,6 +1078,67 @@ namespace godot {
             return track->domain_curve2;
         }
         return track->domain_curve1;
+    }
+
+    /// The distances summed as Curve3D::_bake() sums them (curve.cpp:1688-1692)
+    void TrackServer::_bake_path(const Ref<Curve3D> &p_curve, BakedPath &r_path) {
+        r_path.points.clear();
+        r_path.distances.clear();
+        if (p_curve.is_null()) {
+            return;
+        }
+        const PackedVector3Array points = p_curve->get_baked_points();
+        const int64_t count = points.size();
+        r_path.points.resize(count);
+        r_path.distances.resize(count);
+        const Vector3 *source = points.ptr();
+        for (int64_t index = 0; index < count; ++index) {
+            r_path.points[index] = source[index];
+            r_path.distances[index] =
+                    index == 0 ? 0.0 : r_path.distances[index - 1] + source[index - 1].distance_to(source[index]);
+        }
+    }
+
+    /// Curve3D::sample_baked(offset, false): clamped to the length, the interval found by the same
+    /// binary search, the two points lerped (curve.cpp:1787-1843, 1927-1946)
+    bool TrackServer::track_sample_position(
+            const RID &p_track, const SwitchTrack p_branch, const double p_offset, Vector3 &r_position) const {
+        const TrackSegment *track = tracks.getptr(p_track);
+        if (track == nullptr) {
+            return false;
+        }
+        const bool diverging = p_branch == TRACK_DIVERGING && track->domain_curve2.is_valid();
+        if (!diverging && track->domain_curve1.is_null()) {
+            return false;
+        }
+        const BakedPath &path = diverging ? track->baked_path2 : track->baked_path1;
+        const int count = static_cast<int>(path.points.size());
+        if (count == 0) {
+            r_position = Vector3();
+            return true;
+        }
+        if (count == 1) {
+            r_position = path.points[0];
+            return true;
+        }
+        const real_t offset = CLAMP(static_cast<real_t>(p_offset), 0.0, path.distances[count - 1]);
+        int start = 0;
+        int end = count;
+        int index = (end + start) / 2;
+        while (start < index) {
+            if (offset <= path.distances[index]) {
+                end = index;
+            } else {
+                start = index;
+            }
+            index = (end + start) / 2;
+        }
+        const real_t begin = path.distances[index];
+        const real_t interval = path.distances[index + 1] - begin;
+        // a very short interval is sampled at its middle, as the engine does (curve.cpp:1817-1820)
+        const real_t fraction = interval < FLT_EPSILON ? 0.5 : (offset - begin) / interval;
+        r_position = path.points[index].lerp(path.points[index + 1], fraction);
+        return true;
     }
 
     PackedInt32Array TrackServer::track_get_common_endpoints(const RID &p_track) const {
