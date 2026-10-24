@@ -1,5 +1,6 @@
 #pragma once
 #include "../tracks/SpatialIndex.hpp"
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/ref.hpp>
@@ -70,8 +71,8 @@ namespace godot {
                     }
             };
 
-            const HashMap<RID, PowerSource> &_get_power_sources() const;
-            const HashMap<RID, Wire> &_get_wires() const;
+            const RIDMap<PowerSource> &_get_power_sources() const;
+            const RIDMap<Wire> &_get_wires() const;
             const PowerSource *_get_power_source(const RID &p_power_source) const;
             const Wire *_get_wire(const RID &p_wire) const;
             /* The spans whose boxes touch p_aabb, on the ground plane (x, z) */
@@ -84,10 +85,10 @@ namespace godot {
             virtual void _wire_freed(const RID &p_wire) {}
 
         private:
-            HashMap<RID, PowerSource> power_sources;
+            RIDMap<PowerSource> power_sources;
             HashMap<String, RID> power_sources_by_name;
             int64_t next_power_source_id = 0;
-            HashMap<RID, Wire> wires;
+            RIDMap<Wire> wires;
             int64_t next_wire_id = 0;
             Ref<SpatialIndex> spatial_index;
 

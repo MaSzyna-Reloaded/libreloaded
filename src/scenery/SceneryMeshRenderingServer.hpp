@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/object.hpp>
@@ -28,7 +29,7 @@ namespace godot {
                     /// The RenderingServer instance while it is built, invalid otherwise
                     RID instance;
             };
-            HashMap<RID, MeshPlacement> placements;
+            RIDMap<MeshPlacement> placements;
             int stream_owner = 0;
 
             void _stream_build(const RID &p_mesh, const Variant &p_preloaded);

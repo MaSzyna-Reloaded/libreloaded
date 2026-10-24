@@ -10,6 +10,7 @@
 #include <iterator>
 #ifdef LIBRELOADED_LUA
 #include "lua/LuaScriptContext.hpp"
+#include "utils/RIDHash.hpp"
 #endif
 
 namespace godot {
@@ -395,7 +396,7 @@ namespace godot {
     void ScenarioScriptServer::script_deliver(
             const ScriptSignal p_signal, const RID &p_target, const Vector<ScriptArgument> &p_arguments,
             const RID &p_activator, const RID &p_context) {
-        const HashMap<RID, Vector<RID>> *by_target = subscriptions.getptr(p_signal);
+        const RIDMap<Vector<RID>> *by_target = subscriptions.getptr(p_signal);
         const Vector<RID> *subscribed = by_target != nullptr ? by_target->getptr(p_target) : nullptr;
         if (subscribed == nullptr) {
             return;

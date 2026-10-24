@@ -1,6 +1,7 @@
 #pragma once
 #include "ScenarioScriptCabinImplementation.hpp"
 #include "ScriptRuntime.hpp"
+#include "utils/RIDHash.hpp"
 #include <functional>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
@@ -128,10 +129,10 @@ namespace godot {
                     StringName active_unit;
             };
 
-            HashMap<RID, Context> contexts;
-            HashMap<RID, Hook> hooks;
+            RIDMap<Context> contexts;
+            RIDMap<Hook> hooks;
             /// The subscriptions of each signal, by target
-            HashMap<int, HashMap<RID, Vector<RID>>> subscriptions;
+            HashMap<int, RIDMap<Vector<RID>>> subscriptions;
 
             /// The names of the handle kinds and of the script signals the plugins registered, in
             /// the order of their values from FIRST_REGISTERED and SIGNAL_FIRST_REGISTERED

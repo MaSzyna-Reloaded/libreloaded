@@ -11,6 +11,7 @@
 #include <godot_cpp/variant/typed_array.hpp>
 
 #include "scenery/SceneryModelPlacement.hpp"
+#include "utils/RIDHash.hpp"
 
 namespace godot {
     class ModelRenderingBackend;
@@ -56,7 +57,7 @@ namespace godot {
             /// The backend BACKEND_SETTING names, once registered
             StringName default_backend;
             /// The backend each instance is drawn by, from its instance_created to its instance_freed
-            HashMap<RID, ModelRenderingBackend *> instance_backends;
+            RIDMap<ModelRenderingBackend *> instance_backends;
 
             ModelRenderingBackend *_get_backend(const StringName &p_provider) const;
             ModelRenderingBackend *_get_instance_backend(const RID &p_instance) const;

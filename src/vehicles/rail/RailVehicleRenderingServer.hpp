@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/RIDHash.hpp"
 #include "utils/WorkerTaskQueue.hpp"
 #include "vehicles/rail/RailVehicleAppearance.hpp"
 
@@ -96,7 +97,7 @@ namespace godot {
                     Vector<RID> held_models;
                     /* What the preload loaded on a worker, by resource - taken by the next build,
                      * which holds them (_get_model()) */
-                    HashMap<RID, Ref<Resource>> preloaded;
+                    RIDMap<Ref<Resource>> preloaded;
                     /* What holds the files of those models' materials the preload read
                      * (ModelRenderingServer::material_preload()), let go with them after the build */
                     Array preloaded_materials;
@@ -173,11 +174,11 @@ namespace godot {
             void _detach_all();
 
         private:
-            HashMap<RID, Visual> vehicles;
+            RIDMap<Visual> vehicles;
             /* The vehicle each exterior model draws */
-            HashMap<RID, RID> model_vehicles;
+            RIDMap<RID> model_vehicles;
             /* The vehicle each detection area finds */
-            HashMap<RID, RID> area_vehicles;
+            RIDMap<RID> area_vehicles;
             /* The vehicles in the order the frame visits them, and where each visit left off */
             Vector<RID> visit_order;
             int slow_cursor = 0;

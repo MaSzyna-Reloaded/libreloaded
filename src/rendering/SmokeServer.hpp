@@ -1,5 +1,6 @@
 #pragma once
 #include "rendering/SmokeSource.hpp"
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/particle_process_material.hpp>
 #include <godot_cpp/classes/quad_mesh.hpp>
@@ -119,7 +120,7 @@ namespace godot {
                     bool ordered = false;
             };
 
-            HashMap<RID, Emitter> emitters;
+            RIDMap<Emitter> emitters;
             /* The emitters that spawn now, walked round-robin by _process_smoke(); a HashMap's
              * elements do not move, so they are held by pointer */
             LocalVector<Emitter *> spawning;

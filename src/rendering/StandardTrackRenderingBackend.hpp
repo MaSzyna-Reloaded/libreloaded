@@ -2,6 +2,7 @@
 #include "rendering/TrackRenderingBackend.hpp"
 #include "rendering/TrackRenderingLook.hpp"
 #include "tracks/TrackCurve.hpp"
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/curve3d.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -101,7 +102,7 @@ namespace godot {
                     PackedInt32Array indices;
             };
 
-            HashMap<RID, Track> tracks;
+            RIDMap<Track> tracks;
             Ref<TrackRenderingLook> look;
             /// The base sleeper of each kind, for a kind the look gives no mesh of
             HashMap<int, Ref<ArrayMesh>> base_sleepers;

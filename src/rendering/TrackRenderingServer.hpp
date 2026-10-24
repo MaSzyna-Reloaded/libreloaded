@@ -1,5 +1,6 @@
 #pragma once
 #include "rendering/TrackRenderingBackend.hpp"
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -40,8 +41,8 @@ namespace godot {
                     /// Within the camera's range while it is streamed
                     bool streamed = false;
             };
-            HashMap<RID, Track> tracks;
-            HashMap<RID, RID> track_renders_by_track;
+            RIDMap<Track> tracks;
+            RIDMap<RID> track_renders_by_track;
             HashMap<StringName, TrackRenderingBackend *> backends;
             int stream_owner = 0;
             double tracks_distance = TRACKS_DISTANCE;

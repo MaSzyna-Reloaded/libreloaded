@@ -1,4 +1,5 @@
 #include "SpatialIndex.hpp"
+#include "utils/RIDHash.hpp"
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -60,7 +61,7 @@ namespace godot {
         Vector<Vector2i> touched;
         _cells_for_aabb(p_aabb, touched);
         // an item filed in several touched cells must come back once
-        HashMap<RID, bool> seen;
+        RIDMap<bool> seen;
         TypedArray<RID> result;
         for (const Vector2i &cell: touched) {
             const Vector<RID> *items = cells.getptr(cell);

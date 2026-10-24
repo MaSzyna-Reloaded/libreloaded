@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -25,7 +26,7 @@ namespace godot {
             static inline PersonServer *singleton = nullptr;
 
             /* Every person and its name */
-            HashMap<RID, String> persons;
+            RIDMap<String> persons;
 
         protected:
             static void _bind_methods();

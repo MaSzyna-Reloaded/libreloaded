@@ -1,6 +1,7 @@
 #include "../macros.hpp"
 #include "TrackServer.hpp"
 #include "utils/Names.hpp"
+#include "utils/RIDHash.hpp"
 #include "utils/Units.hpp"
 
 #include <godot_cpp/classes/project_settings.hpp>
@@ -1512,7 +1513,7 @@ namespace godot {
     /* The graphs the tracks p_tracks make, each given an id of its own; a track is followed only to
      * the tracks it is connected to */
     void TrackServer::_assign_graphs(const Vector<RID> &p_tracks) {
-        HashMap<RID, bool> visited;
+        RIDMap<bool> visited;
         for (const RID &start: p_tracks) {
             if (visited.has(start)) {
                 continue;

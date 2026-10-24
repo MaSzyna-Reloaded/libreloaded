@@ -1,5 +1,6 @@
 #include "TractionServer.hpp"
 #include "simulation/SimulationServer.hpp"
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -61,11 +62,11 @@ namespace godot {
         _simulation_advanced(p_seconds);
     }
 
-    const HashMap<RID, TractionServer::PowerSource> &TractionServer::_get_power_sources() const {
+    const RIDMap<TractionServer::PowerSource> &TractionServer::_get_power_sources() const {
         return power_sources;
     }
 
-    const HashMap<RID, TractionServer::Wire> &TractionServer::_get_wires() const {
+    const RIDMap<TractionServer::Wire> &TractionServer::_get_wires() const {
         return wires;
     }
 

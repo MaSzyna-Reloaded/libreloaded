@@ -2,6 +2,7 @@
 #include "SignalHeadKind.hpp"
 #include "SignallingImplementation.hpp"
 #include "tracks/TrackServer.hpp"
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -154,10 +155,10 @@ namespace godot {
                     Vector<RID> routes;
             };
 
-            HashMap<RID, SignalHeadData> signal_heads;
-            HashMap<RID, SourceData> sources;
-            HashMap<RID, SystemData> systems;
-            HashMap<RID, RouteData> routes;
+            RIDMap<SignalHeadData> signal_heads;
+            RIDMap<SourceData> sources;
+            RIDMap<SystemData> systems;
+            RIDMap<RouteData> routes;
             HashMap<StringName, RID> systems_by_switch_name;
             HashMap<StringName, RID> routes_by_name;
             HashMap<StringName, RID> signal_heads_by_name;

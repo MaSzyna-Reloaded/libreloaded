@@ -1,5 +1,6 @@
 #pragma once
 #include "rendering/ModelRenderingBackend.hpp"
+#include "utils/RIDHash.hpp"
 
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/node3d.hpp>
@@ -61,7 +62,7 @@ namespace godot {
                     ObjectID root_id;
             };
 
-            HashMap<RID, InstanceData> instances;
+            RIDMap<InstanceData> instances;
             int stream_owner = -1;
 
             static void _read_model(InstanceData &p_instance);

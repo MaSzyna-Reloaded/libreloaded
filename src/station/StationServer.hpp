@@ -1,5 +1,6 @@
 #pragma once
 #include "tracks/TrackServer.hpp"
+#include "utils/RIDHash.hpp"
 #include "vehicles/rail/RailVehicleDoors.hpp"
 #include "vehicles/rail/RailVehicleLoad.hpp"
 #include <godot_cpp/classes/engine.hpp>
@@ -148,11 +149,11 @@ namespace godot {
                     /// The delay last recorded [min], late when positive
                     double recorded_delay = 0.0;
             };
-            HashMap<RID, Station> stations;
+            RIDMap<Station> stations;
             HashMap<String, RID> stations_by_name;
-            HashMap<RID, Timetable> timetables;
-            HashMap<RID, Run> runs;
-            HashMap<RID, RID> runs_by_trainset;
+            RIDMap<Timetable> timetables;
+            RIDMap<Run> runs;
+            RIDMap<RID> runs_by_trainset;
 
             Entry *_get_entry(const RID &p_timetable, int p_entry);
             const Entry *_get_entry(const RID &p_timetable, int p_entry) const;
@@ -189,10 +190,10 @@ namespace godot {
                     bool departure_allowed = false;
                     Vector<Car> cars;
                     /// The cars still exchanging, and those whose doors are still not closed
-                    HashSet<RID> exchanging;
-                    HashSet<RID> doors_not_closed;
+                    RIDSet exchanging;
+                    RIDSet doors_not_closed;
             };
-            HashMap<RID, Dispatch> dispatches;
+            RIDMap<Dispatch> dispatches;
 
             void _set_step(const RID &p_vehicle, Dispatch &p_dispatch, DispatchStep p_step);
             void _close_doors(const RID &p_vehicle, Dispatch &p_dispatch);

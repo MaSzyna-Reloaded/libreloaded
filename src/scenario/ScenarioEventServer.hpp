@@ -2,6 +2,7 @@
 #include "ScenarioEventAction.hpp"
 #include "ScenarioEventCondition.hpp"
 #include "ScenarioEventImplementation.hpp"
+#include "utils/RIDHash.hpp"
 #include <functional>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
@@ -76,8 +77,8 @@ namespace godot {
                     }
             };
 
-            HashMap<RID, EventData> events;
-            HashMap<RID, SystemData> systems;
+            RIDMap<EventData> events;
+            RIDMap<SystemData> systems;
             HashMap<StringName, RID> events_by_name;
             std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> queue;
             uint64_t next_sequence = 1;

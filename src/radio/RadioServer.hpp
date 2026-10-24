@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -54,7 +55,7 @@ namespace godot {
                     /// (kind, channel, payload, position) of what it hears; none for a transmitter only
                     Callable receive_callback;
             };
-            HashMap<RID, Radio> radios;
+            RIDMap<Radio> radios;
 
             Vector3 _get_position(const Radio &p_radio) const;
 
