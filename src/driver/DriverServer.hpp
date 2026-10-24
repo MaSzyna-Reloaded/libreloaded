@@ -65,6 +65,11 @@ namespace godot {
             RIDMap<DriverData> drivers;
             HashMap<StringName, Ref<DriverImplementation>> implementations;
             std::priority_queue<UpdateEntry, std::vector<UpdateEntry>, std::greater<UpdateEntry>> updates;
+            /// Real time a frame gives the drivers' updates, the earliest due first; the rest wait
+            /// for the next frames - a scenery's hundreds of drivers do not all think in one frame
+            static constexpr uint64_t UPDATE_BUDGET_USEC = 4000;
+            /// ...except an update this late [s of simulation time], which runs whatever the budget
+            static constexpr double UPDATE_MAX_DELAY = 0.2;
             uint64_t next_sequence = 1;
             /// While something is scheduled it holds the runtime's clock and runs as it advances
             bool processing = false;

@@ -3,6 +3,7 @@
 #include "simulation/SimulationServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
 #include "vehicles/rail/RailVehicleServer.hpp"
+#include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -89,7 +90,13 @@ namespace godot {
         ERR_FAIL_NULL(runtime);
         const double time = runtime->simulation_get_time();
         const uint64_t pass_end = next_sequence;
+        const Time *clock = Time::get_singleton();
+        const uint64_t started_usec = clock->get_ticks_usec();
         while (!updates.empty() && updates.top().time <= time && updates.top().sequence < pass_end) {
+            if (clock->get_ticks_usec() - started_usec >= UPDATE_BUDGET_USEC &&
+                time - updates.top().time < UPDATE_MAX_DELAY) {
+                break;
+            }
             const UpdateEntry entry = updates.top();
             updates.pop();
             DriverData *data = drivers.getptr(entry.driver);
