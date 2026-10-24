@@ -85,8 +85,11 @@ func _ready() -> void:
     # no view moves until the camera looks through it (_show_view())
     for view:Node3D in [cabin_view, free_view, follow_view]:
         view.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+## Leaving the tree only lets go of the servers: the player keeps its vehicle until the scenery
+## frees it (PlayerServer follows vehicle_freed) or the world calls clear_start_train() first
 func _exit_tree() -> void:
-    clear_start_train()
     PlayerServer.player_vehicle_changed.disconnect(_on_player_vehicle_changed)
     VehicleServer.cabin_person_moved.disconnect(_on_cabin_person_moved)
     CabinSystem.vehicle_cabin_scene_changed.disconnect(_on_vehicle_cabin_scene_changed)
