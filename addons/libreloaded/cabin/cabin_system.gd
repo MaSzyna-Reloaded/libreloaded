@@ -14,7 +14,8 @@ extends Node
 
 signal control_changed(cabin:RID, control_id:StringName, value:Variant)
 ## A command reached the vehicle, from wherever - the console, a keybind, another cab. Relayed
-## here so a cabin element can react without ever holding the vehicle itself.
+## here so a cabin element can react without ever holding the vehicle itself - for the vehicles of
+## the shown cabs' trainsets only, which are all a cab's controls drive (CabinState.vehicle_of()).
 signal vehicle_command_received(vehicle_rid:RID, command:String, p1:Variant, p2:Variant)
 ## The vehicle has a cab scene to show now (vehicle_set_cabin_scene()) - one its builder hands over
 ## after the vehicle has its simulation, and may already be driven
@@ -84,7 +85,14 @@ func _on_vehicle_freed(vehicle_rid:RID) -> void:
 
 
 func _on_vehicle_command_received(vehicle_rid:RID, command:String, p1:Variant, p2:Variant) -> void:
-    vehicle_command_received.emit(vehicle_rid, command, p1, p2)
+    # every vehicle's commands come here - hundreds a second from a scenery's computer drivers - and
+    # every control of a shown cab would be called for each
+    var trainset:RID = RailVehicleServer.vehicle_get_trainset(vehicle_rid)
+    for shown:RID in _cabins:
+        if shown == vehicle_rid \
+                or (trainset.is_valid() and RailVehicleServer.vehicle_get_trainset(shown) == trainset):
+            vehicle_command_received.emit(vehicle_rid, command, p1, p2)
+            return
 
 
 ## The driver moved, sat down or got up: the controls are those of the driver's cabin now, none
