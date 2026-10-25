@@ -194,7 +194,7 @@ namespace godot {
 
     uint64_t ModelRenderingServer::backend_get(const StringName &p_name) const {
         ModelRenderingBackend *const *backend = backends.getptr(p_name);
-        return backend != nullptr ? static_cast<uint64_t>((*backend)->get_instance_id()) : 0;
+        return backend != nullptr ? (*backend)->get_instance_id() : 0;
     }
 
     PackedStringArray ModelRenderingServer::backend_get_list() const {

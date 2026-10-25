@@ -311,7 +311,7 @@ namespace godot {
 
             void _read_curve_points(const Ref<Resource> &p_curve, CurvePoints &p_points) const;
             Ref<Curve3D> _build_domain_curve(const CurvePoints &p_points) const;
-            static void _bake_path(const Ref<Curve3D> &p_curve, BakedPath &r_path);
+            static void _bake_path(const Ref<Curve3D> &p_curve, BakedPath &p_r_path);
             void _set_curves(TrackSegment &p_track, const Ref<Resource> &p_curve1, const Ref<Resource> &p_curve2);
             /// The tracks' curves are baked again at the interval the setting says now
             void _on_project_settings_changed();
@@ -455,8 +455,8 @@ namespace godot {
              * has one, the first otherwise - as track_get_domain_curve()), as
              * Curve3D::sample_baked(offset, false) gives it, read from the points baked when the
              * curves were set. False, and nothing written, for a track without that curve. */
-            bool
-            track_sample_position(const RID &p_track, SwitchTrack p_branch, double p_offset, Vector3 &r_position) const;
+            bool track_sample_position(
+                    const RID &p_track, SwitchTrack p_branch, double p_offset, Vector3 &p_r_position) const;
             /* The endpoints the two branches of a two-curve track share */
             PackedInt32Array track_get_common_endpoints(const RID &p_track) const;
             EndpointIndex track_get_branch_start_endpoint(const RID &p_track, SwitchTrack p_branch) const;

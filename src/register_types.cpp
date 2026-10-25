@@ -13,6 +13,7 @@
 #include "person/PersonServer.hpp"
 #include "player/PlayerCameraServer.hpp"
 #include "player/PlayerServer.hpp"
+#include "player/TrainSoundListener3D.hpp"
 #include "plugins/ReloadedPlugin.hpp"
 #include "plugins/ReloadedPluginServer.hpp"
 #include "radio/RadioServer.hpp"
@@ -304,6 +305,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(RailVehicleController);
         GDREGISTER_CLASS(RoadVehicleController);
         GDREGISTER_CLASS(Cabin3D);
+        GDREGISTER_CLASS(TrainSoundListener3D);
         GDREGISTER_ABSTRACT_CLASS(CabinHUDMouseSystem);
         GDREGISTER_CLASS(RailVehicle3D);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleHeating);

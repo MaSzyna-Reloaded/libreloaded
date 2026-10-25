@@ -2049,14 +2049,15 @@ namespace godot {
         return _axle_transform(placement->axles[p_bogie]);
     }
 
-    bool RailVehicleServer::_axle_track_frame(const AxleFollower &p_axle, Vector3 &r_point, Vector3 &r_forward) const {
+    bool
+    RailVehicleServer::_axle_track_frame(const AxleFollower &p_axle, Vector3 &p_r_point, Vector3 &p_r_forward) const {
         const TrackServer *tracks = TrackServer::get_instance();
         ERR_FAIL_NULL_V(tracks, false);
         // linear on purpose: the cubic interpolation has no neighbour point at the curve ends, so
         // the position advanced there only about 60% of the offset - every vehicle lost
         // centimetres at each track joint, which kicked the trainset through its couplers
         // (track_sample_position() is Curve3D::sample_baked(offset, false))
-        if (!tracks->track_sample_position(p_axle.track, p_axle.switch_track, p_axle.track_offset, r_point)) {
+        if (!tracks->track_sample_position(p_axle.track, p_axle.switch_track, p_axle.track_offset, p_r_point)) {
             return false;
         }
         const double length = tracks->track_get_length(p_axle.track, p_axle.switch_track);
@@ -2072,27 +2073,27 @@ namespace godot {
         Vector3 previous_point;
         tracks->track_sample_position(p_axle.track, p_axle.switch_track, next_offset, next_point);
         tracks->track_sample_position(p_axle.track, p_axle.switch_track, previous_offset, previous_point);
-        r_forward = next_point - previous_point;
-        if (r_forward.length_squared() <= HEADING_MIN_LENGTH_SQUARED) {
-            r_forward = Vector3(0.0, 0.0, -1.0);
+        p_r_forward = next_point - previous_point;
+        if (p_r_forward.length_squared() <= HEADING_MIN_LENGTH_SQUARED) {
+            p_r_forward = Vector3(0.0, 0.0, -1.0);
         } else {
-            r_forward = r_forward.normalized();
+            p_r_forward = p_r_forward.normalized();
         }
         return true;
     }
 
     /* The cant turns the basis about the forward and the reversal by a half turn about its up,
      * so -Z of _axle_transform() is the forward, or its opposite on a reversed axle */
-    void
-    RailVehicleServer::_axle_origin_heading(const AxleFollower &p_axle, Vector3 &r_origin, Vector3 &r_heading) const {
+    void RailVehicleServer::_axle_origin_heading(
+            const AxleFollower &p_axle, Vector3 &p_r_origin, Vector3 &p_r_heading) const {
         Vector3 forward;
-        if (!_axle_track_frame(p_axle, r_origin, forward)) {
-            r_origin = Vector3();
-            r_heading = Vector3(0.0, 0.0, -1.0);
+        if (!_axle_track_frame(p_axle, p_r_origin, forward)) {
+            p_r_origin = Vector3();
+            p_r_heading = Vector3(0.0, 0.0, -1.0);
             return;
         }
-        r_origin.y += static_cast<real_t>(TrackServer::get_instance()->get_rail_height());
-        r_heading = p_axle.track_direction == TrackServer::DIRECTION_REVERSED ? -forward : forward;
+        p_r_origin.y += static_cast<real_t>(TrackServer::get_instance()->get_rail_height());
+        p_r_heading = p_axle.track_direction == TrackServer::DIRECTION_REVERSED ? -forward : forward;
     }
 
     Transform3D RailVehicleServer::_axle_transform(const AxleFollower &p_axle) const {

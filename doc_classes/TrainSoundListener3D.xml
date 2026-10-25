@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrainSoundListener3D" inherits="AudioListener3D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Where the vehicles are heard from.
+	</brief_description>
+	<description>
+		The player's listener: it follows the current camera every frame and knows the [Cabin3D] that camera is in. Whatever plays the vehicles' sounds finds it as it enters the tree and follows [signal context_changed].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_listener_cabin" qualifiers="const">
+			<return type="Cabin3D" />
+			<description>
+				The cab the camera is in, [code]null[/code] outside every cab.
+			</description>
+		</method>
+		<method name="get_listener_context" qualifiers="const">
+			<return type="int" />
+			<description>
+				The column of a soundproofing profile the listener hears from: [method Cabin3D.get_sound_listener_context] in a cab, [constant EXTERIOR_CONTEXT] outside.
+			</description>
+		</method>
+		<method name="get_listener_vehicle" qualifiers="const">
+			<return type="RID" />
+			<description>
+				The [VehicleServer] vehicle whose cab the listener is in, an empty [RID] outside.
+			</description>
+		</method>
+		<method name="is_inside_vehicle" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Whether the listener is in a cab of [param vehicle].
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="context_changed">
+			<description>
+				The listener's cab, vehicle or context changed.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="EXTERIOR_CONTEXT" value="5">
+			The context outside every cab - the last column of a soundproofing profile.
+		</constant>
+	</constants>
+</class>

@@ -84,14 +84,21 @@ cleanup-build-release:
 cleanup-builds: cleanup-build-debug cleanup-build-release
 	
 
+# gnd-sfx, the sound addon the project links (CMakeLists.txt, reloaded_link_addon), is a GDExtension of
+# its own: its library is built by its own Makefile, in this library's precision, beside every build
+# of this one
+GND_SFX_MAKE=$(MAKE) -C vendor/gnd-sfx PRECISION=double GODOT=$(GODOT)
+
 compile-debug: $(CLANG_TIDY_COMPILE_COMMANDS_FILE) $(CLANG_TIDY_BINDINGS_FILE)
 	cmake -B build-debug $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Debug -DGODOTCPP_TARGET=template_debug -DLIBRELOADED_DEBUG=$(LIBRELOADED_DEBUG) -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
 	cmake --build build-debug --parallel $(CMAKE_BUILD_JOBS)
+	$(GND_SFX_MAKE) compile-debug
 
 
 compile-release:
 	cmake -B build-release $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
 	cmake --build build-release --parallel $(CMAKE_BUILD_JOBS)
+	$(GND_SFX_MAKE) compile-release
 
 
 # Optimized, but still the template_debug library the editor loads - the one to profile on.
@@ -163,6 +170,7 @@ compile-windows-release:
           -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
           -DCMAKE_SIZEOF_VOID_P=8
 	cmake --build build-win64-release --parallel $(CMAKE_BUILD_JOBS)
+	$(GND_SFX_MAKE) compile-windows-release
 
 
 # Any NDK will do for a GDExtension; GitHub's runners carry one in ANDROID_NDK_LATEST_HOME
@@ -171,11 +179,13 @@ ANDROID_NDK_ROOT?=$(ANDROID_NDK_LATEST_HOME)
 compile-android-debug:
 	cmake -B build-android-debug $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Debug -DGODOTCPP_TARGET=template_debug -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) -DGODOTCPP_PLATFORM=android -DANDROID_NDK_ROOT=$(ANDROID_NDK_ROOT)
 	cmake --build build-android-debug --parallel $(CMAKE_BUILD_JOBS)
+	$(GND_SFX_MAKE) compile-android-debug
 
 
 compile-android-release:
 	cmake -B build-android-release $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) -DGODOTCPP_PLATFORM=android -DANDROID_NDK_ROOT=$(ANDROID_NDK_ROOT)
 	cmake --build build-android-release --parallel $(CMAKE_BUILD_JOBS)
+	$(GND_SFX_MAKE) compile-android-release
 
 
 linux-sdk-image:
@@ -195,6 +205,7 @@ $(CMAKE_GODOTCPP_API_FILE):
 
 compile-release-linux: $(CMAKE_GODOTCPP_API_FILE) linux-sdk-image
 	$(LINUX_SDK_RUN) sh -c 'cmake -B build-release-linux $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) && cmake --build build-release-linux --parallel $(CMAKE_BUILD_JOBS)'
+	$(GND_SFX_MAKE) compile-release-linux
 
 
 # The runtime of the cab Python screens, built in the SDK like the release. PythonScreenServer
