@@ -57,6 +57,10 @@ namespace godot {
             void _on_player_vehicle_changed(const RID &p_vehicle, const RID &p_previous);
             /// Taken over - the vehicle driven too - the view is from its cab
             void _on_player_vehicle_entered(const RID &p_vehicle);
+            /// Started on foot, the free camera
+            void _on_player_started();
+            /// Stopped, the free camera - nothing of the scenery going is looked from or followed
+            void _on_player_stopped();
 
         protected:
             static void _bind_methods();

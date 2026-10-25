@@ -61,6 +61,10 @@ namespace godot {
         player->connect(
                 PlayerServer::player_vehicle_entered_signal,
                 callable_mp(this, &PlayerCameraServer::_on_player_vehicle_entered));
+        player->connect(
+                PlayerServer::player_started_signal, callable_mp(this, &PlayerCameraServer::_on_player_started));
+        player->connect(
+                PlayerServer::player_stopped_signal, callable_mp(this, &PlayerCameraServer::_on_player_stopped));
     }
 
     PlayerCameraServer::~PlayerCameraServer() {
@@ -77,6 +81,18 @@ namespace godot {
     /// too (drivermode.cpp:264)
     void PlayerCameraServer::_on_player_vehicle_entered(const RID & /*p_vehicle*/) {
         camera_set_mode(CAMERA_MODE_CABIN);
+    }
+
+    void PlayerCameraServer::_on_player_started() {
+        const PlayerServer *player = PlayerServer::get_instance();
+        ERR_FAIL_NULL(player);
+        if (!player->player_get_start_vehicle().is_valid()) {
+            camera_set_mode(CAMERA_MODE_FREE);
+        }
+    }
+
+    void PlayerCameraServer::_on_player_stopped() {
+        camera_set_mode(CAMERA_MODE_FREE);
     }
 
     void PlayerCameraServer::_on_vehicle_freed(const RID &p_vehicle) {

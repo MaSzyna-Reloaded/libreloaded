@@ -30,7 +30,7 @@ namespace godot {
             } break;
             case NOTIFICATION_PROCESS: {
                 // follows the current camera - the player's, in whichever of its views; none before
-                // the player has started (Player.initialization_ready)
+                // the player has started (PlayerServer.player_started)
                 Camera3D *camera = get_viewport()->get_camera_3d();
                 if (camera == nullptr) {
                     return;

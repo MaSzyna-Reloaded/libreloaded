@@ -262,7 +262,7 @@ static func instantiate_trainsets(
         RailVehicleServer.trainset_place(trainset)
         # the person at the controls of a vehicle just built - the one its provider seated there
         # (VehicleData.driver_type); the player takes a vehicle over only once the scenery is
-        # loaded (player.gd, _on_scenery_loaded()) - thinks with the implementation given. It drives
+        # loaded (PlayerServer.player_start()) - thinks with the implementation given. It drives
         # through the vehicle's cab logic, like the player, without the 3D cab
         var trainset_driver:RID = RID()
         for member:int in rail_members:

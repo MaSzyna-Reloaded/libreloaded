@@ -2,7 +2,9 @@
 extends Node
 class_name SceneryStreamer
 
-## Owns the streaming camera's lifecycle, independently of the player's vehicle and view.
+## Owns the streaming camera's lifecycle, independently of the player's vehicle and view: it streams
+## while the player is started (PlayerServer.player_started, player_stopped), or as the scene sets
+## active where nobody starts the player (the editor)
 @export var active:bool = false:
     set = set_active
 
@@ -43,6 +45,8 @@ func set_use_editor_camera(value:bool) -> void:
 
 ## Also on coming back: the editor takes a scene of a tab it leaves out of the tree
 func _enter_tree() -> void:
+    PlayerServer.player_started.connect(set_active.bind(true))
+    PlayerServer.player_stopped.connect(set_active.bind(false))
     streaming_update_camera()
 
 
@@ -58,5 +62,7 @@ func streaming_update_camera() -> void:
 ## The streaming stops, and active stays as the scene has it - a scene saved after it left the tree
 ## kept active off and streamed nothing
 func _exit_tree() -> void:
+    PlayerServer.player_started.disconnect(set_active.bind(true))
+    PlayerServer.player_stopped.disconnect(set_active.bind(false))
     if active:
         SceneryStreamingServer.streaming_set_camera(0)

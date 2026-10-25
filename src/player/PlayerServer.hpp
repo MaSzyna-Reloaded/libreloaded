@@ -24,6 +24,12 @@ namespace godot {
             static const char *player_vehicle_changed_signal;
             /// The player entered a vehicle (vehicle: RID) - also the one it already drives
             static const char *player_vehicle_entered_signal;
+            /// The player has been put in the world (player_start()), to start in its start vehicle
+            /// (player_get_start_vehicle()) or on foot; its node takes the vehicle over
+            static const char *player_started_signal;
+            /// The player has stopped (player_stop()), out of its vehicle - before the scenery holding
+            /// the vehicles is freed
+            static const char *player_stopped_signal;
 
             static PlayerServer *get_instance() {
                 return singleton;
@@ -38,6 +44,9 @@ namespace godot {
             /// The vehicle last announced as the player's (player_vehicle_changed) - kept, for a
             /// vehicle freed with the player in it has taken the player's seat along already
             RID vehicle;
+            /// The vehicle the player starts in (player_start()), RID() for none
+            RID start_vehicle;
+            bool started = false;
 
             /// The player in the vehicle's driver's cabin - else the one leading - in p_role, out of
             /// the vehicle it was in; RID() when it has no cabin to sit in
@@ -81,5 +90,15 @@ namespace godot {
             RID player_get_vehicle() const;
             /// The player as a person (PersonServer) - where it sits and in what role is VehicleServer's
             RID player_get_person() const;
+            /// The scenery stands: the player is put in the world to start in p_vehicle, or on foot for
+            /// an invalid RID (player_started). Whoever puts the player in a world starts it, once
+            /// (the world when its scenery has loaded, a scene's Player with auto_start)
+            void player_start(const RID &p_vehicle);
+            /// The player leaves its vehicle and stops (player_stopped), before the scenery holding
+            /// the vehicles is freed; nothing while it has not started
+            void player_stop();
+            bool player_is_started() const;
+            /// The vehicle the player was started in (player_start()), RID() for none or once freed
+            RID player_get_start_vehicle() const;
     };
 } // namespace godot
