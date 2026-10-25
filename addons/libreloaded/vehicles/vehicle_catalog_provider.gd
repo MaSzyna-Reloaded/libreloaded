@@ -4,8 +4,8 @@ class_name VehicleCatalogProvider
 
 ## A source of rolling stock (VehicleCatalogServer.provider_register()): it lists its vehicles and
 ## their liveries, shows a vehicle from its side, says what a vehicle is and what it looks like in
-## the core's terms, and builds a vehicle of what a VehicleData says. A plugin's provider is an
-## autoload deriving from this one.
+## the core's terms, and builds a vehicle of what a VehicleData says. A plugin's provider derives from
+## this one and is made and registered by the plugin's ReloadedRuntimePlugin.
 
 ## The provider's vehicles of [param category]
 func vehicle_list(_category:VehicleInfo.VehicleCategory) -> Array[VehicleInfo]:
