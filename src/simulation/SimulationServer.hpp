@@ -211,6 +211,9 @@ namespace godot {
             /// How bright the scene is, 0-1: daylight from the sun's altitude, dimmed by the cloud
             /// cover - computed here, never set; light_level_changed says when it moves
             double get_light_level() const;
+            /// Towards the sun at the environment's place, date and clock, a unit vector - +X east,
+            /// -Z north, +Y up; below the horizon at night
+            Vector3 sun_get_direction() const;
             /// Degrees Celsius
             void set_air_temperature(double p_temperature);
             double get_air_temperature() const;

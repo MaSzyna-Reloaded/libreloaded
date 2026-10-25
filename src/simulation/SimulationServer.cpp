@@ -66,6 +66,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("simulation_get_current_speed"), &SimulationServer::simulation_get_current_speed);
         ClassDB::bind_method(D_METHOD("simulation_reset_speed"), &SimulationServer::simulation_reset_speed);
         ClassDB::bind_method(D_METHOD("get_light_level"), &SimulationServer::get_light_level);
+        ClassDB::bind_method(D_METHOD("sun_get_direction"), &SimulationServer::sun_get_direction);
         ClassDB::bind_method(D_METHOD("date_set", "year", "month", "day"), &SimulationServer::date_set);
         ClassDB::bind_method(D_METHOD("date_get_year"), &SimulationServer::date_get_year);
         ClassDB::bind_method(D_METHOD("date_get_month"), &SimulationServer::date_get_month);
@@ -513,11 +514,11 @@ namespace godot {
         _update_light_level();
     }
 
-    /// The sun's elevation at the environment's place, date and clock - the declination by Cooper's
-    /// equation, the hour angle of the mean solar time, no refraction: enough to tell day from night.
-    /// A finer sun - Schlyter's ephemeris with NREL SOLPOS's refraction - can take its place. The
-    /// elevation ramped from night to day and dimmed by the cloud cover is the light level.
-    void SimulationServer::_update_light_level() {
+    /// The sun at the environment's place, date and clock - the declination by Cooper's equation, the
+    /// hour angle of the mean solar time, no refraction: enough to tell day from night. A finer sun -
+    /// Schlyter's ephemeris with NREL SOLPOS's refraction - can take its place. In the horizon's
+    /// frame: the morning sun east (+X), the noon one south (+Z) of the northern hemisphere
+    Vector3 SimulationServer::sun_get_direction() const {
         const double day_of_year = _get_day_of_year();
         const double declination = Math::deg_to_rad(
                 DECLINATION_AMPLITUDE *
@@ -526,11 +527,17 @@ namespace godot {
         const double solar_time = time_of_day + (longitude / DEGREES_PER_HOUR) - timezone_offset;
         const double hour_angle = Math::deg_to_rad(DEGREES_PER_HOUR * (solar_time - SOLAR_NOON));
         const double place = Math::deg_to_rad(latitude);
-        const double elevation = Math::rad_to_deg(
-                Math::asin(
-                        CLAMP((Math::sin(place) * Math::sin(declination)) +
-                                      (Math::cos(place) * Math::cos(declination) * Math::cos(hour_angle)),
-                              -1.0, 1.0)));
+        return Vector3(-Math::cos(declination) * Math::sin(hour_angle),
+                       (Math::sin(place) * Math::sin(declination)) +
+                               (Math::cos(place) * Math::cos(declination) * Math::cos(hour_angle)),
+                       (Math::sin(place) * Math::cos(declination) * Math::cos(hour_angle)) -
+                               (Math::cos(place) * Math::sin(declination)))
+                .normalized();
+    }
+
+    /// The sun's elevation ramped from night to day and dimmed by the cloud cover is the light level
+    void SimulationServer::_update_light_level() {
+        const double elevation = Math::rad_to_deg(Math::asin(CLAMP(sun_get_direction().y, -1.0, 1.0)));
         const double daylight = Math::smoothstep(light_night_altitude, light_day_altitude, elevation);
         const double level = daylight * (1.0 - (CLAMP(cloud_cover, 0.0, 1.0) * LIGHT_LEVEL_OVERCAST_FACTOR));
         if (level == light_level) {
