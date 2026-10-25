@@ -423,10 +423,10 @@ namespace godot {
             void _place_body(VehiclePlacement &p_placement);
             /* Where an axle stands on its track (no rail height) and the track's forward there,
              * sampled as the axle's transform is built from them; false without the track */
-            bool _axle_track_frame(const AxleFollower &p_axle, Vector3 &r_point, Vector3 &r_forward) const;
+            bool _axle_track_frame(const AxleFollower &p_axle, Vector3 &p_r_point, Vector3 &p_r_forward) const;
             /* An axle's origin and heading as its transform has them (the rail height up, -Z of
              * its basis), without building that basis - what the step needs of an axle */
-            void _axle_origin_heading(const AxleFollower &p_axle, Vector3 &r_origin, Vector3 &r_heading) const;
+            void _axle_origin_heading(const AxleFollower &p_axle, Vector3 &p_r_origin, Vector3 &p_r_heading) const;
             /* An axle's whole transform, the cant and the reversal turned in - made when a bogie is
              * read (vehicle_get_bogie_transform()), not on every step: the original turns its
              * bogie models by the axles (DynObj.cpp:1508-1519) */

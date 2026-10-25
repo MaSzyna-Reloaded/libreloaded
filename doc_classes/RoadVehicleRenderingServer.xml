@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RoadVehicleRenderingServer" inherits="VehicleRenderingServer" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What a road vehicle looks like, drawn.
+	</brief_description>
+	<description>
+		A [VehicleRenderingServer] of road vehicles: drawn where [RoadVehicleServer] places them on their road, their wheels ([RoadVehicleAppearance]) turned by the distance run ([method RoadVehicleController.get_wheels_angle_deg]). A plugin's renderer derives from it and stands in its place under the same singleton.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

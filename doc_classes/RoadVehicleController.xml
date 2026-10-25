@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RoadVehicleController" inherits="VehicleController" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A vehicle of the road.
+	</brief_description>
+	<description>
+		No rails, couplers or cabs, and no backend: it moves by its own kinematics, its velocity going towards the one [RoadVehicleServer] allows within [member acceleration_limit]. Where it is on the road, what is ahead of it and how fast that lets it go are [RoadVehicleServer]'s, which steps every road vehicle in one loop. What is driven from outside comes as commands: [code]wanted_velocity_set[/code] (km/h) and [code]side_offset_set[/code] (m).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="engine_start">
+			<return type="void" />
+			<description>
+				The [code]engine_start[/code] command: the engine runs.
+			</description>
+		</method>
+		<method name="engine_stop">
+			<return type="void" />
+			<description>
+				The [code]engine_stop[/code] command: the engine stops.
+			</description>
+		</method>
+		<method name="get_brake_force_ratio" qualifiers="const">
+			<return type="float" />
+			<description>
+				How hard it brakes against its acceleration limit [0-1] - what a driver's brake would give: it has no brakes of its own.
+			</description>
+		</method>
+		<method name="get_engine_revolutions" qualifiers="const">
+			<return type="float" />
+			<description>
+				The engine's revolutions [1/s]: the wheels' times [member transmission_ratio].
+			</description>
+		</method>
+		<method name="get_horns" qualifiers="const">
+			<return type="int" enum="RoadVehicleController.Horns" is_bitfield="true" />
+			<description>
+				The horns sounding now.
+			</description>
+		</method>
+		<method name="get_lights" qualifiers="const">
+			<return type="int" enum="RoadVehicleController.Lights" is_bitfield="true" />
+			<description>
+				The lights it has on.
+			</description>
+		</method>
+		<method name="get_side_offset" qualifiers="const">
+			<return type="float" />
+			<description>
+				Its place across the road [m], from the road's centre line to the right of the way it travels.
+			</description>
+		</method>
+		<method name="get_throttle" qualifiers="const">
+			<return type="float" />
+			<description>
+				How much it accelerates against its acceleration limit [0-1] - what a driver's throttle would give: it has no engine of its own.
+			</description>
+		</method>
+		<method name="get_wanted_velocity" qualifiers="const">
+			<return type="float" />
+			<description>
+				The velocity it wants [km/h].
+			</description>
+		</method>
+		<method name="get_wheels_angle_deg" qualifiers="const">
+			<return type="float" />
+			<description>
+				How far its wheels have turned by the distance run [deg, 0-360).
+			</description>
+		</method>
+		<method name="horns_set">
+			<return type="void" />
+			<param index="0" name="horns" type="int" enum="RoadVehicleController.Horns" is_bitfield="true" />
+			<description>
+				The [code]horns_set[/code] command: the horns sounding now.
+			</description>
+		</method>
+		<method name="is_engine_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Whether its engine runs.
+			</description>
+		</method>
+		<method name="lights_set">
+			<return type="void" />
+			<param index="0" name="lights" type="int" enum="RoadVehicleController.Lights" is_bitfield="true" />
+			<description>
+				The [code]lights_set[/code] command: the lights it has on.
+			</description>
+		</method>
+		<method name="side_offset_set">
+			<return type="void" />
+			<param index="0" name="offset" type="float" />
+			<description>
+				The [code]side_offset_set[/code] command: its place across the road [m], to the right of the way it travels.
+			</description>
+		</method>
+		<method name="wanted_velocity_set">
+			<return type="void" />
+			<param index="0" name="velocity" type="float" />
+			<description>
+				The [code]wanted_velocity_set[/code] command: the velocity it wants [km/h], 0 or more; what is ahead may let it go slower.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="acceleration_limit" type="float" setter="set_acceleration_limit" getter="get_acceleration_limit" default="1.0">
+			The acceleration and the deceleration it never exceeds [m/s2] - it brakes for what is ahead with it as well.
+		</member>
+		<member name="following_gap" type="float" setter="set_following_gap" getter="get_following_gap" default="2.0">
+			The gap it keeps to the vehicle ahead in its lane [m].
+		</member>
+		<member name="obstacle_range" type="float" setter="set_obstacle_range" getter="get_obstacle_range" default="100.0">
+			How far ahead it looks for what slows it down [m]: the vehicles ahead, the roads' limits, the end of its road.
+		</member>
+		<member name="transmission_ratio" type="float" setter="set_transmission_ratio" getter="get_transmission_ratio" default="1.0">
+			How many times its engine turns for a turn of the wheels.
+		</member>
+		<member name="wheel_diameter" type="float" setter="set_wheel_diameter" getter="get_wheel_diameter" default="0.0">
+			Its wheels' diameter [m]; none turn without one.
+		</member>
+	</members>
+	<constants>
+		<constant name="LIGHTS_NONE" value="0" enum="Lights" is_bitfield="true">
+			No light on.
+		</constant>
+		<constant name="LIGHTS_HEAD" value="1" enum="Lights" is_bitfield="true">
+			The head lights at its front.
+		</constant>
+		<constant name="LIGHTS_TAIL" value="2" enum="Lights" is_bitfield="true">
+			The tail lights at its rear.
+		</constant>
+		<constant name="HORNS_NONE" value="0" enum="Horns" is_bitfield="true">
+			No horn sounding.
+		</constant>
+		<constant name="HORNS_LOW" value="1" enum="Horns" is_bitfield="true">
+			The low horn.
+		</constant>
+		<constant name="HORNS_HIGH" value="2" enum="Horns" is_bitfield="true">
+			The high horn.
+		</constant>
+	</constants>
+</class>

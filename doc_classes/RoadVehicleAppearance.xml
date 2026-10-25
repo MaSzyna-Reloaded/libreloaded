@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RoadVehicleAppearance" inherits="VehicleAppearance" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What a kind of road vehicle looks like.
+	</brief_description>
+	<description>
+		Its models ([VehicleAppearance]) and the submodels of its exterior model that are its wheels, turned by the distance run ([RoadVehicleRenderingServer]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="wheels" type="PackedStringArray" setter="set_wheels" getter="get_wheels" default="PackedStringArray()">
+			The exterior model's submodels that are the vehicle's wheels.
+		</member>
+	</members>
+</class>

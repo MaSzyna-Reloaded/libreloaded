@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RoadServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The road network.
+	</brief_description>
+	<description>
+		Roads by their handles: a road is a path with a width and a speed limit, and each of its two ends leads on to the roads its links name - one for a road going on, several where roads part (a vehicle takes one of them), none at a dead end. The links are one-way: a road's end leads on to another road's end that it enters by, and the way back is a link of its own. Whoever reads a network from its data builds it (a plugin's scenery, from its roads, crossroads and turning places) and frees it ([method SceneryContentNode.roads_own]); the vehicles on it are [RoadVehicleServer]'s, reported here road by road. Nothing of it is drawn.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="road_create">
+			<return type="RID" />
+			<description>
+				A new road, without a path yet.
+			</description>
+		</method>
+		<method name="road_exists" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				Whether [param road] is a road of this server.
+			</description>
+		</method>
+		<method name="road_free">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The road goes, with every link leading onto it.
+			</description>
+		</method>
+		<method name="road_free_many">
+			<return type="void" />
+			<param index="0" name="roads" type="RID[]" />
+			<description>
+				The roads go all at once: the links of the roads that stay are looked over once, not once a road.
+			</description>
+		</method>
+		<method name="road_get_curve" qualifiers="const">
+			<return type="Curve3D" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The road's path, from its start to its end.
+			</description>
+		</method>
+		<method name="road_get_length" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The length of the road's path [m].
+			</description>
+		</method>
+		<method name="road_get_links" qualifiers="const">
+			<return type="Dictionary[]" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="end" type="int" enum="RoadServer.RoadEnd" />
+			<description>
+				Where the road's end [param end] leads on, as [code]{road, end}[/code] dictionaries: the road entered and the end it is entered by.
+			</description>
+		</method>
+		<method name="road_get_position" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="offset" type="float" />
+			<description>
+				The point [param offset] metres along the road from its start.
+			</description>
+		</method>
+		<method name="road_get_track" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The track the road is laid along; an invalid RID for none.
+			</description>
+		</method>
+		<method name="road_get_vehicles" qualifiers="const">
+			<return type="RID[]" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The vehicles reported on the road.
+			</description>
+		</method>
+		<method name="road_get_velocity" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The road's speed limit [km/h], negative for none. A road laid along a track has that track's ([method TrackServer.track_get_velocity]), as a scenario changes it.
+			</description>
+		</method>
+		<method name="road_get_width" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="road" type="RID" />
+			<description>
+				The road's width [m].
+			</description>
+		</method>
+		<method name="road_link">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="end" type="int" enum="RoadServer.RoadEnd" />
+			<param index="2" name="next" type="RID" />
+			<param index="3" name="next_end" type="int" enum="RoadServer.RoadEnd" />
+			<description>
+				Leaving [param road] at [param end], a vehicle may go on onto [param next], entering it by [param next_end]; a way given again stays one.
+			</description>
+		</method>
+		<method name="road_report_vehicle_entered">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="vehicle" type="RID" />
+			<param index="2" name="toward" type="int" enum="RoadServer.RoadEnd" />
+			<description>
+				A vehicle came onto the road, travelling toward its end [param toward] - reported by [RoadVehicleServer]; announced as [signal road_vehicle_entered].
+			</description>
+		</method>
+		<method name="road_report_vehicle_left">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="vehicle" type="RID" />
+			<description>
+				A vehicle left the road - reported by [RoadVehicleServer]; announced as [signal road_vehicle_left].
+			</description>
+		</method>
+		<method name="road_set_curve">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="curve" type="Curve3D" />
+			<description>
+				The road's path, from its start to its end.
+			</description>
+		</method>
+		<method name="road_set_track">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="track" type="RID" />
+			<description>
+				The track the road is laid along, from the track's start to its end: a vehicle on the road is reported on the track too, and the track's limit is the road's.
+			</description>
+		</method>
+		<method name="road_set_velocity">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="velocity" type="float" />
+			<description>
+				The road's own speed limit [km/h], negative for none - while it has no track.
+			</description>
+		</method>
+		<method name="road_set_width">
+			<return type="void" />
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="width" type="float" />
+			<description>
+				The road's width [m].
+			</description>
+		</method>
+		<method name="track_get_road" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="track" type="RID" />
+			<description>
+				The first road laid along [param track]; an invalid RID for a track no road is.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="road_vehicle_entered">
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="vehicle" type="RID" />
+			<param index="2" name="toward" type="int" enum="RoadServer.RoadEnd" />
+			<description>
+				A vehicle came onto the road, travelling toward its end [param toward].
+			</description>
+		</signal>
+		<signal name="road_vehicle_left">
+			<param index="0" name="road" type="RID" />
+			<param index="1" name="vehicle" type="RID" />
+			<description>
+				A vehicle left the road.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="ROAD_END_START" value="0" enum="RoadEnd">
+			Where the road's path starts.
+		</constant>
+		<constant name="ROAD_END_END" value="1" enum="RoadEnd">
+			Where the road's path ends.
+		</constant>
+	</constants>
+</class>

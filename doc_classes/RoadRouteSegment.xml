@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RoadRouteSegment" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A road on a road vehicle's way ahead.
+	</brief_description>
+	<description>
+		One of [method RoadVehicleServer.vehicle_trace_route]'s roads: entered [member distance] metres ahead of the vehicle - negative for the one it is on - and travelled toward its end [member toward].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="distance" type="float" setter="set_distance" getter="get_distance" default="0.0">
+			How far ahead of the vehicle the road is entered [m]; negative for the one it is on.
+		</member>
+		<member name="length" type="float" setter="set_length" getter="get_length" default="0.0">
+			The road's length [m].
+		</member>
+		<member name="road" type="RID" setter="set_road" getter="get_road" default="RID()">
+			The road, [RoadServer]'s.
+		</member>
+		<member name="toward" type="int" setter="set_toward" getter="get_toward" enum="RoadServer.RoadEnd" default="1">
+			The end the road is travelled toward ([enum RoadServer.RoadEnd]).
+		</member>
+	</members>
+</class>

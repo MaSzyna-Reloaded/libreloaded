@@ -227,28 +227,45 @@ static func instantiate_trainsets(
                 if is_load_given_up(root):
                     return
             built_count += 1
+        # a vehicle that failed to load has no simulation, and the trainset stands without it; a road
+        # vehicle stands on its road by itself, one behind the other as a trainset's vehicles do
+        # (RailVehicleServer.trainset_place()), in no trainset - a road has none
+        var rail_members:Array[int] = []
+        var road_front:float = trainset_data.offset
+        for member:int in trainset_vehicles.size():
+            var vehicle:RID = trainset_vehicles[member]
+            if not VehicleServer.vehicle_is_simulation_ready(vehicle):
+                continue
+            if not RoadVehicleServer.vehicle_is_attached(vehicle):
+                rail_members.append(member)
+                continue
+            var road_data:VehicleData = vehicle_data[index][member]
+            var length:float = VehicleServer.vehicle_get_dimensions(vehicle).z
+            # the road laid along the track, its front toward the track's end unless reversed
+            RoadVehicleServer.vehicle_set_road(
+                    vehicle, RoadServer.track_get_road(tracks[index]), road_front - road_data.gap - length / 2.0,
+                    RoadServer.ROAD_END_START if road_data.direction == TrackServer.DIRECTION_REVERSED
+                    else RoadServer.ROAD_END_END)
+            road_front -= road_data.gap + length
+        if not rail_members:
+            continue
         var trainset:RID = RailVehicleServer.trainset_create()
         root._trainset_rids.append(trainset)
         RailVehicleServer.trainset_set_name(trainset, trainset_data.name)
         RailVehicleServer.trainset_set_description(trainset, trainset_data.description)
         RailVehicleServer.trainset_set_player_drivable(trainset, trainset_data.player_drivable)
         RailVehicleServer.trainset_set_track(trainset, tracks[index], trainset_data.offset)
-        # a vehicle that failed to load has no simulation, and the trainset stands without it
-        var members:Array[int] = []
-        for member:int in trainset_vehicles.size():
-            if not VehicleServer.vehicle_is_simulation_ready(trainset_vehicles[member]):
-                continue
+        for member:int in rail_members:
             var data:VehicleData = vehicle_data[index][member]
             RailVehicleServer.trainset_add_vehicle(
                     trainset, trainset_vehicles[member], data.direction, data.gap, data.coupling)
-            members.append(member)
         RailVehicleServer.trainset_place(trainset)
         # the person at the controls of a vehicle just built - the one its provider seated there
         # (VehicleData.driver_type); the player takes a vehicle over only once the scenery is
         # loaded (player.gd, _on_scenery_loaded()) - thinks with the implementation given. It drives
         # through the vehicle's cab logic, like the player, without the 3D cab
         var trainset_driver:RID = RID()
-        for member:int in members:
+        for member:int in rail_members:
             for driver:VehiclePerson in VehicleServer.vehicle_list_persons(
                     trainset_vehicles[member], VehiclePersonRole.VEHICLE_PERSON_ROLE_DRIVER):
                 trainset_driver = driver.get_person()
