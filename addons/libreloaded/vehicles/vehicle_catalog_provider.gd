@@ -38,8 +38,8 @@ func vehicle_get_description(_vehicle:VehicleData) -> VehicleController:
 
 
 ## What [param vehicle] looks like in its livery - its models and their skins: the core's
-## RailVehicleAppearance of it; null for none
-func vehicle_get_appearance(_vehicle:VehicleData) -> RailVehicleAppearance:
+## VehicleAppearance of it; null for none
+func vehicle_get_appearance(_vehicle:VehicleData) -> VehicleAppearance:
     return null
 
 

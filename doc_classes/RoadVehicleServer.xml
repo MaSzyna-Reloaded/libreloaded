@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RoadVehicleServer" inherits="VehicleImplementationServer" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Where a road vehicle is, and how it drives.
+	</brief_description>
+	<description>
+		Which road of [RoadServer]'s network a vehicle is on, how far along it, which way it travels, the way it takes on - one of the roads at random where they part, chosen as far ahead as it looks - and how fast what is ahead lets it go: the velocity it wants, the roads' limits, the vehicle ahead in its lane, a dead end. A vehicle on a road laid along a track is reported on that track as well ([TrackServer]). The vehicle itself - its handle, name, commands - is [VehicleServer]'s; this server takes a vehicle created there ([method vehicle_attach]) whose controller is a [RoadVehicleController], and steps all of them in one loop as their implementation, registered with [VehicleServer] as [code]road[/code]. No couplers, no cabs, no trainsets.
+		Two vehicles on one road pass each other when they are beside each other - their places across the road ([method RoadVehicleController.get_side_offset]) further apart than half their widths together.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="vehicle_attach">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				A [VehicleServer] vehicle becomes a road vehicle - called by whatever makes it one. A vehicle freed by [VehicleServer] is detached on its own.
+			</description>
+		</method>
+		<method name="vehicle_detach">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The vehicle is a road vehicle no more; it leaves the track it was on.
+			</description>
+		</method>
+		<method name="vehicle_get_road" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The road the vehicle is on; an invalid RID before it is put on one.
+			</description>
+		</method>
+		<method name="vehicle_get_transform" qualifiers="const">
+			<return type="Transform3D" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Where the vehicle stands: on the road's curve at its place across the road, its front (-Z) the way it travels.
+			</description>
+		</method>
+		<method name="vehicle_is_attached" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Whether [param vehicle] is a road vehicle of this server.
+			</description>
+		</method>
+		<method name="vehicle_set_road">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="road" type="RID" />
+			<param index="2" name="offset" type="float" />
+			<param index="3" name="facing" type="int" enum="RoadServer.RoadEnd" />
+			<description>
+				The vehicle stands [param offset] metres from the road's start, kept within the road, its front toward [param facing]; announced as [signal vehicle_placed].
+			</description>
+		</method>
+		<method name="vehicle_trace_route">
+			<return type="RoadRouteSegment[]" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="distance" type="float" />
+			<description>
+				The tracks ahead of the vehicle as far as [param distance] metres, the one it is on first ([method TrackServer.track_trace_route]).
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="vehicle_placed">
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The vehicle stands on a road now - it was put there ([method vehicle_set_road]).
+			</description>
+		</signal>
+		<signal name="vehicle_placement_changed">
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The vehicle is somewhere else on its road - once a step it moved in; what draws it follows.
+			</description>
+		</signal>
+	</signals>
+</class>

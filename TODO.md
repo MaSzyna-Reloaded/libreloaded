@@ -417,8 +417,15 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 * **"has no skins set, but submodel requires material #3"** for `pkp/11xa_v2` and `pkp/14xa_v1`:
   check what the original draws for a replaceable skin index the skin has no file for, and warn
   once per vehicle type, not per submodel and vehicle.
-* **Road vehicles return with roads:** a vehicle on an unregistered track (every road) is left out
-  at load (`MaszynaSceneryProvider._attach_objects()`).
+* **What the road vehicles leave out:** `RoadVehicleServer` reports a vehicle entering and
+  leaving a track, not stopping and starting off (`track_report_vehicle_stopped/started()`); a road
+  laid along a track (`RoadServer.road_set_track()`) is taken to run from the track's start to its
+  end; `PlayerServer`, `PlayerCameraServer`, the follow view and the minimap read
+  `RailVehicleRenderingServer`/`RailVehicleServer` only, so they find no road vehicle.
+* **A road laid along several tracks**: a `RoadServer` road lies along one track; one along a run
+  of them, each its stretch of the road (its limit, its events, its occupancy), would let a
+  network join the tracks between two parting places into one road - fewer roads to look ahead
+  over, and no roads of a few millimetres.
 * **The vehicle step on Wrzosy after 2026-10-24** (profiling build, ~350 vehicles moving, 5
   sub-steps a frame at 20 fps): 28.5% of the main thread, the Mover's own physics a third of it.
   Left of the wrapper: the neighbour scans (`_find_vehicle()` 3.2%) run again whenever anything

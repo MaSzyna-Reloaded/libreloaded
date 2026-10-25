@@ -1,40 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="RailVehicleAppearance" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+<class name="RailVehicleAppearance" inherits="VehicleAppearance" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
 		What a kind of rail vehicle looks like.
 	</brief_description>
 	<description>
-		The models a kind of rail vehicle is drawn with and the submodels of its exterior model the running gear turns - bogies and wheels. Shared by every vehicle of the kind and handed to [RailVehicleRenderingServer]; a plugin's appearance derives from it with what its own renderer animates. Submodels are named as the model names them; a missing one is an empty name.
+		Its models ([VehicleAppearance]) and the submodels of its exterior model the running gear turns - bogies and wheels - handed to [RailVehicleRenderingServer]; a plugin's appearance derives from it with what its own renderer animates. Submodels are named as the model names them; a missing one is an empty name.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="attachment_model_filenames" type="PackedStringArray" setter="set_attachment_model_filenames" getter="get_attachment_model_filenames" default="PackedStringArray()">
-			Models drawn with the exterior, in its frame and with its skins - the MMD's [code]attachments:[/code] (DynObj.cpp:5384), named by the vehicle's [code](p1)[/code]-[code](p3)[/code].
-		</member>
-		<member name="data_path" type="String" setter="set_data_path" getter="get_data_path" default="&quot;&quot;">
-			Where the model files are.
-		</member>
 		<member name="front_bogie" type="String" setter="set_front_bogie" getter="get_front_bogie" default="&quot;&quot;">
 			The front bogie submodel.
 		</member>
 		<member name="front_rolling_wheels" type="PackedStringArray" setter="set_front_rolling_wheels" getter="get_front_rolling_wheels" default="PackedStringArray()">
 			The front rolling wheel submodels.
-		</member>
-		<member name="head_display_submodel" type="String" setter="set_head_display_submodel" getter="get_head_display_submodel" default="&quot;tablice_relacyjne&quot;">
-			The submodel the head display material is drawn on.
-		</member>
-		<member name="low_poly_model_filename" type="String" setter="set_low_poly_model_filename" getter="get_low_poly_model_filename" default="&quot;&quot;">
-			The low-poly interior seen through the windows.
-		</member>
-		<member name="model_filename" type="String" setter="set_model_filename" getter="get_model_filename" default="&quot;&quot;">
-			The exterior model.
-		</member>
-		<member name="model_transform" type="Transform3D" setter="set_model_transform" getter="get_model_transform" default="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)">
-			Where every model of the vehicle sits in the vehicle's own frame.
-		</member>
-		<member name="passengers_model_filename" type="String" setter="set_passengers_model_filename" getter="get_passengers_model_filename" default="&quot;&quot;">
-			The passengers.
 		</member>
 		<member name="powered_wheels" type="PackedStringArray" setter="set_powered_wheels" getter="get_powered_wheels" default="PackedStringArray()">
 			The powered wheel submodels.
@@ -44,9 +23,6 @@
 		</member>
 		<member name="rear_rolling_wheels" type="PackedStringArray" setter="set_rear_rolling_wheels" getter="get_rear_rolling_wheels" default="PackedStringArray()">
 			The rear rolling wheel submodels.
-		</member>
-		<member name="skins" type="PackedStringArray" setter="set_skins" getter="get_skins" default="PackedStringArray()">
-			The skins of the models' replaceable materials, by number.
 		</member>
 	</members>
 </class>

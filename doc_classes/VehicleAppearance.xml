@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VehicleAppearance" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What a kind of vehicle looks like.
+	</brief_description>
+	<description>
+		The models it is drawn with: the exterior, the low-poly interior, the passengers and the attachments, their skins and where they sit in the vehicle's frame. Shared by every vehicle of the kind and handed to its kind's renderer ([VehicleRenderingServer]); a kind of vehicle's appearance derives from it with the submodels its renderer turns ([RailVehicleAppearance], [RoadVehicleAppearance]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="attachment_model_filenames" type="PackedStringArray" setter="set_attachment_model_filenames" getter="get_attachment_model_filenames" default="PackedStringArray()">
+			Models drawn with the exterior, in its frame and with its skins.
+		</member>
+		<member name="data_path" type="String" setter="set_data_path" getter="get_data_path" default="&quot;&quot;">
+			Where the model files are.
+		</member>
+		<member name="head_display_submodel" type="String" setter="set_head_display_submodel" getter="get_head_display_submodel" default="&quot;tablice_relacyjne&quot;">
+			The submodel the head display material is drawn on.
+		</member>
+		<member name="low_poly_model_filename" type="String" setter="set_low_poly_model_filename" getter="get_low_poly_model_filename" default="&quot;&quot;">
+			The low-poly interior seen through the windows.
+		</member>
+		<member name="model_filename" type="String" setter="set_model_filename" getter="get_model_filename" default="&quot;&quot;">
+			The exterior model.
+		</member>
+		<member name="model_transform" type="Transform3D" setter="set_model_transform" getter="get_model_transform" default="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)">
+			Where every model of the vehicle sits in the vehicle's own frame.
+		</member>
+		<member name="passengers_model_filename" type="String" setter="set_passengers_model_filename" getter="get_passengers_model_filename" default="&quot;&quot;">
+			The passengers.
+		</member>
+		<member name="skins" type="PackedStringArray" setter="set_skins" getter="get_skins" default="PackedStringArray()">
+			The skins of the models' replaceable materials, by number.
+		</member>
+	</members>
+</class>

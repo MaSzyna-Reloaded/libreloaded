@@ -86,6 +86,8 @@ var _event_rids:Array[RID] = []
 ## The event systems of its provider (ScenarioEventServer.system_create()), freed after the events
 var _event_system_rids:Array[RID] = []
 var _isolated_rids:Array[RID] = []
+## RoadServer's roads of the scenery's road network (roads_own())
+var _road_rids:Array[RID] = []
 var _trainset_rids:Array[RID] = []
 ## The scenery's vehicles, in the order of its file
 var _vehicle_rids:Array[RID] = []
@@ -190,6 +192,8 @@ func _notification(what:int) -> void:
             for rid:RID in _model_rids:
                 ModelRenderingServer.instance_set_scenario(rid, scenario)
             for owned:Array in _provider_owned:
+                if not (owned[2] as Callable).is_valid():
+                    continue
                 for rid:RID in owned[0] as Array[RID]:
                     (owned[2] as Callable).call(rid, scenario)
             for rid:RID in _mesh_rids:
@@ -200,6 +204,8 @@ func _notification(what:int) -> void:
             for rid:RID in _vehicle_rids:
                 if RailVehicleRenderingServer.vehicle_is_attached(rid):
                     RailVehicleRenderingServer.vehicle_set_scenario(rid, scenario)
+                elif RoadVehicleRenderingServer.vehicle_is_attached(rid):
+                    RoadVehicleRenderingServer.vehicle_set_scenario(rid, scenario)
         NOTIFICATION_PREDELETE:
             unloading.emit()
             # The planning thread calls back into GDScript (the owner's preload) and can be
@@ -233,9 +239,15 @@ func get_scenario_scripts() -> Array[String]:
 
 ## [param rids] of what the provider made of the content - kept by reference, so the provider may
 ## add to it as it builds: they are freed with the content by [param free] (rid), and drawn into the
-## node's world by [param set_scenario] (rid, scenario)
+## node's world by [param set_scenario] (rid, scenario) - none for what is not drawn (a road network)
 func content_own(rids:Array[RID], free:Callable, set_scenario:Callable) -> void:
     _provider_owned.append([rids, free, set_scenario])
+
+
+## The road network its provider built of the content (RoadServer): freed with the content, all at
+## once - each road freed alone looks over the links of every other one
+func roads_own(roads:Array[RID]) -> void:
+    _road_rids.append_array(roads)
 
 
 ## budget_msec > 0 spreads the freeing over frames, so whatever covers the screen (the loading
@@ -250,6 +262,8 @@ func _free_owned_rids(budget_msec:int = 0) -> void:
         [_event_rids, ScenarioEventServer.event_free, Callable()],
         [_event_system_rids, ScenarioEventServer.system_free, Callable()],
         [_isolated_rids, TrackServer.isolated_free, Callable()],
+        # after the vehicles that drive on them, before the tracks they are laid along
+        [_road_rids, Callable(), RoadServer.road_free_many],
         # the tracks all at once (both servers' track_free_many()): one by one, each emptied a
         # road cell rebuilt on the frames between and cleared every track's topology - a world of
         # tens of thousands took 99 s

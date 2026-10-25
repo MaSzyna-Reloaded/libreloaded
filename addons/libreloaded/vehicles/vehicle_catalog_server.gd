@@ -168,7 +168,7 @@ func vehicle_get_description(vehicle:VehicleData) -> VehicleController:
 
 ## What [param vehicle] looks like in its livery, as its provider draws it (VehicleCatalogProvider.
 ## vehicle_get_appearance()); null when the provider is not there or has none
-func vehicle_get_appearance(vehicle:VehicleData) -> RailVehicleAppearance:
+func vehicle_get_appearance(vehicle:VehicleData) -> VehicleAppearance:
     var provider:VehicleCatalogProvider = _get_provider(_get_provider_name(vehicle))
     return provider.vehicle_get_appearance(vehicle) if provider else null
 

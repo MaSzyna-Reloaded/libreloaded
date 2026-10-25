@@ -70,7 +70,12 @@ Commands can be added and removed at runtime. A disabled component removes its c
 ### Finding a vehicle
 
 A vehicle is identified by its `VehicleServer` handle. `RailVehicleServer` uses the same handle for
-everything rail-specific: the track, the couplers and the rail components.
+everything rail-specific: the track, the couplers and the rail components. A road vehicle
+(`RoadVehicleController`) is `RoadVehicleServer`'s under the same handle: its road of
+`RoadServer`'s network, its lane, its way on and how fast what is ahead lets it go. It has no
+couplers, cabs or trainset, and `RoadVehicleServer` steps all road vehicles in one loop as their
+implementation; `RoadVehicleRenderingServer` draws them, as `RailVehicleRenderingServer` draws the
+rail ones (both a `VehicleRenderingServer`).
 
 A vehicle also has an **id** and a **name**:
 

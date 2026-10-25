@@ -31,6 +31,8 @@
 #include "rendering/TrackRenderingLook.hpp"
 #include "rendering/TrackRenderingServer.hpp"
 #include "resources/ResourceLazyLoader.hpp"
+#include "roads/RoadRouteSegment.hpp"
+#include "roads/RoadServer.hpp"
 #include "scenario/ScenarioEventAction.hpp"
 #include "scenario/ScenarioEventCondition.hpp"
 #include "scenario/ScenarioEventImplementation.hpp"
@@ -77,6 +79,7 @@
 #include "utils/WorkerTaskQueue.hpp"
 #include "vehicles/base/GenericVehicleComponent.hpp"
 #include "vehicles/base/GenericVehicleComponentNode.hpp"
+#include "vehicles/base/VehicleAppearance.hpp"
 #include "vehicles/base/VehicleComponent.hpp"
 #include "vehicles/base/VehicleComponentType.hpp"
 #include "vehicles/base/VehicleController.hpp"
@@ -85,6 +88,7 @@
 #include "vehicles/base/VehiclePerson.hpp"
 #include "vehicles/base/VehiclePersonRole.hpp"
 #include "vehicles/base/VehiclePhysicsNode.hpp"
+#include "vehicles/base/VehicleRenderingServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
 #include "vehicles/rail/RailVehicle3D.hpp"
 #include "vehicles/rail/RailVehicleAIHints.hpp"
@@ -126,6 +130,10 @@
 #include "vehicles/rail/RailVehicleWheels.hpp"
 #include "vehicles/rail/RailVehicleWiperListItem.hpp"
 #include "vehicles/rail/RailVehicleWipers.hpp"
+#include "vehicles/road/RoadVehicleAppearance.hpp"
+#include "vehicles/road/RoadVehicleController.hpp"
+#include "vehicles/road/RoadVehicleRenderingServer.hpp"
+#include "vehicles/road/RoadVehicleServer.hpp"
 #include "world/WorldData.hpp"
 #include "world/WorldLayer.hpp"
 #include "world/WorldSection.hpp"
@@ -154,7 +162,10 @@ TrackServer *track_server_singleton = nullptr;
 PersonServer *person_server_singleton = nullptr;
 VehicleServer *vehicle_server_singleton = nullptr;
 RailVehicleServer *rail_vehicle_server_singleton = nullptr;
+RoadServer *road_server_singleton = nullptr;
+RoadVehicleServer *road_vehicle_server_singleton = nullptr;
 RailVehicleRenderingServer *rail_vehicle_rendering_server_singleton = nullptr;
+RoadVehicleRenderingServer *road_vehicle_rendering_server_singleton = nullptr;
 TractionServer *traction_server_singleton = nullptr;
 SceneryStreamingServer *scenery_streaming_server_singleton = nullptr;
 SceneryMeshRenderingServer *scenery_mesh_rendering_server_singleton = nullptr;
@@ -206,9 +217,16 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(VehiclePerson);
         GDREGISTER_ABSTRACT_CLASS(VehicleImplementationServer);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleServer);
+        GDREGISTER_ABSTRACT_CLASS(RoadServer);
+        GDREGISTER_CLASS(RoadRouteSegment);
+        GDREGISTER_ABSTRACT_CLASS(RoadVehicleServer);
         GDREGISTER_CLASS(RailVehicleNeighbour);
+        GDREGISTER_CLASS(VehicleAppearance);
+        GDREGISTER_ABSTRACT_CLASS(VehicleRenderingServer);
         GDREGISTER_CLASS(RailVehicleAppearance);
         GDREGISTER_CLASS(RailVehicleRenderingServer);
+        GDREGISTER_CLASS(RoadVehicleAppearance);
+        GDREGISTER_CLASS(RoadVehicleRenderingServer);
         GDREGISTER_ABSTRACT_CLASS(TractionServer);
         GDREGISTER_CLASS(SpatialIndex);
         GDREGISTER_CLASS(TrackEndpointRef);
@@ -284,6 +302,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(RailVehicleElectricInductionEngine);
         GDREGISTER_ABSTRACT_CLASS(VehicleController);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleController);
+        GDREGISTER_CLASS(RoadVehicleController);
         GDREGISTER_CLASS(Cabin3D);
         GDREGISTER_ABSTRACT_CLASS(CabinHUDMouseSystem);
         GDREGISTER_CLASS(RailVehicle3D);
@@ -367,6 +386,15 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         // after VehicleServer is registered: the constructor follows the vehicles' lifetime
         rail_vehicle_server_singleton = memnew(RailVehicleServer);
         Engine::get_singleton()->register_singleton("RailVehicleServer", rail_vehicle_server_singleton); // 10
+        // after TrackServer is registered: a road laid along a track has its limit
+        road_server_singleton = memnew(RoadServer);
+        Engine::get_singleton()->register_singleton("RoadServer", road_server_singleton); // 10d
+        // after VehicleServer and RoadServer are registered: the constructor follows the vehicles'
+        // lifetime, and it steps the road vehicles
+        road_vehicle_server_singleton = memnew(RoadVehicleServer);
+        Engine::get_singleton()->register_singleton("RoadVehicleServer", road_vehicle_server_singleton); // 10e
+        vehicle_server_singleton->implementation_register(
+                RoadVehicleServer::IMPLEMENTATION_NAME, road_vehicle_server_singleton->get_instance_id());
         // after TrackServer is registered: the constructor follows its switches; before the plugins'
         // servers, which draw the signal heads' lights
         signalling_server_singleton = memnew(SignallingServer);
@@ -420,6 +448,12 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
             rail_vehicle_rendering_server_singleton = memnew(RailVehicleRenderingServer);
             Engine::get_singleton()->register_singleton(
                     "RailVehicleRenderingServer", rail_vehicle_rendering_server_singleton); // 18a
+        }
+        // the road vehicles' renderer, as the rail ones'
+        if (RoadVehicleRenderingServer::get_instance() == nullptr) {
+            road_vehicle_rendering_server_singleton = memnew(RoadVehicleRenderingServer);
+            Engine::get_singleton()->register_singleton(
+                    "RoadVehicleRenderingServer", road_vehicle_rendering_server_singleton); // 18c
         }
         // after VehicleServer: the constructor follows its freed vehicles
         station_server_singleton = memnew(StationServer);
@@ -497,6 +531,11 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     }
 
     // a plugin's renderer is the plugin's to free (10c)
+    if (road_vehicle_rendering_server_singleton != nullptr) {
+        Engine::get_singleton()->unregister_singleton("RoadVehicleRenderingServer"); // 18c
+        memdelete(road_vehicle_rendering_server_singleton);
+        road_vehicle_rendering_server_singleton = nullptr;
+    }
     if (rail_vehicle_rendering_server_singleton != nullptr) {
         Engine::get_singleton()->unregister_singleton("RailVehicleRenderingServer"); // 18a
         memdelete(rail_vehicle_rendering_server_singleton);
@@ -574,6 +613,25 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     if (signalling_server_singleton != nullptr) {
         memdelete(signalling_server_singleton);
         signalling_server_singleton = nullptr;
+    }
+
+    if (Engine::get_singleton()->has_singleton("RoadVehicleServer")) {
+        Engine::get_singleton()->unregister_singleton("RoadVehicleServer"); // 10e
+    }
+    if (road_vehicle_server_singleton != nullptr) {
+        if (vehicle_server_singleton != nullptr) {
+            vehicle_server_singleton->implementation_unregister(RoadVehicleServer::IMPLEMENTATION_NAME);
+        }
+        memdelete(road_vehicle_server_singleton);
+        road_vehicle_server_singleton = nullptr;
+    }
+
+    if (Engine::get_singleton()->has_singleton("RoadServer")) {
+        Engine::get_singleton()->unregister_singleton("RoadServer"); // 10d
+    }
+    if (road_server_singleton != nullptr) {
+        memdelete(road_server_singleton);
+        road_server_singleton = nullptr;
     }
 
     if (Engine::get_singleton()->has_singleton("RailVehicleServer")) {
