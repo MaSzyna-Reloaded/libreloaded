@@ -17,9 +17,10 @@ Docker); `make linux-sdk-image-push` publishes a changed Dockerfile's image.
 
 ## Engine
 
-Godot 4.7.2, double precision (`godot-double`): libmaszyna's `GODOT_VERSION`, built once by
-libmaszyna's CI and published as its release `godot-4.7.2-double` (editor and export templates),
-which the other repositories fetch (libmaszyna's `ci/fetch-godot.sh`). Single precision builds -
+Godot 4.7.2, double precision (`godot-double`): libreloaded's `GODOT_VERSION` with the fixes in
+`godot-patches/`, built once by libreloaded's CI and published as its release
+`godot-<build>-double` (editor and export templates), which the other repositories fetch
+(`ci/fetch-godot.sh`). Single precision builds -
 Godot's own, Terrain3D's own - do not load.
 
 ## Windows binaries

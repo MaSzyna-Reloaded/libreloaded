@@ -117,6 +117,12 @@
 				The wall clock's speed, at once rather than over the speed change time - a scenery starts at it, and the menu is heard at it.
 			</description>
 		</method>
+		<method name="sun_get_direction" qualifiers="const">
+			<return type="Vector3" />
+			<description>
+				Towards the sun at the environment's place ([member latitude], [member longitude], [member timezone_offset]), date and clock ([member time_of_day]), a unit vector: +X east, -Z north, +Y up, below the horizon at night. The declination by Cooper's equation and the hour angle of the mean solar time, as the [member light_level] takes the sun's height from.
+			</description>
+		</method>
 		<method name="simulation_unpause">
 			<return type="void" />
 			<description>

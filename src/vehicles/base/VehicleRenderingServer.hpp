@@ -125,8 +125,8 @@ namespace godot {
                     RID pickable;
                     RID detection_area;
                     RID detection_shape;
-                    /* vehicle_set_visible_low_poly_cabins() */
-                    bool low_poly_cabs_visible = true;
+                    /* vehicle_set_shown_cabin() */
+                    RID shown_cabin;
             };
 
             /* Where the kind's server placed the vehicle; false while it stands nowhere */
@@ -164,8 +164,8 @@ namespace godot {
             virtual void _vehicle_update(const RID &p_vehicle) {}
             /* Every frame for the vehicles drawn in detail, before their poses are sent */
             virtual void _vehicle_pose(const RID &p_vehicle) {}
-            /* vehicle_set_visible_low_poly_cabins() changed */
-            virtual void _vehicle_low_poly_cabins_changed(const RID &p_vehicle) {}
+            /* vehicle_set_shown_cabin() changed */
+            virtual void _vehicle_shown_cabin_changed(const RID &p_vehicle) {}
             /* Once a frame, after every vehicle's own work */
             virtual void _frame_processed(double p_delta) {}
 
@@ -284,10 +284,11 @@ namespace godot {
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
             void vehicle_set_head_display_material(const RID &p_vehicle, const Ref<Material> &p_material);
-            /* Whether the low-poly interior shows every cab. Not visible - the interior of the
-             * occupied cab is drawn in its place by whoever shows it - a plugin's renderer hides
-             * the low-poly cab it stands for */
-            void vehicle_set_visible_low_poly_cabins(const RID &p_vehicle, bool p_visible);
+            /* The cabin whose interior is drawn, by whoever shows it, in the place of the
+             * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
+             * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every
+             * low-poly cab is drawn */
+            void vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin);
             /* Whether the vehicle is drawn in detail - as nodes, animated */
             bool vehicle_is_detailed(const RID &p_vehicle) const;
             /* Whether the vehicle's models stand as nodes the editor shows and edits ("Edit FIZ"):

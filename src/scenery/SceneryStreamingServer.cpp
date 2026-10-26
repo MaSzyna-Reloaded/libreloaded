@@ -137,6 +137,8 @@ namespace godot {
         MutexLock lock(mutex);
         exiting = false;
         planning = false;
+        loading_builds.clear();
+        loading_provides.clear();
     }
 
     Vector2i SceneryStreamingServer::_get_chunk_key(const Vector3 &p_origin) {
@@ -241,7 +243,6 @@ namespace godot {
             const Vector2i cell = cells[index];
             ProviderCell &state = provider.cells[cell];
             state.overhang = MAX(0.0F, p_provider->chunk_get_overhang(cell));
-            provider.max_overhang = MAX(provider.max_overhang, state.overhang);
         }
         const RID rid = UtilityFunctions::rid_from_int64(UtilityFunctions::rid_allocate_id());
         MutexLock lock(mutex);
@@ -465,6 +466,8 @@ namespace godot {
     /// A new camera revision invalidates work which has not reached its owner yet. Already-built
     /// pieces stay alive until the new plan decides whether they are still wanted.
     void SceneryStreamingServer::_drop_stale_work() {
+        loading_builds.clear();
+        loading_provides.clear();
         Vector<PendingBuild> builds;
         for (const PendingBuild &pending: pending_builds) {
             if (pending.revision == target_revision && entry_locations.has(pending.stream_rid)) {
@@ -609,27 +612,27 @@ namespace godot {
     int SceneryStreamingServer::_get_pending_nearby_locked(const int p_chunk_radius) const {
         int pending = 0;
         const Vector2i camera_key = _get_chunk_key(camera_position);
-        for (int x = camera_key.x - p_chunk_radius; x <= camera_key.x + p_chunk_radius; x++) {
-            for (int y = camera_key.y - p_chunk_radius; y <= camera_key.y + p_chunk_radius; y++) {
-                const Chunk *chunk = chunks.getptr(Vector2i(x, y));
-                if (chunk == nullptr) {
-                    continue;
-                }
-                for (const Entry &entry: chunk->entries) {
-                    if (entry.wanted_revision == target_revision && !entry.built && !entry.ahead) {
-                        pending++;
-                    }
+        // the chunks and cells there are, each once - not every key of the square around the camera
+        const auto nearby = [&](const Vector2i &p_key) {
+            return Math::abs(p_key.x - camera_key.x) <= p_chunk_radius &&
+                   Math::abs(p_key.y - camera_key.y) <= p_chunk_radius;
+        };
+        for (const KeyValue<Vector2i, Chunk> &item: chunks) {
+            if (!nearby(item.key)) {
+                continue;
+            }
+            for (const Entry &entry: item.value.entries) {
+                if (entry.wanted_revision == target_revision && !entry.built && !entry.ahead) {
+                    pending++;
                 }
             }
         }
         // a provider's cell not supplied yet is content still to come
         for (const KeyValue<RID, Provider> &item: providers) {
-            for (int x = camera_key.x - p_chunk_radius; x <= camera_key.x + p_chunk_radius; x++) {
-                for (int y = camera_key.y - p_chunk_radius; y <= camera_key.y + p_chunk_radius; y++) {
-                    const ProviderCell *cell = item.value.cells.getptr(Vector2i(x, y));
-                    if (cell != nullptr && cell->wanted_revision == target_revision && !cell->adopted && !cell->ahead) {
-                        pending++;
-                    }
+            for (const KeyValue<Vector2i, ProviderCell> &cell: item.value.cells) {
+                if (nearby(cell.key) && cell.value.wanted_revision == target_revision && !cell.value.adopted &&
+                    !cell.value.ahead) {
+                    pending++;
                 }
             }
         }
@@ -747,7 +750,11 @@ namespace godot {
         return statistics;
     }
 
-    void SceneryStreamingServer::_request_plan(const Vector3 &p_position) {
+    /// What the camera at p_position wants, decided at once on the main thread: one pass over the
+    /// chunks and the providers' cells queues what to build, clear, supply and withdraw; what has
+    /// to be loaded first goes to the worker (_load())
+    void SceneryStreamingServer::_plan(const Vector3 &p_position) {
+        const uint64_t started_msec = Time::get_singleton()->get_ticks_msec();
         MutexLock lock(mutex);
         // a jump - another vehicle, a teleport - leaves an area to fill, as a new camera does
         if (p_position.distance_to(camera_position) > CHUNK_SIZE_M) {
@@ -761,9 +768,100 @@ namespace godot {
         content_dirty = false;
         force_plan = false;
         _drop_stale_work();
-        if (planning) {
+        if (!camera_id.is_valid()) {
             return;
         }
+        const uint64_t revision = target_revision;
+        int wanted_unbuilt = 0;
+        for (KeyValue<Vector2i, Chunk> &item: chunks) {
+            Chunk &chunk = item.value;
+            if (chunk.dirty) {
+                _sort_chunk(chunk);
+            }
+            const float distance = _get_chunk_distance(item.key, p_position);
+            const bool anchored = has_anchor_chunk && item.key == anchor_chunk;
+            for (Entry &entry: chunk.entries) {
+                // in range, built ahead of it, kept a while after it - or in the anchor's chunk
+                const bool wanted = anchored || (entry.built ? distance <= entry.range_end + HYSTERESIS_M
+                                                             : distance <= entry.range_end + PREFETCH_M);
+                entry.ahead = distance > entry.range_end;
+                entry.wanted_revision = wanted ? revision : 0;
+                if (wanted && !entry.built && entry.queued_revision != revision) {
+                    PendingBuild build;
+                    build.owner = entry.owner;
+                    build.ahead = entry.ahead;
+                    build.preload = owners[entry.owner].preload;
+                    build.build = owners[entry.owner].build;
+                    build.stream_rid = entry.stream_rid;
+                    build.user_rid = entry.user_rid;
+                    build.chunk = item.key;
+                    build.distance = distance;
+                    build.revision = revision;
+                    (build.preload.is_valid() ? loading_builds : planned_builds).push_back(build);
+                    entry.queued_revision = revision;
+                } else if (!wanted && entry.built) {
+                    PendingClear clear;
+                    clear.owner = entry.owner;
+                    clear.clear = owners[entry.owner].clear;
+                    clear.stream_rid = entry.stream_rid;
+                    clear.user_rid = entry.user_rid;
+                    clear.revision = revision;
+                    planned_clears.push_back(clear);
+                }
+                if (wanted && !entry.built && !entry.ahead) {
+                    wanted_unbuilt++;
+                }
+            }
+        }
+        // a provider's cell is wanted within the draw distance - the farthest any piece is drawn
+        // (stream_register()) - of its content, which may reach out of it by its overhang; the
+        // anchor's wherever it is
+        for (KeyValue<RID, Provider> &item: providers) {
+            Provider &provider = item.value;
+            if (!provider.scenario.is_valid()) {
+                continue;
+            }
+            for (KeyValue<Vector2i, ProviderCell> &cell_item: provider.cells) {
+                ProviderCell &cell = cell_item.value;
+                const float distance = _get_chunk_distance(cell_item.key, p_position);
+                const float reach = draw_distance + cell.overhang;
+                const bool anchored = has_anchor_chunk && cell_item.key == anchor_chunk;
+                const bool wanted =
+                        anchored || (cell.adopted ? distance <= reach + HYSTERESIS_M : distance <= reach + PREFETCH_M);
+                cell.ahead = distance > reach;
+                cell.wanted_revision = wanted ? revision : 0;
+                if (wanted && !cell.adopted && cell.queued_revision != revision) {
+                    PendingProvide provide;
+                    provide.provider_rid = item.key;
+                    provide.provider = provider.provider;
+                    provide.kinds = provider.kinds;
+                    provide.cell = cell_item.key;
+                    provide.distance = distance;
+                    provide.revision = revision;
+                    loading_provides.push_back(provide);
+                    cell.queued_revision = revision;
+                }
+                if (wanted && !cell.adopted && !cell.ahead) {
+                    wanted_unbuilt++;
+                }
+            }
+            // a supplied cell the pass above did not want, however far the camera has gone
+            for (const Vector2i &key: provider.adopted_cells) {
+                if (provider.cells[key].wanted_revision != revision) {
+                    planned_withdraws.push_back(PendingWithdraw{item.key, key, revision});
+                }
+            }
+        }
+        pending_build_count = wanted_unbuilt;
+        scanned_revision = revision;
+        plan_msec = Time::get_singleton()->get_ticks_msec() - started_msec;
+        passes++;
+        if (loading_builds.is_empty() && loading_provides.is_empty()) {
+            return;
+        }
+        // the worker takes them from the back, the nearest first
+        loading_builds.sort_custom<DistanceComparator>();
+        loading_provides.sort_custom<DistanceComparator>();
         planning = true;
         if (worker.is_null()) {
             worker.instantiate();
@@ -810,12 +908,13 @@ namespace godot {
         }
         const Vector3 position = camera->get_global_position();
         const uint64_t now = Time::get_singleton()->get_ticks_msec();
-        const float movement = static_cast<float>(position.distance_to(last_camera_position));
+        last_camera_position = position;
+        const float movement = static_cast<float>(position.distance_to(planned_camera_position));
         requested = requested || movement >= CAMERA_STEP_M || (movement > 0.0 && now - last_plan_msec >= INTERVAL_MSEC);
         if (requested) {
             last_plan_msec = now;
-            last_camera_position = position;
-            _request_plan(position);
+            planned_camera_position = position;
+            _plan(position);
             const Vector2i chunk = _get_chunk_key(position);
             if (chunk != camera_chunk) {
                 camera_chunk = chunk;
@@ -1000,6 +1099,9 @@ namespace godot {
             cleared_since_release = 0;
             MutexLock lock(mutex);
             release_requested = true;
+            if (worker.is_valid()) {
+                semaphore->post();
+            }
         }
 
         // a provider's cell in reach: its content goes to the consumers, which register its pieces
@@ -1120,128 +1222,18 @@ namespace godot {
         return true;
     }
 
-    /// Computes the complete desired set first, then preloads and publishes it nearest-first. A
-    /// changed camera revision aborts the pass between individual preloads.
-    bool SceneryStreamingServer::_plan(const uint64_t p_revision, const Vector3 &p_camera_position) {
-        const uint64_t started_msec = Time::get_singleton()->get_ticks_msec();
-        Vector<PendingBuild> entering;
-        Vector<PendingClear> leaving;
-        Vector<PendingProvide> supplying;
-        Vector<PendingWithdraw> withdrawing;
-        int wanted_unbuilt = 0;
-        {
-            MutexLock lock(mutex);
-            if (p_revision != target_revision || !camera_id.is_valid()) {
-                return false;
-            }
-            for (KeyValue<Vector2i, Chunk> &item: chunks) {
-                Chunk &chunk = item.value;
-                if (chunk.dirty) {
-                    _sort_chunk(chunk);
-                }
-                const float distance = _get_chunk_distance(item.key, p_camera_position);
-                const bool anchored = has_anchor_chunk && item.key == anchor_chunk;
-                for (Entry &entry: chunk.entries) {
-                    // in range, built ahead of it, kept a while after it - or in the anchor's chunk
-                    const bool wanted = anchored || (entry.built ? distance <= entry.range_end + HYSTERESIS_M
-                                                                 : distance <= entry.range_end + PREFETCH_M);
-                    entry.ahead = distance > entry.range_end;
-                    entry.wanted_revision = wanted ? p_revision : 0;
-                    if (wanted && !entry.built && entry.queued_revision != p_revision) {
-                        PendingBuild build;
-                        build.owner = entry.owner;
-                        build.ahead = entry.ahead;
-                        build.preload = owners[entry.owner].preload;
-                        build.build = owners[entry.owner].build;
-                        build.stream_rid = entry.stream_rid;
-                        build.user_rid = entry.user_rid;
-                        build.chunk = item.key;
-                        build.distance = distance;
-                        build.revision = p_revision;
-                        entering.push_back(build);
-                        entry.queued_revision = p_revision;
-                    } else if (!wanted && entry.built) {
-                        PendingClear clear;
-                        clear.owner = entry.owner;
-                        clear.clear = owners[entry.owner].clear;
-                        clear.stream_rid = entry.stream_rid;
-                        clear.user_rid = entry.user_rid;
-                        clear.revision = p_revision;
-                        leaving.push_back(clear);
-                    }
-                    if (wanted && !entry.built && !entry.ahead) {
-                        wanted_unbuilt++;
-                    }
-                }
-            }
-            // a provider's cell is wanted within the draw distance - the farthest any piece is
-            // drawn (stream_register()) - of its content, which may reach out of it by its overhang
-            const Vector2i camera_key = _get_chunk_key(p_camera_position);
-            for (KeyValue<RID, Provider> &item: providers) {
-                Provider &provider = item.value;
-                if (!provider.scenario.is_valid()) {
-                    continue;
-                }
-                // a cell in reach of the camera, or the anchor's wherever it is
-                const auto plan_cell = [&](const Vector2i &p_key, const bool p_anchored) {
-                    ProviderCell *cell = provider.cells.getptr(p_key);
-                    if (cell == nullptr) {
-                        return;
-                    }
-                    const float distance = _get_chunk_distance(p_key, p_camera_position);
-                    const float reach = draw_distance + cell->overhang;
-                    const bool wanted = p_anchored || (cell->adopted ? distance <= reach + HYSTERESIS_M
-                                                                     : distance <= reach + PREFETCH_M);
-                    cell->ahead = distance > reach;
-                    cell->wanted_revision = wanted ? p_revision : 0;
-                    if (wanted && !cell->adopted && cell->queued_revision != p_revision) {
-                        PendingProvide provide;
-                        provide.provider_rid = item.key;
-                        provide.provider = provider.provider;
-                        provide.kinds = provider.kinds;
-                        provide.cell = p_key;
-                        provide.distance = distance;
-                        provide.revision = p_revision;
-                        supplying.push_back(provide);
-                        cell->queued_revision = p_revision;
-                    }
-                    if (wanted && !cell->adopted && !cell->ahead) {
-                        wanted_unbuilt++;
-                    }
-                };
-                const int radius = static_cast<int>(
-                        Math::ceil((draw_distance + provider.max_overhang + HYSTERESIS_M) / CHUNK_SIZE_M));
-                for (int x = camera_key.x - radius; x <= camera_key.x + radius; x++) {
-                    for (int y = camera_key.y - radius; y <= camera_key.y + radius; y++) {
-                        const Vector2i key(x, y);
-                        plan_cell(key, has_anchor_chunk && key == anchor_chunk);
-                    }
-                }
-                if (has_anchor_chunk && (Math::abs(anchor_chunk.x - camera_key.x) > radius ||
-                                         Math::abs(anchor_chunk.y - camera_key.y) > radius)) {
-                    plan_cell(anchor_chunk, true);
-                }
-                // a supplied cell the pass above did not want, however far the camera has gone
-                for (const Vector2i &key: provider.adopted_cells) {
-                    if (provider.cells[key].wanted_revision != p_revision) {
-                        withdrawing.push_back(PendingWithdraw{item.key, key, p_revision});
-                    }
-                }
-            }
-            pending_build_count = wanted_unbuilt;
-            scanned_revision = p_revision;
-            planned_clears.append_array(leaving);
-            planned_withdraws.append_array(withdrawing);
-        }
-
-        // the cells' content first, nearest first: a provider's terrain is what the area stands on
-        supplying.sort_custom<DistanceComparator>();
-        for (int64_t i = supplying.size() - 1; i >= 0; i--) {
-            PendingProvide provide = supplying[i];
+    void SceneryStreamingServer::_load(
+            const uint64_t p_revision, const Vector<PendingProvide> &p_provides, const Vector<PendingBuild> &p_builds) {
+        // the cells' content first: a provider's terrain is what the area stands on
+        for (int64_t i = p_provides.size() - 1; i >= 0; i--) {
+            PendingProvide provide = p_provides[i];
             {
                 MutexLock lock(mutex);
-                if (p_revision != target_revision || !providers.has(provide.provider_rid)) {
-                    return false;
+                if (p_revision != target_revision) {
+                    return;
+                }
+                if (!providers.has(provide.provider_rid)) {
+                    continue;
                 }
             }
             for (const ContentKind kind: provide.kinds) {
@@ -1252,16 +1244,15 @@ namespace godot {
             }
             MutexLock lock(mutex);
             if (p_revision != target_revision) {
-                return false;
+                return;
             }
             planned_provides.push_back(provide);
         }
 
-        // nearest first, a batch at a time on the preloads' own threads (reading and decoding is
-        // what makes a piece buildable), each batch published whole
-        entering.sort_custom<DistanceComparator>();
+        // a batch at a time on the preloads' own threads (reading and decoding is what makes a
+        // piece buildable), each batch published whole
         const int64_t batch_size = preload_queue->get_worker_count();
-        int64_t next = entering.size() - 1;
+        int64_t next = p_builds.size() - 1;
         std::vector<PendingBuild> batch;
         std::vector<int> tasks;
         while (next >= 0) {
@@ -1269,91 +1260,70 @@ namespace godot {
             {
                 MutexLock lock(mutex);
                 if (p_revision != target_revision) {
-                    return false;
+                    return;
                 }
                 for (; next >= 0 && static_cast<int64_t>(batch.size()) < batch_size; next--) {
-                    if (entry_locations.has(entering[next].stream_rid)) {
-                        batch.push_back(entering[next]);
+                    if (entry_locations.has(p_builds[next].stream_rid)) {
+                        batch.push_back(p_builds[next]);
                     }
                 }
             }
             tasks.assign(batch.size(), -1);
             for (size_t index = 0; index < batch.size(); index++) {
-                if (batch[index].preload.is_valid()) {
-                    if (verbose) {
-                        UtilityFunctions::print(
-                                "[SceneryStreaming] preloading owner ", batch[index].owner, " piece ",
-                                batch[index].user_rid.get_id());
-                    }
-                    tasks[index] = preload_queue->submit(batch[index].preload.bind(batch[index].user_rid));
+                if (verbose) {
+                    UtilityFunctions::print(
+                            "[SceneryStreaming] preloading owner ", batch[index].owner, " piece ",
+                            batch[index].user_rid.get_id());
                 }
+                tasks[index] = preload_queue->submit(batch[index].preload.bind(batch[index].user_rid));
             }
             for (size_t index = 0; index < batch.size(); index++) {
-                if (tasks[index] >= 0) {
-                    batch[index].preloaded = preload_queue->wait(tasks[index]);
-                }
+                batch[index].preloaded = preload_queue->wait(tasks[index]);
             }
             MutexLock lock(mutex);
             if (p_revision != target_revision) {
-                return false;
+                return;
             }
+            // whether it is still wanted is the main thread's to tell, as it applies the build
             for (const PendingBuild &build: batch) {
-                const Entry *entry = _get_entry(build.stream_rid);
-                if (entry != nullptr && entry->wanted_revision == p_revision) {
-                    planned_builds.push_back(build);
-                }
+                planned_builds.push_back(build);
             }
         }
-
-        MutexLock lock(mutex);
-        if (p_revision != target_revision) {
-            return false;
-        }
-        plan_msec = Time::get_singleton()->get_ticks_msec() - started_msec;
-        passes++;
-        return true;
     }
 
+    /// Takes what the last plan left to load until there is none, giving the cleared pieces'
+    /// memory back when asked to (malloc_trim takes long on a heap of gigabytes)
     void SceneryStreamingServer::_worker_loop() {
         while (true) {
             semaphore->wait();
             while (true) {
                 uint64_t revision;
-                Vector3 position;
+                Vector<PendingProvide> provides;
+                Vector<PendingBuild> builds;
+                bool release;
                 {
                     MutexLock lock(mutex);
                     if (exiting) {
                         return;
                     }
-                    if (!camera_id.is_valid()) {
-                        planning = false;
-                        break;
-                    }
-                    revision = target_revision;
-                    position = camera_position;
-                }
-                const bool completed = _plan(revision, position);
-                bool release = false;
-                {
-                    MutexLock lock(mutex);
                     release = release_requested;
                     release_requested = false;
+                    revision = target_revision;
+                    provides = loading_provides;
+                    builds = loading_builds;
+                    loading_provides.clear();
+                    loading_builds.clear();
+                    if (provides.is_empty() && builds.is_empty()) {
+                        planning = false;
+                    }
                 }
                 if (release) {
                     ProcessMemory::release_unused();
                 }
-                MutexLock lock(mutex);
-                if (exiting) {
-                    return;
-                }
-                if (completed && revision == target_revision) {
-                    planning = false;
+                if (provides.is_empty() && builds.is_empty()) {
                     break;
                 }
-                if (!camera_id.is_valid()) {
-                    planning = false;
-                    break;
-                }
+                _load(revision, provides, builds);
             }
         }
     }

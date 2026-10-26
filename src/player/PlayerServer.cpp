@@ -11,6 +11,8 @@
 namespace godot {
     const char *PlayerServer::player_vehicle_changed_signal = "player_vehicle_changed";
     const char *PlayerServer::player_vehicle_entered_signal = "player_vehicle_entered";
+    const char *PlayerServer::player_started_signal = "player_started";
+    const char *PlayerServer::player_stopped_signal = "player_stopped";
 
     /// The drivers riding along in the vehicle's trainset back at the controls of their cabins,
     /// where nobody else drives from (TakeControl(true), simulation.cpp:257-270)
@@ -66,11 +68,17 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("player_take_back_vehicle"), &PlayerServer::player_take_back_vehicle);
         ClassDB::bind_method(D_METHOD("player_get_vehicle"), &PlayerServer::player_get_vehicle);
         ClassDB::bind_method(D_METHOD("player_get_person"), &PlayerServer::player_get_person);
+        ClassDB::bind_method(D_METHOD("player_start", "vehicle"), &PlayerServer::player_start);
+        ClassDB::bind_method(D_METHOD("player_stop"), &PlayerServer::player_stop);
+        ClassDB::bind_method(D_METHOD("player_is_started"), &PlayerServer::player_is_started);
+        ClassDB::bind_method(D_METHOD("player_get_start_vehicle"), &PlayerServer::player_get_start_vehicle);
 
         ADD_SIGNAL(MethodInfo(
                 player_vehicle_changed_signal, PropertyInfo(Variant::RID, "vehicle"),
                 PropertyInfo(Variant::RID, "previous")));
         ADD_SIGNAL(MethodInfo(player_vehicle_entered_signal, PropertyInfo(Variant::RID, "vehicle")));
+        ADD_SIGNAL(MethodInfo(player_started_signal));
+        ADD_SIGNAL(MethodInfo(player_stopped_signal));
     }
 
     /// A vehicle freed with the player in it leaves the player on foot. No explicit disconnect:
@@ -131,6 +139,9 @@ namespace godot {
     }
 
     void PlayerServer::_on_vehicle_freed(const RID &p_vehicle) {
+        if (p_vehicle == start_vehicle) {
+            start_vehicle = RID();
+        }
         if (p_vehicle == vehicle) {
             _set_vehicle(RID());
         }
@@ -293,5 +304,30 @@ namespace godot {
 
     RID PlayerServer::player_get_person() const {
         return person;
+    }
+
+    void PlayerServer::player_start(const RID &p_vehicle) {
+        ERR_FAIL_COND_MSG(started, "The player has started already");
+        start_vehicle = p_vehicle;
+        started = true;
+        emit_signal(player_started_signal);
+    }
+
+    void PlayerServer::player_stop() {
+        if (!started) {
+            return;
+        }
+        player_leave_vehicle();
+        start_vehicle = RID();
+        started = false;
+        emit_signal(player_stopped_signal);
+    }
+
+    bool PlayerServer::player_is_started() const {
+        return started;
+    }
+
+    RID PlayerServer::player_get_start_vehicle() const {
+        return start_vehicle;
     }
 } // namespace godot

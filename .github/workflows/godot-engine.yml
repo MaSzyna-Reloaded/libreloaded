@@ -1,11 +1,11 @@
 name: godot-engine
 
 # Godot publishes no double precision build, so the editor and the export templates are built here,
-# once per engine version (GODOT_VERSION in the Makefile), and kept as the assets of the release
-# godot-<version>-double. The workflows that need it call this one first: when the release is
-# already there it ends at the check, and only after a GODOT_VERSION bump does it build.
+# once per engine build (GODOT_BUILD in the Makefile: the version and the godot-patches), and kept as
+# the assets of the release godot-<build>-double. Run by hand only (Actions - godot-engine - Run
+# workflow) after a GODOT_VERSION bump or a patch added: nothing else builds the engine, the other
+# workflows fetch the release. When the release is already there it ends at the check.
 on:
-  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -19,12 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Look for godot-<version>-double
+      - name: Look for godot-<build>-double
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="godot-$(make -s godot-version)-double"
+          tag="godot-$(make -s godot-build)-double"
           if gh release view "$tag" > /dev/null 2>&1; then
             echo "missing=false" >> "$GITHUB_OUTPUT"
           else
@@ -73,7 +73,7 @@ jobs:
       - name: Build ${{ matrix.files }}
         id: build
         run: |
-          paths=$(for file in ${{ matrix.files }}; do echo "build-godot-$(make -s godot-version)/bin/$file"; done)
+          paths=$(for file in ${{ matrix.files }}; do echo "build-godot-$(make -s godot-build)/bin/$file"; done)
           # shellcheck disable=SC2086 # one file per word
           make $paths
           { echo "paths<<EOF"; echo "$paths"; echo "EOF"; } >> "$GITHUB_OUTPUT"
@@ -95,11 +95,11 @@ jobs:
           path: engine
           merge-multiple: true
 
-      - name: Publish godot-<version>-double
+      - name: Publish godot-<build>-double
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="godot-$(make -s godot-version)-double"
+          tag="godot-$(make -s godot-build)-double"
           # a rerun finds the release already there and only replaces its files
           gh release create "$tag" --prerelease --title "$tag" \
               --notes "Double precision Godot for CI, built by the godot-engine workflow" \

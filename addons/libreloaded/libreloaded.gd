@@ -12,6 +12,7 @@ var track_normal_3d_script = preload("res://addons/libreloaded/tracks/track_norm
 var track_switch_3d_script = preload("res://addons/libreloaded/tracks/track_switch_3d.gd")
 
 func _enable_plugin():
+    add_autoload_singleton("ReloadedPlugins", "res://addons/libreloaded/plugins/reloaded_plugins.gd")
     add_autoload_singleton("Console", "res://addons/libreloaded/console/console.gd")
     add_autoload_singleton("VehicleCatalogServer", "res://addons/libreloaded/vehicles/vehicle_catalog_server.gd")
     add_autoload_singleton("TranscriptSystem", "res://addons/libreloaded/sound/transcript_system.gd")
@@ -65,6 +66,7 @@ func _disable_plugin():
     remove_autoload_singleton("TranscriptSystem")
     remove_autoload_singleton("Console")
     remove_autoload_singleton("VehicleCatalogServer")
+    remove_autoload_singleton("ReloadedPlugins")
 
 func _enter_tree():
     add_custom_project_setting("reloaded/scenery/track_curve_bake_interval", 10.0, TYPE_FLOAT)

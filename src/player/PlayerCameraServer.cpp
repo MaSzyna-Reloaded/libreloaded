@@ -1,7 +1,6 @@
 #include "PlayerCameraServer.hpp"
 #include "PlayerServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
-#include "vehicles/rail/RailVehicleServer.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 
@@ -61,6 +60,10 @@ namespace godot {
         player->connect(
                 PlayerServer::player_vehicle_entered_signal,
                 callable_mp(this, &PlayerCameraServer::_on_player_vehicle_entered));
+        player->connect(
+                PlayerServer::player_started_signal, callable_mp(this, &PlayerCameraServer::_on_player_started));
+        player->connect(
+                PlayerServer::player_stopped_signal, callable_mp(this, &PlayerCameraServer::_on_player_stopped));
     }
 
     PlayerCameraServer::~PlayerCameraServer() {
@@ -77,6 +80,18 @@ namespace godot {
     /// too (drivermode.cpp:264)
     void PlayerCameraServer::_on_player_vehicle_entered(const RID & /*p_vehicle*/) {
         camera_set_mode(CAMERA_MODE_CABIN);
+    }
+
+    void PlayerCameraServer::_on_player_started() {
+        const PlayerServer *player = PlayerServer::get_instance();
+        ERR_FAIL_NULL(player);
+        if (!player->player_get_start_vehicle().is_valid()) {
+            camera_set_mode(CAMERA_MODE_FREE);
+        }
+    }
+
+    void PlayerCameraServer::_on_player_stopped() {
+        camera_set_mode(CAMERA_MODE_FREE);
     }
 
     void PlayerCameraServer::_on_vehicle_freed(const RID &p_vehicle) {
@@ -164,11 +179,10 @@ namespace godot {
 
     Transform3D PlayerCameraServer::camera_get_show_transform(const RID &p_vehicle) const {
         const VehicleServer *vehicles = VehicleServer::get_instance();
-        RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
         ERR_FAIL_NULL_V(vehicles, Transform3D());
-        ERR_FAIL_NULL_V(rail_vehicles, Transform3D());
         ERR_FAIL_COND_V(!vehicles->vehicle_exists(p_vehicle), Transform3D());
-        const Transform3D body = rail_vehicles->vehicle_get_transform(p_vehicle);
+        // a rail vehicle and a road one alike
+        const Transform3D body = vehicles->vehicle_get_transform(p_vehicle);
         const double length = vehicles->vehicle_dump_config(p_vehicle).get("length", 0.0);
         const Vector3 eye(0.0, SHOW_EYE_HEIGHT, 0.0);
         const Vector3 position =

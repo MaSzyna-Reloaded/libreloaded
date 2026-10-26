@@ -40,6 +40,31 @@
 				The player lets the trainset go: its drivers drive it again (simulation.cpp:257-270).
 			</description>
 		</method>
+		<method name="player_get_start_vehicle" qualifiers="const">
+			<return type="RID" />
+			<description>
+				The vehicle the player was started in ([method player_start]); an invalid [RID] for none, or once the vehicle is freed.
+			</description>
+		</method>
+		<method name="player_is_started" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Whether the player has started ([method player_start]) and not stopped since.
+			</description>
+		</method>
+		<method name="player_start">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The scenery stands: the player is put in the world to start in [param vehicle] ([method player_get_start_vehicle]), or on foot for an invalid [RID], and [signal player_started] is emitted; the player's node takes the vehicle over once its cab is there. Whoever puts the player in a world starts it, once: the world when its scenery has loaded, or a scene's [code]Player[/code] with [code]auto_start[/code].
+			</description>
+		</method>
+		<method name="player_stop">
+			<return type="void" />
+			<description>
+				The player leaves its vehicle ([method player_leave_vehicle]) and stops, emitting [signal player_stopped] - before the scenery holding the vehicles is freed. Nothing while it has not started.
+			</description>
+		</method>
 		<method name="player_take_back_vehicle">
 			<return type="void" />
 			<description>
@@ -55,6 +80,16 @@
 		</method>
 	</methods>
 	<signals>
+		<signal name="player_started">
+			<description>
+				The player has been put in the world ([method player_start]), to start in [method player_get_start_vehicle] or on foot.
+			</description>
+		</signal>
+		<signal name="player_stopped">
+			<description>
+				The player has stopped ([method player_stop]), out of its vehicle.
+			</description>
+		</signal>
 		<signal name="player_vehicle_changed">
 			<param index="0" name="vehicle" type="RID" />
 			<param index="1" name="previous" type="RID" />

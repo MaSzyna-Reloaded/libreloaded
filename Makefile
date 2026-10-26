@@ -1,4 +1,4 @@
-.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
+.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version godot-build docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
 .DEFAULT_GOAL = compile-debug
 
 # The Godot project the library is built into (its bin/libreloaded/) and whose addons/ CMake links
@@ -27,6 +27,11 @@ CMAKE_GODOTCPP_API_FILE=$(CURDIR)/extension_api.json
 # The engine the library is built for - a game exporting with it has to use exactly this one, since
 # the export looks its template up by this version
 GODOT_VERSION:=4.7.2
+# Fixes of Godot's not released yet, which the engine is built with: godot-patches/*.patch, applied
+# in name order to the clone (godot-patches/README.md). The engine's build - its directory, its
+# release - is named after them as well, so a patch added is a new engine everywhere it is fetched
+GODOT_PATCHES:=$(sort $(wildcard $(CURDIR)/godot-patches/*.patch))
+GODOT_BUILD:=$(GODOT_VERSION)$(if $(GODOT_PATCHES),-$(shell cat $(GODOT_PATCHES) | sha256sum | cut -c1-8))
 
 # glibc is only forward compatible: a library or template linked against a rolling distribution's
 # glibc (2.43-2.44 here) refuses to start on anything older - Ubuntu 22.04/24.04, Debian 12, Mint.
@@ -48,7 +53,7 @@ CCACHE_DIR?=$(HOME)/.cache/ccache
 LINUX_SDK_RUN=mkdir -p $(CCACHE_DIR) && docker run --rm --user $(shell id -u):$(shell id -g) \
     -v $(LINUX_SDK_MOUNT):$(LINUX_SDK_MOUNT) $(LINUX_SDK_OWN_MOUNT) $(LINUX_SDK_PLUGIN_MOUNTS) -w $(CURDIR) -v $(CCACHE_DIR):/ccache -e CCACHE_DIR=/ccache \
     -e CMAKE_C_COMPILER_LAUNCHER=ccache -e CMAKE_CXX_COMPILER_LAUNCHER=ccache $(LINUX_SDK_IMAGE)
-GODOT_SOURCE_DIR:=build-godot-$(GODOT_VERSION)
+GODOT_SOURCE_DIR:=build-godot-$(GODOT_BUILD)
 GODOT_BIN:=$(GODOT_SOURCE_DIR)/bin
 GODOT_SCONS=scons precision=double production=yes -j$(CMAKE_BUILD_JOBS)
 LINUX_TEMPLATE:=$(GODOT_BIN)/godot.linuxbsd.template_release.double.x86_64
@@ -220,8 +225,12 @@ $(PYTHON_RUNTIME_DIR)/lib/libpython2.7.so.1.0: scripts/build-python-runtime | li
 	$(LINUX_SDK_RUN) scripts/build-python-runtime $(PYTHON_RUNTIME_DIR) $(PYTHON_RUNTIME_BUILD_DIR)
 
 
+# patched before it takes its name: a clone a patch failed on is not taken for the engine's source
 $(GODOT_SOURCE_DIR):
-	git clone --depth 1 --branch $(GODOT_VERSION)-stable https://github.com/godotengine/godot.git $@
+	rm -rf $@.tmp
+	git clone --depth 1 --branch $(GODOT_VERSION)-stable https://github.com/godotengine/godot.git $@.tmp
+	$(if $(GODOT_PATCHES),git -C $@.tmp apply $(GODOT_PATCHES))
+	mv $@.tmp $@
 
 
 # Godot publishes no double precision build, so the engine is built here, once per engine version.
@@ -229,6 +238,11 @@ $(GODOT_SOURCE_DIR):
 # $(GODOT_BIN) with ci/fetch-godot.sh, which is what keeps these rules from firing there.
 godot-version:
 	@echo $(GODOT_VERSION)
+
+
+# The engine's build: its version and its patches (GODOT_BUILD) - the release godot-<build>-double
+godot-build:
+	@echo $(GODOT_BUILD)
 
 
 # The editor too is built in the SDK - the host's own is linked against the host's glibc, and this

@@ -224,8 +224,15 @@ calls these methods in order:
 3. `free_servers()` is called at shutdown, before the core frees its rendering servers. The plugin
    frees its servers in reverse order.
 
-The plugin's addon registers its GDScript side itself: autoloads, custom types, importers and
-project settings. The core's `addons/libreloaded/libreloaded.gd` does the same for the core.
+The plugin's part of the game is a `ReloadedRuntimePlugin` of its addon, a node named by
+`ReloadedPlugin.runtime_script`. It works like Godot's `EditorPlugin`: the core's `ReloadedPlugins`
+holds the runtime plugins as its children, as the editor holds its `EditorPlugin`s, and puts them
+in the tree before the main scene. `_enter_tree()` initialises: it creates the plugin's providers
+and registers them at the extension points below. `_exit_tree()` cleans up: it unregisters them.
+So a provider is there before anything of the scene asks for it.
+
+The plugin's addon registers its editor side itself: custom types, importers and project settings.
+The core's `addons/libreloaded/libreloaded.gd` does the same for the core.
 
 ### Registering by name
 
@@ -260,7 +267,7 @@ the provider.
 | Engine parts | subclasses of `RailVehicleDriveUnit`, `RailVehicleCircuitUnit`, `RailVehicleTractionMotorsUnit`, `RailVehicleDieselEngineUnit` | used by the plugin's components |
 | Vehicle node | a subclass of `VehiclePhysicsNode` that overrides `_build_controller()` | none |
 | Appearance | a subclass of `RailVehicleAppearance` | `RailVehicleRenderingServer.vehicle_set_appearance()` |
-| Vehicle catalogue | a `VehicleCatalogProvider` autoload with the vehicles and liveries a player can choose | `VehicleCatalogServer.provider_register()` |
+| Vehicle catalogue | a `VehicleCatalogProvider` with the vehicles and liveries a player can choose, made by the plugin's `ReloadedRuntimePlugin` | `VehicleCatalogServer.provider_register()`, in the runtime plugin's `_enter_tree()` |
 | AI driver | a `DriverImplementation` | `DriverServer.implementation_register()` |
 
 A vehicle's controller chooses its implementation by name (`VehicleController::set_implementation()`).

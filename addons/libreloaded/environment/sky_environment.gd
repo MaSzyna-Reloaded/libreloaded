@@ -9,6 +9,10 @@ class_name SkyEnvironment
 ## configuration_changed to apply_configuration() in the scene.
 
 const GENERATED_WORLD_NAME: StringName = &"_WorldEnvironment"
+## The ambient light is the night's below this height of the sun (its sine) and the day's from
+## AMBIENT_DAY_FULL_ELEVATION up, as Skydome blends it (Skydome.gd:1185, day_full_elevation)
+const AMBIENT_NIGHT_ALTITUDE: float = -0.2
+const AMBIENT_DAY_FULL_ELEVATION: float = 6.0
 ## Glow as tuned in forest-test-scene materials/environment_filmic.tres - what the player's Graphics
 ## settings (render/glow_intensity, render/bloom_intensity) fall back to
 const GLOW_INTENSITY_DEFAULT: float = 1.37
@@ -165,23 +169,204 @@ const FOG_NIGHT_DISTANCE_FACTOR_DEFAULT: float = 0.4255
         tonemap_agx_white = value
         _dirty_visuals = true
 
-@export_range(0.0, 2.0, 0.01) var tonemap_agx_contrast: float = 1.55:
+## AgX's contrast by day and by night, blended by the sun's height as the ambient light is
+## (_apply_day_and_night())
+@export_range(0.0, 2.0, 0.01) var day_tonemap_agx_contrast: float = 1.55:
     set(value):
-        tonemap_agx_contrast = value
-        _dirty_visuals = true
+        day_tonemap_agx_contrast = value
+        _dirty_day_and_night = true
 
+@export_range(0.0, 2.0, 0.01) var night_tonemap_agx_contrast: float = 1.55:
+    set(value):
+        night_tonemap_agx_contrast = value
+        _dirty_day_and_night = true
+
+@export_group("Adjustments")
+## Godot's adjustments of the picture (Environment.adjustment_*): the player's gamma (render/gamma)
+## and the brightness, contrast and saturation of the day and of the night, blended by the sun's
+## height as the ambient light is (_apply_day_and_night()), 1 leaving the picture as it is
 @export var adjustment_enabled: bool = true:
     set(value):
         adjustment_enabled = value
         _dirty_visuals = true
 
+@export_subgroup("Day")
+@export_range(0.01, 8.0, 0.01) var day_adjustment_brightness: float = 1.0:
+    set(value):
+        day_adjustment_brightness = value
+        _dirty_day_and_night = true
+
+@export_range(0.01, 8.0, 0.01) var day_adjustment_contrast: float = 1.0:
+    set(value):
+        day_adjustment_contrast = value
+        _dirty_day_and_night = true
+
+@export_range(0.01, 8.0, 0.01) var day_adjustment_saturation: float = 1.0:
+    set(value):
+        day_adjustment_saturation = value
+        _dirty_day_and_night = true
+
+@export_subgroup("Night")
+@export_range(0.01, 8.0, 0.01) var night_adjustment_brightness: float = 1.0:
+    set(value):
+        night_adjustment_brightness = value
+        _dirty_day_and_night = true
+
+@export_range(0.01, 8.0, 0.01) var night_adjustment_contrast: float = 1.0:
+    set(value):
+        night_adjustment_contrast = value
+        _dirty_day_and_night = true
+
+@export_range(0.01, 8.0, 0.01) var night_adjustment_saturation: float = 1.0:
+    set(value):
+        night_adjustment_saturation = value
+        _dirty_day_and_night = true
+
+@export_group("Sun and Moon")
+## How bright the sun shines, times what the backend gives it (its light level, Skydome's day light)
+@export_range(0.0, 16.0, 0.01) var sun_energy: float = 1.0:
+    set(value):
+        sun_energy = value
+        _dirty_lights = true
+
+## How bright the moon shines, times what the backend gives it (Skydome's night light); a backend
+## with no moon (ProceduralSkyEnvironment) has nothing to take it
+@export_range(0.0, 16.0, 0.01) var moon_energy: float = 1.0:
+    set(value):
+        moon_energy = value
+        _dirty_lights = true
+
+@export_group("Auto Exposure")
+## The camera's exposure following the brightness of the picture (CameraAttributesPractical's
+## auto_exposure_*): how fast it adapts and, by day and by night, how bright it keeps the picture
+## and between which sensitivities [ISO], blended by the sun's height as the ambient light is
+## (_apply_day_and_night()) - a night all in fog is not kept as bright as a day in it; Godot's
+## defaults
+@export var auto_exposure_enabled: bool = false:
+    set(value):
+        auto_exposure_enabled = value
+        _dirty_visuals = true
+
+@export_range(0.01, 64.0, 0.01) var auto_exposure_speed: float = 0.5:
+    set(value):
+        auto_exposure_speed = value
+        _dirty_visuals = true
+
+@export_subgroup("Day")
+@export_range(0.01, 16.0, 0.01) var day_auto_exposure_scale: float = 0.4:
+    set(value):
+        day_auto_exposure_scale = value
+        _dirty_day_and_night = true
+
+@export_range(0.0, 1600.0, 0.01) var day_auto_exposure_min_sensitivity: float = 0.0:
+    set(value):
+        day_auto_exposure_min_sensitivity = value
+        _dirty_day_and_night = true
+
+@export_range(30.0, 64000.0, 0.01) var day_auto_exposure_max_sensitivity: float = 800.0:
+    set(value):
+        day_auto_exposure_max_sensitivity = value
+        _dirty_day_and_night = true
+
+@export_subgroup("Night")
+@export_range(0.01, 16.0, 0.01) var night_auto_exposure_scale: float = 0.4:
+    set(value):
+        night_auto_exposure_scale = value
+        _dirty_day_and_night = true
+
+@export_range(0.0, 1600.0, 0.01) var night_auto_exposure_min_sensitivity: float = 0.0:
+    set(value):
+        night_auto_exposure_min_sensitivity = value
+        _dirty_day_and_night = true
+
+@export_range(30.0, 64000.0, 0.01) var night_auto_exposure_max_sensitivity: float = 800.0:
+    set(value):
+        night_auto_exposure_max_sensitivity = value
+        _dirty_day_and_night = true
+
+@export_group("Global Illumination")
+## SDFGI's indirect light (render/sdfgi_enabled): its energy (Environment.sdfgi_energy) and the share of
+## it kept at every bounce from a surface (sdfgi_bounce_feedback) - above 0 light bounces on, into a
+## cab through its windows; Godot's defaults
+@export_range(0.0, 8.0, 0.01) var sdfgi_energy: float = 1.0:
+    set(value):
+        sdfgi_energy = value
+        _dirty_visuals = true
+
+@export_range(0.0, 1.99, 0.01) var sdfgi_bounce_feedback: float = 0.5:
+    set(value):
+        sdfgi_bounce_feedback = value
+        _dirty_visuals = true
+
+@export_group("Ambient Light")
+## The day's and the night's ambient light - its colour, energy and the share of it the sky gives
+## (Environment.ambient_light_*), blended by the sun's height (_apply_day_and_night()); a backend that
+## draws the ambient light itself (Skydome) takes them over; Skydome's defaults (Skydome.gd:171-253).
+## SDFGI takes it in only once Godot's godot#55104 is fixed (godot#118329)
+@export var day_ambient_color: Color = Color(0.91, 0.85, 0.69):
+    set(value):
+        day_ambient_color = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export_range(0.0, 16.0, 0.01) var day_ambient_energy: float = 1.5:
+    set(value):
+        day_ambient_energy = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export_range(0.0, 1.0, 0.01) var day_ambient_sky_contribution: float = 0.25:
+    set(value):
+        day_ambient_sky_contribution = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export var night_ambient_color: Color = Color(0.02, 0.03, 0.06):
+    set(value):
+        night_ambient_color = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export_range(0.0, 16.0, 0.01) var night_ambient_energy: float = 0.1:
+    set(value):
+        night_ambient_energy = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export_range(0.0, 1.0, 0.01) var night_ambient_sky_contribution: float = 0.8:
+    set(value):
+        night_ambient_sky_contribution = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export_group("Fog Light")
+## The colour of the fog's light by day and by night (Environment.fog_light_color), blended by the
+## sun's height as the ambient light is (_apply_day_and_night()); a backend that colours the fog
+## itself (Skydome) takes them over. The day's the core's sky's own, the night's Skydome's
+## (Skydome.gd:255).
+@export var day_fog_color: Color = Color(0.3605356, 0.39691955, 0.44612736):
+    set(value):
+        day_fog_color = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
+@export var night_fog_color: Color = Color(0.04, 0.06, 0.12):
+    set(value):
+        night_fog_color = value
+        _dirty_lights = true
+        _dirty_day_and_night = true
+
 var environment_node: EnvironmentNode
 var _environment: Environment
+var _camera_attributes: CameraAttributesPractical
 ## The cab light of each world light, when CABIN_SHADOWS_IMPROVED_SETTING is on
 var _cabin_lights: Dictionary[DirectionalLight3D, DirectionalLight3D] = {}
 var _dirty_visuals: bool = true
 var _dirty_lights: bool = true
 var _dirty_time: bool = true
+## What the day and the night tell apart taken again: its values changed, or the sun moved
+## (_apply_day_and_night())
+var _dirty_day_and_night: bool = true
 ## The gamma the colour correction curve was made for - it is made again only when that changes -
 ## and the curve itself, none at the default
 var _gamma: float = GAMMA_DEFAULT
@@ -199,7 +384,6 @@ func _ready() -> void:
     _environment.ambient_light_color = Color.WHITE
     _environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
     _environment.fog_mode = Environment.FOG_MODE_DEPTH
-    _environment.fog_light_color = Color(0.3605356, 0.39691955, 0.44612736, 1.0)
     _environment.fog_light_energy = 0.7
     _environment.fog_sun_scatter = 0.07
     _environment.volumetric_fog_anisotropy = 0.0
@@ -212,7 +396,8 @@ func _ready() -> void:
     _environment.glow_hdr_threshold = 1.37
     _environment.glow_hdr_luminance_cap = 0.18
     world_environment.environment = _environment
-    world_environment.camera_attributes = CameraAttributesPractical.new()
+    _camera_attributes = CameraAttributesPractical.new()
+    world_environment.camera_attributes = _camera_attributes
     create_nodes(world_environment, _environment)
     add_child(world_environment, false, INTERNAL_MODE_BACK)
 
@@ -222,6 +407,8 @@ func _enter_tree() -> void:
     ProjectSettings.settings_changed.connect(_on_project_settings_changed)
     SimulationServer.simulation_paused.connect(pause_weather)
     SimulationServer.simulation_unpaused.connect(unpause_weather)
+    SimulationServer.time_of_day_changed.connect(_on_sun_moved)
+    SimulationServer.date_changed.connect(_on_sun_moved)
 
 
 func _exit_tree() -> void:
@@ -229,6 +416,8 @@ func _exit_tree() -> void:
     ProjectSettings.settings_changed.disconnect(_on_project_settings_changed)
     SimulationServer.simulation_paused.disconnect(pause_weather)
     SimulationServer.simulation_unpaused.disconnect(unpause_weather)
+    SimulationServer.time_of_day_changed.disconnect(_on_sun_moved)
+    SimulationServer.date_changed.disconnect(_on_sun_moved)
 
 
 func _process(delta: float) -> void:
@@ -242,6 +431,9 @@ func _process(delta: float) -> void:
     if _dirty_time:
         _dirty_time = false
         apply_time_configuration()
+    if _dirty_day_and_night:
+        _dirty_day_and_night = false
+        _apply_day_and_night()
     sync_cabin_lights()
     process_time(delta)
 
@@ -295,11 +487,14 @@ func _apply_environment_configuration() -> void:
     _environment.tonemap_mode = tonemap_mode
     _environment.tonemap_white = tonemap_white
     _environment.tonemap_agx_white = tonemap_agx_white
-    _environment.tonemap_agx_contrast = tonemap_agx_contrast
     _environment.ssr_enabled = bool(UserSettings.get_setting("render", "ssr_enabled", true))
     _environment.ssao_enabled = bool(UserSettings.get_setting("render", "ssao_enabled", true))
     _environment.ssil_enabled = bool(UserSettings.get_setting("render", "ssil_enabled", true))
     _environment.sdfgi_enabled = bool(UserSettings.get_setting("render", "sdfgi_enabled", true))
+    _camera_attributes.auto_exposure_enabled = auto_exposure_enabled
+    _camera_attributes.auto_exposure_speed = auto_exposure_speed
+    _environment.sdfgi_energy = sdfgi_energy
+    _environment.sdfgi_bounce_feedback = sdfgi_bounce_feedback
     _environment.glow_enabled = bool(UserSettings.get_setting("render", "glow_enabled", true))
     _environment.glow_intensity = float(
         UserSettings.get_setting("render", "glow_intensity", GLOW_INTENSITY_DEFAULT))
@@ -327,6 +522,49 @@ func _apply_environment_configuration() -> void:
     _environment.volumetric_fog_enabled = (
         fog_active and bool(UserSettings.get_setting("render", "volumetric_fog_enabled", true))
     )
+
+
+## The share of the depth fog the sky takes for a fog reaching [param fog_distance]: as much as a
+## terrain FOG_SKY_HEIGHT_SETTING away takes, (height / fog_distance) ^ fog curve, at most 1 - for a
+## backend to scale by the fog's density (Environment.fog_sky_affect fogs the sky whatever it is)
+func get_fog_sky_share(fog_distance: float) -> float:
+    return clampf(pow(float(ProjectSettings.get_setting(FOG_SKY_HEIGHT_SETTING, FOG_SKY_HEIGHT_DEFAULT))
+            / fog_distance, _environment.fog_depth_curve), 0.0, 1.0)
+
+
+## The day's or the night's ambient light, fog light, AgX contrast, adjustments and auto exposure by the
+## height of the sun SimulationServer puts at the environment's place and clock - the ambient energy rising
+## with the square root of the day's share (Skydome.gd:1185, 1211-1214); Skydome sets the ambient colour
+## and energy and the fog's colour too, from the same values
+func _apply_day_and_night() -> void:
+    var day: float = get_day_share()
+    _environment.tonemap_agx_contrast = lerpf(night_tonemap_agx_contrast, day_tonemap_agx_contrast, day)
+    _environment.adjustment_brightness = lerpf(night_adjustment_brightness, day_adjustment_brightness, day)
+    _environment.adjustment_contrast = lerpf(night_adjustment_contrast, day_adjustment_contrast, day)
+    _environment.adjustment_saturation = lerpf(night_adjustment_saturation, day_adjustment_saturation, day)
+    _environment.ambient_light_color = night_ambient_color.lerp(day_ambient_color, day)
+    _environment.fog_light_color = night_fog_color.lerp(day_fog_color, day)
+    _environment.ambient_light_energy = lerpf(night_ambient_energy, day_ambient_energy, sqrt(day))
+    _environment.ambient_light_sky_contribution = lerpf(
+            night_ambient_sky_contribution, day_ambient_sky_contribution, day)
+    _camera_attributes.auto_exposure_scale = lerpf(night_auto_exposure_scale, day_auto_exposure_scale, day)
+    _camera_attributes.auto_exposure_min_sensitivity = lerpf(
+            night_auto_exposure_min_sensitivity, day_auto_exposure_min_sensitivity, day)
+    _camera_attributes.auto_exposure_max_sensitivity = lerpf(
+            night_auto_exposure_max_sensitivity, day_auto_exposure_max_sensitivity, day)
+
+
+## How much of the day there is in what the day and the night tell apart, by the height of the sun
+## SimulationServer puts at the environment's place and clock: 0 below AMBIENT_NIGHT_ALTITUDE, 1 from
+## AMBIENT_DAY_FULL_ELEVATION up (Skydome.gd:1185)
+func get_day_share() -> float:
+    return smoothstep(AMBIENT_NIGHT_ALTITUDE, sin(deg_to_rad(AMBIENT_DAY_FULL_ELEVATION)),
+            SimulationServer.sun_get_direction().y)
+
+
+## The sun moved with the clock or the date: what the day and the night tell apart follows its height
+func _on_sun_moved() -> void:
+    _dirty_day_and_night = true
 
 
 func _on_user_settings_changed() -> void:

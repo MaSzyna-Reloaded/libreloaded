@@ -9,8 +9,8 @@ namespace godot {
     /// player drives (PlayerServer), the free camera (walking) or the camera following a vehicle,
     /// which vehicle and in which view. Everything that changes the view - the keys (F4, Shift+F4,
     /// drivermode.cpp:1244-1277), the HUD, scripts - calls these operations by the vehicles'
-    /// RailVehicleServer handles. The server holds the view and announces it; the player's cameras
-    /// are the player's, which follows these signals.
+    /// VehicleServer handles, a rail vehicle and a road one alike. The server holds the view and announces it; the
+    /// player's cameras are the player's, which follows these signals.
     class PlayerCameraServer : public Object {
             GDCLASS(PlayerCameraServer, Object)
 
@@ -57,6 +57,10 @@ namespace godot {
             void _on_player_vehicle_changed(const RID &p_vehicle, const RID &p_previous);
             /// Taken over - the vehicle driven too - the view is from its cab
             void _on_player_vehicle_entered(const RID &p_vehicle);
+            /// Started on foot, the free camera
+            void _on_player_started();
+            /// Stopped, the free camera - nothing of the scenery going is looked from or followed
+            void _on_player_stopped();
 
         protected:
             static void _bind_methods();

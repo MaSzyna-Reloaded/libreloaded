@@ -115,7 +115,7 @@ func _process(delta:float) -> void:
         _process_dirty()
     _move_view(delta)
 
-    var view_transform:Transform3D = RailVehicleRenderingServer.vehicle_get_transform(_view_vehicle)
+    var view_transform:Transform3D = VehicleServer.vehicle_get_transform(_view_vehicle)
     var look_target:Vector3 = view_transform * _bogie_look_offset if view == View.BOGIE else _get_vehicle_center(vehicle)
     var view_position:Vector3 = view_transform * _view_offset if _view_vehicle.is_valid() else _view_offset
     var arm:Vector3 = (view_position - look_target).rotated(Vector3.UP, _orbit.x)
@@ -150,7 +150,7 @@ func _process_dirty() -> void:
         _orbit = Vector2.ZERO
         _pan = Vector2.ZERO
         _zoom = 1.0
-    var controller:RailVehicleController = VehicleServer.vehicle_get_controller(vehicle) as RailVehicleController
+    var controller:VehicleController = VehicleServer.vehicle_get_controller(vehicle)
     # the cab driven from, as the original numbers it (CabOccupied): the front 1, the rear -1, the
     # machine room or none 0 (Train.cpp:8684)
     var cabin_occupied:int = 0
@@ -162,7 +162,7 @@ func _process_dirty() -> void:
     var direction:int = controller.get_direction()
     var cab:int = 1 if cabin_occupied == 0 else cabin_occupied
     # Godot vehicles face -Z; MaSzyna's vehicle frame is (left, up, front)
-    var body:Transform3D = RailVehicleRenderingServer.vehicle_get_transform(vehicle)
+    var body:Transform3D = VehicleServer.vehicle_get_transform(vehicle)
     var front:Vector3 = -body.basis.z.normalized()
     var left:Vector3 = -body.basis.x.normalized()
 
@@ -180,10 +180,12 @@ func _process_dirty() -> void:
     if view == View.TRAINSET_REAR:
         flip = -flip
 
-    # Mechanik->Vehicle(end::front / end::rear) - the last vehicle of the trainset on that side
-    _view_vehicle = RailVehicleServer.vehicle_get_coupled(
+    # Mechanik->Vehicle(end::front / end::rear) - the last vehicle of the trainset on that side; a
+    # vehicle on no track (a car) is a trainset of its own
+    var trainset_end:Array[RID] = RailVehicleServer.vehicle_get_coupled(
             vehicle, RailVehicleController.COUPLER_END_FRONT if flip > 0.0 else RailVehicleController.COUPLER_END_REAR,
-            RailVehicleController.COUPLING_FLAG_COUPLER)[0]
+            RailVehicleController.COUPLING_FLAG_COUPLER)
+    _view_vehicle = trainset_end[0] if trainset_end else vehicle
     var dimensions:Vector3 = VehicleServer.vehicle_get_dimensions(_view_vehicle)
     var width:float = dimensions.x
     var height:float = dimensions.y
@@ -225,5 +227,5 @@ func _zoom_by(p_factor:float) -> void:
 
 
 func _get_vehicle_center(p_vehicle:RID) -> Vector3:
-    var body:Transform3D = RailVehicleRenderingServer.vehicle_get_transform(p_vehicle)
+    var body:Transform3D = VehicleServer.vehicle_get_transform(p_vehicle)
     return body.origin + body.basis.y.normalized() * 0.5 * VehicleServer.vehicle_get_dimensions(p_vehicle).y

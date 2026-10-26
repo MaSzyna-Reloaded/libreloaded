@@ -1,0 +1,176 @@
+diff --git a/servers/rendering/renderer_rd/environment/gi.cpp b/servers/rendering/renderer_rd/environment/gi.cpp
+index f1f355720b1f..7d1a94cf4a59 100644
+--- a/servers/rendering/renderer_rd/environment/gi.cpp
++++ b/servers/rendering/renderer_rd/environment/gi.cpp
+@@ -1335,24 +1335,38 @@ void GI::SDFGI::update_probes(RID p_env, SkyRD::Sky *p_sky) {
+ 	RID sky_uniform_set = gi->sdfgi_shader.integrate_default_sky_uniform_set;
+ 	push_constant.sky_flags = 0;
+ 	push_constant.y_mult = y_mult;
++	push_constant.ambient_color[0] = 0.0f;
++	push_constant.ambient_color[1] = 0.0f;
++	push_constant.ambient_color[2] = 0.0f;
++	push_constant.ambient_color_sky_mix = 0.0f;
++
++	auto set_ambient_color = [&](const Color &p_color, float p_energy, float p_sky_mix) {
++		Color color = p_color.srgb_to_linear();
++		push_constant.ambient_color[0] = color.r * p_energy;
++		push_constant.ambient_color[1] = color.g * p_energy;
++		push_constant.ambient_color[2] = color.b * p_energy;
++		push_constant.ambient_color_sky_mix = p_sky_mix;
++	};
+ 
+ 	if (reads_sky && p_env.is_valid()) {
+-		push_constant.sky_energy = RendererSceneRenderRD::get_singleton()->environment_get_bg_energy_multiplier(p_env);
+-
+-		if (RendererSceneRenderRD::get_singleton()->environment_get_background(p_env) == RSE::ENV_BG_CLEAR_COLOR) {
+-			push_constant.sky_flags |= SDFGIShader::IntegratePushConstant::SKY_FLAGS_MODE_COLOR;
+-			Color c = RSG::texture_storage->get_default_clear_color().srgb_to_linear();
+-			push_constant.sky_color_or_orientation[0] = c.r;
+-			push_constant.sky_color_or_orientation[1] = c.g;
+-			push_constant.sky_color_or_orientation[2] = c.b;
+-		} else if (RendererSceneRenderRD::get_singleton()->environment_get_background(p_env) == RSE::ENV_BG_COLOR) {
+-			push_constant.sky_flags |= SDFGIShader::IntegratePushConstant::SKY_FLAGS_MODE_COLOR;
+-			Color c = RendererSceneRenderRD::get_singleton()->environment_get_bg_color(p_env);
+-			push_constant.sky_color_or_orientation[0] = c.r;
+-			push_constant.sky_color_or_orientation[1] = c.g;
+-			push_constant.sky_color_or_orientation[2] = c.b;
+-
+-		} else if (RendererSceneRenderRD::get_singleton()->environment_get_background(p_env) == RSE::ENV_BG_SKY) {
++		RendererSceneRenderRD *scene_render = RendererSceneRenderRD::get_singleton();
++		const RSE::EnvironmentBG background = scene_render->environment_get_background(p_env);
++		const RSE::EnvironmentAmbientSource ambient_source = scene_render->environment_get_ambient_source(p_env);
++		const float bg_energy = scene_render->environment_get_bg_energy_multiplier(p_env);
++		const bool use_sky = (ambient_source == RSE::ENV_AMBIENT_SOURCE_BG && background == RSE::ENV_BG_SKY) || ambient_source == RSE::ENV_AMBIENT_SOURCE_SKY;
++
++		// Same ambient light as the forward pass (RenderSceneDataRD::update_ubo()): none when the
++		// ambient light is disabled or comes from a background that has no color.
++		if (ambient_source == RSE::ENV_AMBIENT_SOURCE_BG && (background == RSE::ENV_BG_CLEAR_COLOR || background == RSE::ENV_BG_COLOR)) {
++			const Color color = background == RSE::ENV_BG_CLEAR_COLOR ? RSG::texture_storage->get_default_clear_color() : scene_render->environment_get_bg_color(p_env);
++			set_ambient_color(color, bg_energy, 0.0f);
++		} else if (use_sky || ambient_source == RSE::ENV_AMBIENT_SOURCE_COLOR) {
++			set_ambient_color(scene_render->environment_get_ambient_light(p_env), scene_render->environment_get_ambient_light_energy(p_env), use_sky ? scene_render->environment_get_ambient_sky_contribution(p_env) : 0.0f);
++		}
++
++		if (use_sky) {
++			push_constant.sky_energy = bg_energy;
++
+ 			if (p_sky && p_sky->radiance.is_valid()) {
+ 				if (integrate_sky_uniform_set.is_null() || !RD::get_singleton()->uniform_set_is_valid(integrate_sky_uniform_set)) {
+ 					Vector<RD::Uniform> uniforms;
+@@ -1379,7 +1393,7 @@ void GI::SDFGI::update_probes(RID p_env, SkyRD::Sky *p_sky) {
+ 				push_constant.sky_flags |= SDFGIShader::IntegratePushConstant::SKY_FLAGS_MODE_SKY;
+ 
+ 				// Encode sky orientation as quaternion in existing push constants.
+-				const Basis sky_basis = RendererSceneRenderRD::get_singleton()->environment_get_sky_orientation(p_env);
++				const Basis sky_basis = scene_render->environment_get_sky_orientation(p_env);
+ 				const Quaternion sky_quaternion = sky_basis.get_quaternion().inverse();
+ 				push_constant.sky_color_or_orientation[0] = sky_quaternion.x;
+ 				push_constant.sky_color_or_orientation[1] = sky_quaternion.y;
+@@ -1433,6 +1447,10 @@ void GI::SDFGI::store_probes() {
+ 
+ 	push_constant.sky_flags = 0;
+ 	push_constant.y_mult = y_mult;
++	push_constant.ambient_color[0] = 0.0f;
++	push_constant.ambient_color[1] = 0.0f;
++	push_constant.ambient_color[2] = 0.0f;
++	push_constant.ambient_color_sky_mix = 0.0f;
+ 
+ 	// Then store values into the lightprobe texture. Separating these steps has a small performance hit, but it allows for multiple bounces
+ 	RENDER_TIMESTAMP("Average SDFGI Probes");
+@@ -2161,6 +2179,12 @@ void GI::SDFGI::render_region(Ref<RenderSceneBuffersRD> p_render_buffers, int p_
+ 				ipush_constant.sky_color_or_orientation[1] = 0;
+ 				ipush_constant.sky_color_or_orientation[2] = 0;
+ 				ipush_constant.y_mult = y_mult;
++				ipush_constant.ambient_color[0] = 0;
++				ipush_constant.ambient_color[1] = 0;
++				ipush_constant.ambient_color[2] = 0;
++				ipush_constant.ambient_color_sky_mix = 0;
++				ipush_constant.sky_irradiance_border_size[0] = 0;
++				ipush_constant.sky_irradiance_border_size[1] = 0;
+ 				ipush_constant.store_ambient_texture = false;
+ 
+ 				ipush_constant.image_size[0] = probe_axis_count * probe_axis_count;
+diff --git a/servers/rendering/renderer_rd/environment/gi.h b/servers/rendering/renderer_rd/environment/gi.h
+index 20033a3b0b7f..16fae6940d9e 100644
+--- a/servers/rendering/renderer_rd/environment/gi.h
++++ b/servers/rendering/renderer_rd/environment/gi.h
+@@ -401,7 +401,6 @@ class GI : public RendererGI {
+ 		};
+ 		struct IntegratePushConstant {
+ 			enum {
+-				SKY_FLAGS_MODE_COLOR = 0x01,
+ 				SKY_FLAGS_MODE_SKY = 0x02,
+ 				SKY_FLAGS_ORIENTATION_SIGN = 0x04,
+ 			};
+@@ -427,6 +426,9 @@ class GI : public RendererGI {
+ 			float sky_color_or_orientation[3];
+ 			float y_mult;
+ 
++			float ambient_color[3];
++			float ambient_color_sky_mix;
++
+ 			float sky_irradiance_border_size[2];
+ 			uint32_t store_ambient_texture;
+ 			uint32_t pad;
+diff --git a/servers/rendering/renderer_rd/shaders/environment/sdfgi_integrate.glsl b/servers/rendering/renderer_rd/shaders/environment/sdfgi_integrate.glsl
+index afd2db0e12bb..5f4e0f1279b0 100644
+--- a/servers/rendering/renderer_rd/shaders/environment/sdfgi_integrate.glsl
++++ b/servers/rendering/renderer_rd/shaders/environment/sdfgi_integrate.glsl
+@@ -51,7 +51,6 @@ layout(set = 1, binding = 1) uniform sampler linear_sampler_mipmaps;
+ 
+ #define HISTORY_BITS 10
+ 
+-#define SKY_FLAGS_MODE_COLOR 0x01
+ #define SKY_FLAGS_MODE_SKY 0x02
+ #define SKY_FLAGS_ORIENTATION_SIGN 0x04
+ 
+@@ -77,6 +76,9 @@ layout(push_constant, std430) uniform Params {
+ 	vec3 sky_color_or_orientation;
+ 	float y_mult;
+ 
++	vec3 ambient_color;
++	float ambient_color_sky_mix;
++
+ 	vec2 sky_irradiance_border_size;
+ 	bool store_ambient_texture;
+ 	uint pad;
+@@ -268,26 +270,22 @@ void main() {
+ 				}
+ 			}
+ 
+-		} else if (bool(params.sky_flags & SKY_FLAGS_MODE_SKY)) {
+-			// Reconstruct sky orientation as quaternion and rotate ray_dir before sampling.
+-			float sky_sign = bool(params.sky_flags & SKY_FLAGS_ORIENTATION_SIGN) ? 1.0 : -1.0;
+-			vec4 sky_quat = vec4(params.sky_color_or_orientation, sky_sign * sqrt(1.0 - dot(params.sky_color_or_orientation, params.sky_color_or_orientation)));
+-			vec3 sky_dir = cross(sky_quat.xyz, ray_dir);
+-			sky_dir = ray_dir + ((sky_dir * sky_quat.w) + cross(sky_quat.xyz, sky_dir)) * 2.0;
++		} else {
++			light = vec4(params.ambient_color, 0.0);
++
++			if (bool(params.sky_flags & SKY_FLAGS_MODE_SKY)) {
++				// Reconstruct sky orientation as quaternion and rotate ray_dir before sampling.
++				float sky_sign = bool(params.sky_flags & SKY_FLAGS_ORIENTATION_SIGN) ? 1.0 : -1.0;
++				vec4 sky_quat = vec4(params.sky_color_or_orientation, sky_sign * sqrt(1.0 - dot(params.sky_color_or_orientation, params.sky_color_or_orientation)));
++				vec3 sky_dir = cross(sky_quat.xyz, ray_dir);
++				sky_dir = ray_dir + ((sky_dir * sky_quat.w) + cross(sky_quat.xyz, sky_dir)) * 2.0;
+ #ifdef USE_RADIANCE_OCTMAP_ARRAY
+-			light.rgb = textureLod(sampler2DArray(sky_irradiance, linear_sampler_mipmaps), vec3(vec3_to_oct_with_border(sky_dir, params.sky_irradiance_border_size), 0.0), 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
++				vec3 sky_light = textureLod(sampler2DArray(sky_irradiance, linear_sampler_mipmaps), vec3(vec3_to_oct_with_border(sky_dir, params.sky_irradiance_border_size), 0.0), 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
+ #else
+-			light.rgb = textureLod(sampler2D(sky_irradiance, linear_sampler_mipmaps), vec3_to_oct_with_border(sky_dir, params.sky_irradiance_border_size), 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
++				vec3 sky_light = textureLod(sampler2D(sky_irradiance, linear_sampler_mipmaps), vec3_to_oct_with_border(sky_dir, params.sky_irradiance_border_size), 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
+ #endif
+-			light.rgb *= params.sky_energy;
+-			light.a = 0.0;
+-
+-		} else if (bool(params.sky_flags & SKY_FLAGS_MODE_COLOR)) {
+-			light.rgb = params.sky_color_or_orientation;
+-			light.rgb *= params.sky_energy;
+-			light.a = 0.0;
+-		} else {
+-			light = vec4(0, 0, 0, 0);
++				light.rgb = mix(light.rgb, sky_light * params.sky_energy, params.ambient_color_sky_mix);
++			}
+ 		}
+ 
+ 		vec3 ray_dir2 = ray_dir * ray_dir;

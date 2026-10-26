@@ -267,8 +267,8 @@ namespace godot {
                 D_METHOD("vehicle_set_head_display_material", "vehicle", "material"),
                 &VehicleRenderingServer::vehicle_set_head_display_material);
         ClassDB::bind_method(
-                D_METHOD("vehicle_set_visible_low_poly_cabins", "vehicle", "visible"),
-                &VehicleRenderingServer::vehicle_set_visible_low_poly_cabins);
+                D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
+                &VehicleRenderingServer::vehicle_set_shown_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_is_detailed", "vehicle"), &VehicleRenderingServer::vehicle_is_detailed);
         ClassDB::bind_method(
                 D_METHOD("vehicle_set_editable", "vehicle", "editable"), &VehicleRenderingServer::vehicle_set_editable);
@@ -478,11 +478,11 @@ namespace godot {
         }
     }
 
-    void VehicleRenderingServer::vehicle_set_visible_low_poly_cabins(const RID &p_vehicle, const bool p_visible) {
+    void VehicleRenderingServer::vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
-        visual->low_poly_cabs_visible = p_visible;
-        _vehicle_low_poly_cabins_changed(p_vehicle);
+        visual->shown_cabin = p_cabin;
+        _vehicle_shown_cabin_changed(p_vehicle);
     }
 
     bool VehicleRenderingServer::vehicle_is_detailed(const RID &p_vehicle) const {

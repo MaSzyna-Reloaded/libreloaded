@@ -111,6 +111,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("vehicle_get_velocity", "vehicle"), &VehicleServer::vehicle_get_velocity);
         ClassDB::bind_method(D_METHOD("vehicle_get_speed", "vehicle"), &VehicleServer::vehicle_get_speed);
         ClassDB::bind_method(D_METHOD("vehicle_get_position", "vehicle"), &VehicleServer::vehicle_get_position);
+        ClassDB::bind_method(D_METHOD("vehicle_get_transform", "vehicle"), &VehicleServer::vehicle_get_transform);
         ClassDB::bind_method(
                 D_METHOD("vehicle_component_get", "vehicle", "type"), &VehicleServer::vehicle_component_get);
         ClassDB::bind_method(D_METHOD("vehicle_get_controller", "vehicle"), &VehicleServer::vehicle_get_controller);
@@ -543,6 +544,11 @@ namespace godot {
     Vector3 VehicleServer::vehicle_get_position(const RID &p_vehicle) const {
         const VehicleController *controller = _get_controller(p_vehicle);
         return controller != nullptr ? controller->get_world_position() : Vector3();
+    }
+
+    Transform3D VehicleServer::vehicle_get_transform(const RID &p_vehicle) const {
+        const VehicleController *controller = _get_controller(p_vehicle);
+        return controller != nullptr ? controller->get_world_transform() : Transform3D();
     }
 
     double VehicleServer::vehicle_get_speed(const RID &p_vehicle) const {

@@ -134,20 +134,20 @@
 				The world the vehicle's scene node is in, an empty RID out of it: the models this server built for [param vehicle] are drawn there - the node's [constant Node3D.NOTIFICATION_ENTER_WORLD]/[constant Node3D.NOTIFICATION_EXIT_WORLD], as [VisualInstance3D]'s.
 			</description>
 		</method>
+		<method name="vehicle_set_shown_cabin">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="cabin" type="RID" />
+			<description>
+				The cabin whose interior is drawn, by whoever shows it, in the place of the low-poly interior's cab it stands for - which a plugin's renderer hides, whoever drives (the player's cab). [code]RID()[/code] while none is: every low-poly cab is drawn.
+			</description>
+		</method>
 		<method name="vehicle_set_transform">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
 			<param index="1" name="transform" type="Transform3D" />
 			<description>
 				Where a vehicle its server has not placed is drawn - one assembled by hand, where its node stands. The server's placement takes over once it places the vehicle. A vehicle's models are in no world until it has a place.
-			</description>
-		</method>
-		<method name="vehicle_set_visible_low_poly_cabins">
-			<return type="void" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="visible" type="bool" />
-			<description>
-				Whether the low-poly interior shows every cab. Not visible - the interior of the occupied cab is drawn in its place by whoever shows it - a plugin's renderer hides the low-poly cab it stands for.
 			</description>
 		</method>
 		<method name="vehicle_unmount_node">
