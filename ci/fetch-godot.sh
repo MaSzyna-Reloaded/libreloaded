@@ -11,9 +11,11 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(make -s -C "$REPO_DIR" godot-version)"
-TAG="godot-$VERSION-double"
+# the version and the godot-patches the engine is built with; the templates are looked up by the version
+BUILD="$(make -s -C "$REPO_DIR" godot-build)"
+TAG="godot-$BUILD-double"
 REPOSITORY="${GODOT_RELEASE_REPOSITORY:-MaSzyna-Reloaded/libreloaded}"
-GODOT_BIN="$REPO_DIR/build-godot-$VERSION/bin"
+GODOT_BIN="$REPO_DIR/build-godot-$BUILD/bin"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/$VERSION.stable.double"
 
@@ -36,7 +38,8 @@ for file in "${FILES[@]}"; do
     target="${INSTALL[$file]:?unknown file: $file}"
     if [ ! -f "$GODOT_BIN/$file" ]; then
         curl -fsSL -o "$GODOT_BIN/$file" \
-            "https://github.com/$REPOSITORY/releases/download/$TAG/$file"
+            "https://github.com/$REPOSITORY/releases/download/$TAG/$file" \
+            || { echo "::error::$TAG has no $file - run the godot-engine workflow of $REPOSITORY by hand" >&2; exit 1; }
     fi
     install -D -m 755 "$GODOT_BIN/$file" "$target"
     echo "$file -> $target"

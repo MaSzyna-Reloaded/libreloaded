@@ -111,9 +111,10 @@ coding rules are in `AGENTS.md` and `CODE_STYLE.md`.
 - `build`: tests and the library for each platform, on pull requests.
 - `style-check`: clang-format and clang-tidy, on pull requests.
 - `docs`: builds the site, and publishes it on GitHub Pages from `main`.
-- `godot-engine`: Godot does not publish double precision builds, so this workflow builds the
-  editor and the export templates once per engine version (`GODOT_VERSION` in the `Makefile`). They
-  are published as the release `godot-<version>-double` of this repository. `ci/fetch-godot.sh`
+- `godot-engine`: Godot does not publish double precision builds, so this workflow, run by hand,
+  builds the editor and the export templates once per engine build (`GODOT_BUILD` in the `Makefile`: the
+  version and the fixes of Godot in `godot-patches/`). They are published as the release
+  `godot-<build>-double` of this repository. `ci/fetch-godot.sh`
   installs them, in this repository's CI and in the CI of plugins and games.
 
 The Linux release library is built in the Docker image `ghcr.io/maszyna-reloaded/linux-sdk`. The
