@@ -262,6 +262,8 @@ namespace godot {
             double vehicle_get_speed(const RID &p_vehicle) const;
             /* Where the vehicle is in the world, as whichever server places it set it */
             Vector3 vehicle_get_position(const RID &p_vehicle) const;
+            /* ...and how it stands there - a rail vehicle and a road one alike */
+            Transform3D vehicle_get_transform(const RID &p_vehicle) const;
             /* The component of a kind, as a typed object - the shape
              * PhysicsServer3D::body_get_direct_state() has: a live view on the vehicle, valid
              * while the vehicle is. A per-frame reader takes it once and reads its properties. */
