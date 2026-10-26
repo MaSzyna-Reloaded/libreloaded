@@ -354,7 +354,7 @@ func _hide_cabin() -> void:
     var cabin:Cabin3D = CabinSystem.vehicle_get_cabin(_cabin_vehicle)
     cabin.camera_configuration_changed.disconnect(_on_cabin_camera_configuration_changed)
     cabin_view.reparent(self, false)
-    RailVehicleRenderingServer.vehicle_set_visible_low_poly_cabins(_cabin_vehicle, true)
+    RailVehicleRenderingServer.vehicle_set_shown_cabin(_cabin_vehicle, RID())
     CabinSystem.vehicle_hide_cabin(_cabin_vehicle)
     RailVehicleRenderingServer.vehicle_unmount_node(_cabin_vehicle, _cabin_mount.get_instance_id())
     _cabin_mount.queue_free()
@@ -391,16 +391,17 @@ func sit_down() -> void:
 
 
 ## The cab interior of the vehicle driven is drawn only in the view from its cab, where the
-## vehicle's low-poly cab gives way to it if it is a modelled one; from outside the low-poly
-## interior is whole - its cab, the crew and the windows (DynObj.cpp:1389-1397: bDisplayCab,
-## mdKabina). The view is the player's, so the player tells the vehicle's drawing.
+## vehicle's low-poly cab of that cab gives way to it if it is a modelled one - whoever drives, the
+## AI from another cab included; from outside the low-poly interior is whole - its cab, the crew and
+## the windows (DynObj.cpp:1389-1397: bDisplayCab, mdKabina, simulation::Train->iCabn). The view is
+## the player's, so the player tells the vehicle's drawing.
 func _draw_cab_interior() -> void:
     var cabin:Cabin3D = CabinSystem.vehicle_get_cabin(_cabin_vehicle)
     if not cabin:
         return
     cabin.visible = PlayerCameraServer.camera_get_mode() == PlayerCameraServer.CAMERA_MODE_CABIN
-    RailVehicleRenderingServer.vehicle_set_visible_low_poly_cabins(
-            _cabin_vehicle, not (cabin.visible and cabin.get_has_cab_model()))
+    RailVehicleRenderingServer.vehicle_set_shown_cabin(
+            _cabin_vehicle, cabin.get_cabin() if cabin.visible and cabin.get_has_cab_model() else RID())
 
 
 ## The view of the mode: from the cab view the free view steps out beside the vehicle
