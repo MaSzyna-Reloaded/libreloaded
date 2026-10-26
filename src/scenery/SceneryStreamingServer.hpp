@@ -28,9 +28,12 @@ namespace godot {
     /// A real scenery places hundreds of thousands of pieces, so building them all at load costs
     /// both the loading time and the frame rate - most of them are nowhere near the camera.
     ///
-    /// Planning runs on a worker thread, together with whatever an owner wants prepared off the
-    /// main thread (loading a model, building a mesh). Building and clearing run on the main
-    /// thread within a per-frame time budget, because they touch RenderingServer and GDScript.
+    /// The plan - what to build, clear, supply and withdraw - is decided on the main thread, once a
+    /// second while the camera moves (one pass over the chunks and the providers' cells, issue #6);
+    /// a worker thread only loads what it queued - whatever an owner wants prepared off the main
+    /// thread (loading a model, building a mesh), a provider's cell. Building and clearing run on
+    /// the main thread within a per-frame time budget, because they touch RenderingServer and
+    /// GDScript.
     ///
     /// Content may also be supplied by chunk (SceneryStreamingProvider): a provider's cell is asked
     /// for as the camera comes within the draw distance of it, and what it gives is handed to the
@@ -52,10 +55,10 @@ namespace godot {
             /// into is there already. Within HYSTERESIS_M, so a piece built ahead is not cleared at once
             static constexpr float PREFETCH_M = HYSTERESIS_M / 2;
             static constexpr uint64_t PREFETCH_BUDGET_MSEC = 1;
-            /// A pass is planned at most this often...
-            static constexpr uint64_t INTERVAL_MSEC = 250;
-            /// ...or as soon as the camera has moved this far
-            static constexpr float CAMERA_STEP_M = 50.0;
+            /// A pass is planned at most this often while the camera moves...
+            static constexpr uint64_t INTERVAL_MSEC = 1000;
+            /// ...or at once when it has jumped this far
+            static constexpr float CAMERA_STEP_M = 500.0;
             /// The camera, the anchor and the content are looked at this often [s]; only the work
             /// a plan leaves - building, clearing - runs every frame, and only while there is some
             static constexpr double WATCH_INTERVAL_SEC = 0.1;
@@ -189,7 +192,6 @@ namespace godot {
                     HashMap<Vector2i, ProviderCell> cells;
                     /// The cells whose content is out, wherever the camera is
                     HashSet<Vector2i> adopted_cells;
-                    float max_overhang = 0.0;
             };
             struct PendingProvide {
                     RID provider_rid;
@@ -229,7 +231,7 @@ namespace godot {
             Ref<Semaphore> semaphore;
             Ref<Thread> worker;
             bool exiting = false;
-            bool planning = false;
+            bool planning = false;      // the worker is loading what a plan queued
             bool freed_pending = false; // a piece was freed, the queues may hold dead work
             bool content_dirty = false;
             bool streaming_enabled = true;
@@ -252,10 +254,14 @@ namespace godot {
             /// there is one
             Vector3 anchor_position;
             bool anchored = false;
-            /// Its chunk as the last frame saw it - main thread writes, the planner reads
+            /// Its chunk as last looked at (_watch_camera()), for the plan
             bool has_anchor_chunk = false;
             Vector2i anchor_chunk;
+            /// main thread only: the camera's position as last looked at (WATCH_INTERVAL_SEC), kept once it is
+            /// detached (streaming_get_camera_position())...
             Vector3 last_camera_position;
+            /// ...and where it stood when the last pass was asked for
+            Vector3 planned_camera_position;
             Vector2i camera_chunk; // main thread only: the camera's chunk, as last announced
             uint64_t last_plan_msec = 0;
             uint64_t target_revision = 0;
@@ -268,7 +274,12 @@ namespace godot {
             Ref<SceneTreeTimer> watch_timer;
             /// Main thread only: _process_streaming() is connected to process_frame - while there is work
             bool applying = false;
-            Vector<PendingBuild> planned_builds; // published by the worker
+            /// What the plan left the worker to load, nearest last: the builds with a preload and the
+            /// providers' cells
+            Vector<PendingBuild> loading_builds;
+            Vector<PendingProvide> loading_provides;
+            /// Published by the worker - by the plan itself, a build with nothing to preload
+            Vector<PendingBuild> planned_builds;
             Vector<PendingClear> planned_clears;
             /// Taken over by the main thread; builds are ordered farthest first and taken from the
             /// back, so the pieces around the camera are built first
@@ -283,7 +294,7 @@ namespace godot {
             /// Taken over by the main thread, nearest provide last like pending_builds
             Vector<PendingProvide> pending_provides;
             Vector<PendingWithdraw> pending_withdraws;
-            uint64_t plan_msec = 0;        // duration of the last planning pass
+            uint64_t plan_msec = 0;        // duration of the last plan, on the main thread
             int cleared_since_release = 0; // main thread only
             /// The cleared pieces' memory is to be given back - by the worker, malloc_trim takes long
             bool release_requested = false;
@@ -299,7 +310,7 @@ namespace godot {
             int applied_builds = 0; // builds applied in the second being counted
             int build_rate = 0;     // ...and in the last full second, for the debug window
             uint64_t build_rate_usec = 0;
-            int passes = 0; // planning passes finished, so a caller can tell "not started yet"
+            int passes = 0; // plans made, so a caller can tell "not started yet"
             struct AreaWatch {
                     int watchers = 0;
                     /// The target_revision it was announced ready at, 0 for none yet
@@ -311,12 +322,15 @@ namespace godot {
             static float _get_chunk_distance(const Vector2i &p_key, const Vector3 &p_position);
             void _sort_chunk(Chunk &p_chunk);
             Entry *_get_entry(const RID &p_stream_rid);
-            bool _plan(uint64_t p_revision, const Vector3 &p_camera_position);
+            /// Loads on the worker what the plan of p_revision queued, nearest first, and publishes
+            /// it; stops once another plan replaces it
+            void
+            _load(uint64_t p_revision, const Vector<PendingProvide> &p_provides, const Vector<PendingBuild> &p_builds);
             void _drop_freed_work();
             void _drop_stale_work();
             bool _is_area_ready_locked(int p_chunk_radius) const;
             int _get_pending_nearby_locked(int p_chunk_radius) const;
-            void _request_plan(const Vector3 &p_position);
+            void _plan(const Vector3 &p_position);
             void _worker_loop();
             void _watch_camera();
             void _process_streaming();
@@ -345,7 +359,7 @@ namespace godot {
             SceneryStreamingServer();
             ~SceneryStreamingServer() override;
 
-            /* Stops the planning thread and waits for the pass it is in, then leaves the server
+            /* Stops the loading thread and waits for the load it is in, then leaves the server
              * able to start a fresh one. Called while the scene tree is still alive: the worker
              * calls the owner's preload Callable, which is GDScript, and that Callable is gone
              * once the scripts are - and it must not be creating rendering resources while the
