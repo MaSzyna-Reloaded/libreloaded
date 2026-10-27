@@ -1,0 +1,52 @@
+diff --git a/core/io/resource_loader.cpp b/core/io/resource_loader.cpp
+index be050c9c78..8a4469af69 100644
+--- a/core/io/resource_loader.cpp
++++ b/core/io/resource_loader.cpp
+@@ -489,7 +489,11 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
+ 				// This is not the most optimal thing to do, but it is safe. Either the
+ 				// dependency will complete soon, or will block soon when we can safely
+ 				// yield.
+-				OS::get_singleton()->delay_usec(1000);
++				// The thread loading the dependency may in turn be blocked on a mutex this
++				// thread is allowed to unlock while waiting (e.g., GDScriptCache's, held
++				// while compiling a script that preloads the dependency). Release such
++				// mutexes while sleeping, as waiting within the WorkerThreadPool does.
++				WorkerThreadPool::thread_delay_usec_unlocked(1000);
+ 			}
+ 		} while (wait && status == THREAD_LOAD_IN_PROGRESS && !cleaning_tasks);
+ 
+diff --git a/core/object/worker_thread_pool.cpp b/core/object/worker_thread_pool.cpp
+index 87be597b89..d37c77926f 100644
+--- a/core/object/worker_thread_pool.cpp
++++ b/core/object/worker_thread_pool.cpp
+@@ -806,6 +806,16 @@ void WorkerThreadPool::thread_exit_unlock_allowance_zone(uint32_t p_zone_id) {
+ }
+ #endif
+ 
++void WorkerThreadPool::thread_delay_usec_unlocked(uint32_t p_usec) {
++	if (singleton) {
++		singleton->_unlock_unlockable_mutexes();
++	}
++	OS::get_singleton()->delay_usec(p_usec);
++	if (singleton) {
++		singleton->_lock_unlockable_mutexes();
++	}
++}
++
+ void WorkerThreadPool::init(int p_thread_count, float p_low_priority_task_ratio) {
+ 	ERR_FAIL_COND(threads.size() > 0);
+ 
+diff --git a/core/object/worker_thread_pool.h b/core/object/worker_thread_pool.h
+index 008d3b481f..8219dc1aab 100644
+--- a/core/object/worker_thread_pool.h
++++ b/core/object/worker_thread_pool.h
+@@ -294,6 +294,9 @@ public:
+ 	static uint32_t thread_enter_unlock_allowance_zone(const SafeBinaryMutex<Tag> &p_mutex) { return UINT32_MAX; }
+ 	static void thread_exit_unlock_allowance_zone(uint32_t p_zone_id) {}
+ #endif
++	// Sleeps with the mutexes of the calling thread's unlock allowance zones released, as waiting
++	// on a task does. For waits on other threads that don't go through the pool.
++	static void thread_delay_usec_unlocked(uint32_t p_usec);
+ 
+ 	void init(int p_thread_count = -1, float p_low_priority_task_ratio = 0.3);
+ 	void exit_languages_threads();

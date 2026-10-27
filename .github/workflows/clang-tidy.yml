@@ -8,7 +8,17 @@ env:
   LLVM_VERSION: 22.1.4
 
 jobs:
+  # the release godot-<build>-double the jobs below fetch, built when it is missing; a group per ref,
+  # as build and style-check call it at once: the later waits and finds the release published
+  engine:
+    uses: ./.github/workflows/godot-engine.yml
+    permissions:
+      contents: write
+    concurrency:
+      group: godot-engine-${{ github.ref }}
+
   clang-tidy:
+    needs: engine
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
