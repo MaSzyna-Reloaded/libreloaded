@@ -2,10 +2,12 @@ name: godot-engine
 
 # Godot publishes no double precision build, so the editor and the export templates are built here,
 # once per engine build (GODOT_BUILD in the Makefile: the version and the godot-patches), and kept as
-# the assets of the release godot-<build>-double. Run by hand only (Actions - godot-engine - Run
-# workflow) after a GODOT_VERSION bump or a patch added: nothing else builds the engine, the other
-# workflows fetch the release. When the release is already there it ends at the check.
+# the assets of the release godot-<build>-double. The workflows that fetch it call this one first
+# (workflow_call): when the release is there it ends at the check, when it is not - a GODOT_VERSION
+# bump or a patch added - it builds and publishes it, and they go on after it. It runs by hand too
+# (Actions - godot-engine - Run workflow).
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
