@@ -238,12 +238,6 @@
 				The hand brake's position ([code]ManualBrakePos[/code]).
 			</description>
 		</method>
-		<method name="get_pipe_brake_pressure" qualifiers="const">
-			<return type="float" />
-			<description>
-				The pressure the brake pipe brakes the vehicle by [lb]MPa[rb] ([code]PipeBrakePress[/code]).
-			</description>
-		</method>
 		<method name="get_pipe_pressure" qualifiers="const">
 			<return type="float" />
 			<description>

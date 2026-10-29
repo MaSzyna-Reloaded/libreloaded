@@ -26,7 +26,6 @@ namespace godot {
             virtual bool get_alarm_chain_pulled() const = 0;
             virtual double get_air_pressure() const = 0;
             virtual double get_loco_pressure() const = 0;
-            virtual double get_pipe_brake_pressure() const = 0;
             virtual double get_pipe_pressure() const = 0;
             virtual double get_feed_pipe_pressure() const = 0;
             virtual double get_tank_volume() const = 0;
