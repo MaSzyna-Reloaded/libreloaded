@@ -13,6 +13,10 @@ signal loaded
 ## instanced, vehicles built - and then, the game's own, the player's surroundings built by the
 ## streaming around the player's camera
 enum LoadStage { FILES, INFRASTRUCTURE, TERRAIN, OBJECTS, VEHICLES, SURROUNDINGS }
+## What a file of the game's data its load could not find does to the scenario (get_missing_files()):
+## it may not run as written - a part of the scenery, a vehicle's description (SCENARIO) - or not
+## everything of it may be drawn or heard - a model, a texture, a sound (APPEARANCE)
+enum MissingFileEffect { SCENARIO, APPEARANCE }
 ## Emitted by the scenery provider as the load goes (progress 0..1 of the whole load, its stage, what
 ## it is doing now)
 signal load_progress(progress:float, stage:LoadStage, message:String)
@@ -395,6 +399,14 @@ func stop_loading() -> void:
 ## Whether the load under way was given up (stop_loading())
 func is_load_given_up() -> bool:
     return _load_given_up
+
+
+## The files of the game's data its last load could not find, by what their absence does: none
+## while nothing is loaded. A provider's node answers it from what its readers gave up on; the
+## game tells the player (#14)
+func get_missing_files() -> Dictionary[String, MissingFileEffect]:
+    var missing:Dictionary[String, MissingFileEffect] = {}
+    return missing
 
 
 ## The scenery's name: what its signalling system is known by (SignallingServer.system_get_rid_by_name(),
