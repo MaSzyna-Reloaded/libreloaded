@@ -289,6 +289,9 @@ Commit style:
   specifically what was added, changed, or fixed. Do not replace concrete changes with benefits or
   generic claims.
 * A pull request's title and description follow the same style as the commit's.
+* An issue's title names the problem the same way, as a plain statement of what goes wrong:
+  `Tracks shake when the camera moves` - never its cause or its fix (`Track meshes shimmer -
+  vertices in absolute world coordinates`).
 * Do not add a file list; the diff already provides it.
 * Every commit message line, including the title and bullets, must be no longer than 80 characters. Wrap at a natural
   boundary and indent bullet continuations by two spaces.
