@@ -175,7 +175,6 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_alarm_chain_pulled"), &RailVehicleBrake::get_alarm_chain_pulled);
         ClassDB::bind_method(D_METHOD("get_air_pressure"), &RailVehicleBrake::get_air_pressure);
         ClassDB::bind_method(D_METHOD("get_loco_pressure"), &RailVehicleBrake::get_loco_pressure);
-        ClassDB::bind_method(D_METHOD("get_pipe_brake_pressure"), &RailVehicleBrake::get_pipe_brake_pressure);
         ClassDB::bind_method(D_METHOD("get_pipe_pressure"), &RailVehicleBrake::get_pipe_pressure);
         ClassDB::bind_method(D_METHOD("get_feed_pipe_pressure"), &RailVehicleBrake::get_feed_pipe_pressure);
         ClassDB::bind_method(D_METHOD("get_tank_volume"), &RailVehicleBrake::get_tank_volume);
