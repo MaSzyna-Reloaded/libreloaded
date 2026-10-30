@@ -240,11 +240,22 @@ namespace godot {
     }
 
     StringName TrackRenderingServer::_get_backend_name(const Track &p_track) const {
-        StringName named = p_track.description.is_valid() ? p_track.description->get_rendering_backend() : StringName();
-        if (named != StringName() && backends.has(named)) {
-            return named;
+        StringName setting = ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, AUTO_BACKEND);
+        if (setting != StringName(AUTO_BACKEND) && backends.has(setting)) {
+            return setting;
         }
-        return ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, DEFAULT_BACKEND);
+        const StringName native =
+                p_track.description.is_valid() ? p_track.description->get_rendering_backend() : StringName();
+        StringName best;
+        double best_priority = -Math::INF;
+        for (const KeyValue<StringName, TrackRenderingBackend *> &entry: backends) {
+            const double priority = entry.value->get_priority();
+            if (priority > best_priority || (priority == best_priority && entry.key == native)) {
+                best = entry.key;
+                best_priority = priority;
+            }
+        }
+        return best;
     }
 
     TrackRenderingBackend *TrackRenderingServer::_get_backend(const Track &p_track) const {

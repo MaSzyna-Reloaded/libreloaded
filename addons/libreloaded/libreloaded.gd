@@ -104,9 +104,10 @@ func _enter_tree():
         "reloaded/scenery/tracks/distance", TrackRenderingServer.TRACKS_DISTANCE, TYPE_FLOAT,
         PROPERTY_HINT_RANGE, "100.0,20000.0,10.0,suffix:m"
     )
-    # The backend a track whose data names none is drawn by, by the name it is registered under
-    # (TrackRenderingServer.BACKEND_SETTING): the core's StandardTrackRenderingBackend
-    add_custom_project_setting("reloaded/tracks/backend", &"standard", TYPE_STRING_NAME)
+    # The backend every track is drawn by, by the name it is registered under
+    # (TrackRenderingServer.BACKEND_SETTING); "auto" for the one of the highest priority, the one the
+    # track's data names on a tie
+    add_custom_project_setting("reloaded/tracks/backend", &"auto", TYPE_STRING_NAME)
     # The assets StandardTrackRenderingBackend draws the tracks with (a TrackRenderingLook)
     add_custom_project_setting(
         "reloaded/tracks/look", "res://addons/libreloaded/tracks/track_look.tres", TYPE_STRING,

@@ -7,6 +7,7 @@ namespace godot {
     const char *ModelRenderingBackend::instance_freed_signal = "instance_freed";
 
     void ModelRenderingBackend::_bind_methods() {
+        ClassDB::bind_method(D_METHOD("get_priority"), &ModelRenderingBackend::get_priority);
         ClassDB::bind_method(D_METHOD("model_load", "name"), &ModelRenderingBackend::model_load);
         ClassDB::bind_method(
                 D_METHOD("material_preload", "model", "data_path", "skins", "max_texture_size"),
@@ -87,5 +88,9 @@ namespace godot {
         ADD_SIGNAL(MethodInfo(instance_created_signal, PropertyInfo(Variant::RID, "instance")));
         ADD_SIGNAL(MethodInfo(instance_freed_signal, PropertyInfo(Variant::RID, "instance")));
         ADD_SIGNAL(MethodInfo(instance_built_signal, PropertyInfo(Variant::RID, "instance")));
+    }
+
+    double ModelRenderingBackend::get_priority() const {
+        return DEFAULT_PRIORITY;
     }
 } // namespace godot

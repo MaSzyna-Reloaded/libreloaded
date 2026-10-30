@@ -11,9 +11,10 @@
 namespace godot {
     /* Draws the tracks and roads of TrackServer, each by a render RID of its own, while the camera is
      * near (SceneryStreamingServer). It keeps a track's streaming, scenario, visibility and
-     * description (what the track is, a TrackData) and forwards its drawing to the backend its data
-     * names (TrackData.rendering_backend; BACKEND_SETTING's for none): the core's
-     * StandardTrackRenderingBackend, or one a plugin registers (backend_register()). */
+     * description (what the track is, a TrackData) and forwards its drawing to a backend: the core's
+     * StandardTrackRenderingBackend or one a plugin registers (backend_register()) - the one
+     * BACKEND_SETTING names, or by default (AUTO_BACKEND) the one of the highest priority, the one
+     * its data names (TrackData.rendering_backend) on a tie. */
     class TrackRenderingServer : public Object {
             GDCLASS(TrackRenderingServer, Object)
 
@@ -23,10 +24,12 @@ namespace godot {
             /// network); a player's setting
             static constexpr double TRACKS_DISTANCE = 2000.0;
             static constexpr const char *TRACKS_DISTANCE_SETTING = "reloaded/scenery/tracks/distance";
-            /// The backend a track's data names none for, by its name
+            /// The backend every track is drawn by, by its name; AUTO_BACKEND for the best one
             static constexpr const char *BACKEND_SETTING = "reloaded/tracks/backend";
-            /// The core's own backend (StandardTrackRenderingBackend), the default one
-            static constexpr const char *DEFAULT_BACKEND = "standard";
+            /// BACKEND_SETTING's default: a track is drawn by the backend of the highest priority
+            /// (TrackRenderingBackend::get_priority()), the one its data names on a tie - the
+            /// data's own, unless another draws better
+            static constexpr const char *AUTO_BACKEND = "auto";
 
         private:
             struct Track {
@@ -47,7 +50,7 @@ namespace godot {
             int stream_owner = 0;
             double tracks_distance = TRACKS_DISTANCE;
 
-            /// The backend the track's description names, the default one for none
+            /// The backend BACKEND_SETTING names, or the best one for the track (AUTO_BACKEND)
             StringName _get_backend_name(const Track &p_track) const;
             TrackRenderingBackend *_get_backend(const Track &p_track) const;
             /// The track handed to the backend its description names, taken from the one it had

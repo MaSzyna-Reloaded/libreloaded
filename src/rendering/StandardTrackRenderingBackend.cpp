@@ -100,6 +100,10 @@ namespace godot {
     void StandardTrackRenderingBackend::track_set_switch_blade_offsets(
             const RID & /* p_track_render */, const double /* p_offset1 */, const double /* p_offset2 */) {}
 
+    double StandardTrackRenderingBackend::get_priority() const {
+        return PRIORITY;
+    }
+
     bool StandardTrackRenderingBackend::track_stream(const RID & /* p_track_render */) {
         return false;
     }

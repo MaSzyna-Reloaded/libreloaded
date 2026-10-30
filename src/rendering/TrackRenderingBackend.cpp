@@ -3,6 +3,7 @@
 
 namespace godot {
     void TrackRenderingBackend::_bind_methods() {
+        ClassDB::bind_method(D_METHOD("get_priority"), &TrackRenderingBackend::get_priority);
         ClassDB::bind_method(D_METHOD("track_create", "track_render", "track"), &TrackRenderingBackend::track_create);
         ClassDB::bind_method(D_METHOD("track_free", "track_render"), &TrackRenderingBackend::track_free);
         ClassDB::bind_method(
@@ -19,5 +20,9 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("track_build", "track_render"), &TrackRenderingBackend::track_build);
         ClassDB::bind_method(D_METHOD("track_clear", "track_render"), &TrackRenderingBackend::track_clear);
         ClassDB::bind_method(D_METHOD("topology_rebuilt"), &TrackRenderingBackend::topology_rebuilt);
+    }
+
+    double TrackRenderingBackend::get_priority() const {
+        return DEFAULT_PRIORITY;
     }
 } // namespace godot

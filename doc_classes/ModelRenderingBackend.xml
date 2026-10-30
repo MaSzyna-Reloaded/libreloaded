@@ -9,6 +9,12 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_priority" qualifiers="const">
+			<return type="float" />
+			<description>
+				How well it draws against the other backends, the higher the better; 1.0 unless the backend gives its own. A model is still drawn by the backend that names it.
+			</description>
+		</method>
 		<method name="instance_attach_object_instance_id">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

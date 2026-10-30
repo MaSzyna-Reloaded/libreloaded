@@ -9,6 +9,12 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_priority" qualifiers="const">
+			<return type="float" />
+			<description>
+				How well it draws against the other backends: a track is drawn by the backend of the highest priority, the one its data names on a tie ([method TrackData.get_rendering_backend]), unless the project names one. 1.0 unless the backend gives its own.
+			</description>
+		</method>
 		<method name="topology_rebuilt">
 			<return type="void" />
 			<description>
