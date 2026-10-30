@@ -96,11 +96,17 @@ func test_standard_backend_is_under_the_default_priority() -> void:
     assert_lt(_backend.get_priority(), DEFAULT_PRIORITY)
 
 
-## By default ("auto") a track is drawn by the best backend registered, whatever its data names
+## A track whose data names a backend not registered is drawn by the best one registered ("auto")
 func test_track_of_an_unregistered_backend_s_data_is_drawn_by_the_best_registered() -> void:
     var description: TrackData = TrackData.new()
     description.rendering_backend = &"unregistered"
     assert_not_null(_build(description), "the only backend registered draws it")
+
+
+## A backend its scenery prefers but nobody registered leaves the track to the best one registered
+func test_track_preferring_an_unregistered_backend_is_drawn_by_the_best_registered() -> void:
+    TrackRenderingServer.track_set_preferred_backend(_track_render, &"unregistered")
+    assert_not_null(_build(TrackData.new()), "the only backend registered draws it")
 
 
 func test_sleepers_every_spacing_under_the_rails() -> void:

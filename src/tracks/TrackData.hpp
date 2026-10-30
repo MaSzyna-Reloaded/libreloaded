@@ -78,9 +78,8 @@ namespace godot {
             /* What a plugin keeps of its own about the segment; handed to TrackServer with it
              * (track_set_meta()) */
             Dictionary meta;
-            /* The name of the TrackRenderingServer backend the segment is the data of: it draws the
-             * segment unless another one has a higher priority (TrackRenderingServer::AUTO_BACKEND);
-             * empty for none */
+            /* The name of the TrackRenderingServer backend that draws the segment; empty for the one
+             * TrackRenderingServer picks (TrackRenderingServer::BACKEND_SETTING) */
             StringName rendering_backend;
 
         protected:

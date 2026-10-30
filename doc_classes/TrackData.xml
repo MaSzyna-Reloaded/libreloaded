@@ -58,7 +58,7 @@
 			Its name - the resource's own ([member Resource.resource_name]).
 		</member>
 		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
-			The name of the [TrackRenderingServer] backend that draws the segment; empty for the default one, set by [code]reloaded/tracks/backend[/code].
+			The name of the [TrackRenderingServer] backend that draws the segment; empty for the one [TrackRenderingServer] picks ([code]reloaded/tracks/backend[/code]).
 		</member>
 		<member name="shoulder" type="bool" setter="set_shoulder" getter="get_shoulder" default="false">
 			A road has a shoulder.

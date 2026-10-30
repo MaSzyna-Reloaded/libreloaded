@@ -11,10 +11,11 @@
 namespace godot {
     /* Draws the tracks and roads of TrackServer, each by a render RID of its own, while the camera is
      * near (SceneryStreamingServer). It keeps a track's streaming, scenario, visibility and
-     * description (what the track is, a TrackData) and forwards its drawing to a backend: the core's
-     * StandardTrackRenderingBackend or one a plugin registers (backend_register()) - the one
-     * BACKEND_SETTING names, or by default (AUTO_BACKEND) the one of the highest priority, the one
-     * its data names (TrackData.rendering_backend) on a tie. */
+     * description (what the track is, a TrackData) and forwards its drawing to the backend its data
+     * names (TrackData.rendering_backend): the core's StandardTrackRenderingBackend or one a plugin
+     * registers (backend_register()). A track whose data names none is drawn by the one
+     * BACKEND_SETTING names, or by default (AUTO_BACKEND) by the one of the highest priority, the one
+     * its scenery prefers (track_set_preferred_backend()) on a tie. */
     class TrackRenderingServer : public Object {
             GDCLASS(TrackRenderingServer, Object)
 
@@ -24,11 +25,11 @@ namespace godot {
             /// network); a player's setting
             static constexpr double TRACKS_DISTANCE = 2000.0;
             static constexpr const char *TRACKS_DISTANCE_SETTING = "reloaded/scenery/tracks/distance";
-            /// The backend every track is drawn by, by its name; AUTO_BACKEND for the best one
+            /// The backend a track's data names none for, by its name; AUTO_BACKEND for the best one
             static constexpr const char *BACKEND_SETTING = "reloaded/tracks/backend";
-            /// BACKEND_SETTING's default: a track is drawn by the backend of the highest priority
-            /// (TrackRenderingBackend::get_priority()), the one its data names on a tie - the
-            /// data's own, unless another draws better
+            /// BACKEND_SETTING's default: the backend of the highest priority
+            /// (TrackRenderingBackend::get_priority()), the one the track's scenery prefers on a tie -
+            /// the scenery's own, unless another draws better
             static constexpr const char *AUTO_BACKEND = "auto";
 
         private:
@@ -39,6 +40,8 @@ namespace godot {
                     bool visible = true;
                     /// The backend drawing it, by its name; empty until it has one
                     StringName backend;
+                    /// The backend its scenery prefers on a tie of priorities (AUTO_BACKEND); empty for none
+                    StringName preferred_backend;
                     /// SceneryStreamingServer's registration; invalid for a track built directly
                     RID stream_rid;
                     /// Within the camera's range while it is streamed
@@ -50,7 +53,8 @@ namespace godot {
             int stream_owner = 0;
             double tracks_distance = TRACKS_DISTANCE;
 
-            /// The backend BACKEND_SETTING names, or the best one for the track (AUTO_BACKEND)
+            /// The backend the track's data names, else the one BACKEND_SETTING names, else the best one
+            /// for the track (AUTO_BACKEND)
             StringName _get_backend_name(const Track &p_track) const;
             TrackRenderingBackend *_get_backend(const Track &p_track) const;
             /// The track handed to the backend its description names, taken from the one it had
@@ -93,6 +97,9 @@ namespace godot {
             /// What the track is: the backend its data names draws it. Given before the track is streamed
             /// or built
             void track_set_description(const RID &p_track_render, const Ref<TrackData> &p_description);
+            /// The backend the track's scenery prefers (CompiledScenery.track_rendering_backend): it draws
+            /// a track whose data names no backend unless another one has a higher priority
+            void track_set_preferred_backend(const RID &p_track_render, const StringName &p_backend);
             void track_set_visible(const RID &p_track_render, bool p_visible);
             void track_set_scenario(const RID &p_track_render, const RID &p_scenario);
             /// Registers the track for streaming instead of building it: a scenery has thousands of tracks.

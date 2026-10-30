@@ -12,7 +12,7 @@
 		<method name="get_priority" qualifiers="const">
 			<return type="float" />
 			<description>
-				How well it draws against the other backends: a track is drawn by the backend of the highest priority, the one its data names on a tie ([method TrackData.get_rendering_backend]), unless the project names one. 1.0 unless the backend gives its own.
+				How well it draws against the other backends, 1.0 unless it says otherwise: a track whose data names no backend is drawn by the one of the highest priority, the one its scenery prefers on a tie ([method TrackRenderingServer.track_set_preferred_backend]), unless the project names one ([code]reloaded/tracks/backend[/code]).
 			</description>
 		</method>
 		<method name="topology_rebuilt">
