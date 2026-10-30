@@ -10,6 +10,10 @@ const RAIL_HEAD: float = 0.18
 const BALLAST_FOOT: float = -(0.2 + 0.3)
 ## Its half width there: the crest (half a sleeper and the shoulder) and the slope down to the foot
 const BALLAST_FOOT_HALF_WIDTH: float = 1.3 + 0.4 + (0.2 + 0.3 - 0.03) * 1.5
+## A track 40 km from the world's origin, where floats resolve only millimetres
+const FAR_START: Vector3 = Vector3(40000.0, 0.0, 40000.0)
+## How near its start a track's vertices and sleepers lie: the track's own size, not the world's [m]
+const NEAR_START: float = 25.0
 
 var _backend: StandardTrackRenderingBackend = null
 var _track: RID = RID()
@@ -125,6 +129,23 @@ func test_cleared_track_frees_its_sleepers() -> void:
     _build(TrackData.new())
     _backend.track_clear(_track_render)
     assert_eq(_backend.track_get_sleeper_multimeshes(_track_render).size(), 0)
+
+
+## A track far from the world's origin is drawn relative to its start, where its instances stand:
+## its vertices in the world's coordinates shook by millimetres as the camera moved (#18)
+func test_far_track_keeps_its_mesh_and_sleepers_near_its_start() -> void:
+    var curve: TrackCurve = _straight(TRACK_LENGTH)
+    curve.p1 += FAR_START
+    curve.p2 += FAR_START
+    TrackServer.track_update_curves(_track, curve, null)
+    var mesh: ArrayMesh = _build(TrackData.new())
+
+    assert_lt(mesh.get_aabb().position.length(), NEAR_START, "the mesh relative to the start")
+    var multimesh: RID = _backend.track_get_sleeper_multimeshes(_track_render)[0]
+    assert_lt(RenderingServer.multimesh_instance_get_transform(multimesh, 0).origin.length(), NEAR_START,
+            "the sleepers relative to the start")
+    var first: Transform3D = _backend.track_get_sleeper_transforms(_track_render)[0]
+    assert_lt(first.origin.distance_to(FAR_START), NEAR_START, "where they lie is still in the world")
 
 
 func _straight(length: float) -> TrackCurve:

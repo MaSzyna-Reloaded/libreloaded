@@ -4998,3 +4998,24 @@ lighting or the trainset.
   same probe shows the reversed wagons at -11.11 m/s and the couplers at a few kN.
 * **Rule:** a value the original gives "along the vehicle" (velocity, the Mover's V) is signed by
   the vehicle's own direction on the track; a reversed vehicle takes it negated.
+
+
+## 2026-10-30 The tracks that shook
+
+* **Symptom:**
+  - #18: tracks drawn 40-70 km from the world's origin shook while the camera moved - rails, bed
+    and ballast jumped by 1-2 px a few metres from the camera - and stood still when it did. Models
+    placed by their instance's transform did not move.
+* **What proved it:**
+  - `StandardTrackRenderingBackend::track_build()` built the track's mesh in the world's
+    coordinates and drew it at an identity instance transform. Godot's double build
+    (`scene_forward_clustered.glsl`, `USE_DOUBLE_PRECISION`) adds only the instance's origin to
+    the camera's in emulated double precision; the vertices stay floats, which resolve 4-8 mm
+    there and round differently for every camera position. 3 m from the camera a pixel is about
+    4 mm.
+  - The sleepers' MultiMesh transforms held the world's coordinates as well, as floats in the
+    MultiMesh buffer.
+* **Fix:** the track's mesh and its sleepers' chunks are placed at the start of the track, their
+  vertices and MultiMesh transforms relative to it.
+* **Rule:** a mesh drawn far from the world's origin keeps its vertices relative to its instance's
+  origin.

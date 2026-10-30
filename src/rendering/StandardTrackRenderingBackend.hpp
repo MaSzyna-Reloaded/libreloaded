@@ -117,10 +117,11 @@ namespace godot {
             /// an embedded bed
             static Vector<Transform3D> _place_sleepers(
                     const Ref<Curve3D> &p_curve, const Ref<TrackCurve> &p_track_curve, const TrackData &p_description);
-            /// The track's sleepers along p_curve, MultiMesh chunks of SLEEPER_CHUNK_LENGTH
+            /// The track's sleepers along p_curve, MultiMesh chunks of SLEEPER_CHUNK_LENGTH placed at
+            /// p_origin, the sleepers relative to it
             void _add_sleepers(
                     Track &p_track, const Ref<Curve3D> &p_curve, const Ref<TrackCurve> &p_track_curve,
-                    const TrackData &p_description) const;
+                    const TrackData &p_description, const Vector3 &p_origin) const;
             /// The section p_points (x across, y up) swept along p_frames into the surface of p_material
             static void
             _sweep(const Vector<Frame> &p_frames, const PackedVector2Array &p_points, const Ref<Material> &p_material,
