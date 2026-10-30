@@ -119,6 +119,11 @@ namespace godot {
             description.instantiate();
         }
         const bool road = track_server->track_get_group(track->track) == TrackServer::GROUP_ROAD;
+        // the mesh and the sleepers are placed at the start of the track, their vertices relative to
+        // it: the double build adds an instance's origin to the camera's in double precision, while
+        // vertices stay floats, which far from the world's origin round differently for every camera
+        // position - the track shook as the camera moved
+        Vector3 origin;
         Vector<Surface> surfaces;
         const TrackServer::SwitchTrack branches[] = {TrackServer::TRACK_COMMON, TrackServer::TRACK_DIVERGING};
         for (const TrackServer::SwitchTrack branch: branches) {
@@ -135,6 +140,9 @@ namespace godot {
             if (frames.size() < 2) {
                 continue;
             }
+            if (branch == TrackServer::TRACK_COMMON) {
+                origin = frames[0].origin;
+            }
             if (road) {
                 _add_road(frames, **description, surfaces);
                 continue;
@@ -143,7 +151,7 @@ namespace godot {
                     frames, **description, branch == TrackServer::TRACK_DIVERGING ? DIVERGING_BED_DROP : 0.0, surfaces);
             // a switch's sleepers are the common curve's, the diverging rails lie on them
             if (branch == TrackServer::TRACK_COMMON) {
-                _add_sleepers(*track, curve, track_curve, **description);
+                _add_sleepers(*track, curve, track_curve, **description, origin);
             }
         }
         if (surfaces.is_empty()) {
@@ -154,7 +162,11 @@ namespace godot {
         for (const Surface &surface: surfaces) {
             Array arrays;
             arrays.resize(Mesh::ARRAY_MAX);
-            arrays[Mesh::ARRAY_VERTEX] = surface.vertices;
+            PackedVector3Array vertices = surface.vertices;
+            for (Vector3 &vertex: vertices) {
+                vertex -= origin;
+            }
+            arrays[Mesh::ARRAY_VERTEX] = vertices;
             arrays[Mesh::ARRAY_NORMAL] = surface.normals;
             arrays[Mesh::ARRAY_TEX_UV] = surface.uvs;
             arrays[Mesh::ARRAY_INDEX] = surface.indices;
@@ -164,6 +176,7 @@ namespace godot {
         RenderingServer *rendering = RenderingServer::get_singleton();
         track->mesh = mesh;
         track->instance = rendering->instance_create2(mesh->get_rid(), track->scenario);
+        rendering->instance_set_transform(track->instance, Transform3D(Basis(), origin));
         rendering->instance_set_visible(track->instance, track->visible);
     }
 
@@ -433,7 +446,7 @@ namespace godot {
     /// The sleepers in MultiMesh chunks drawn only near the camera, as DoS's (655cdcda)
     void StandardTrackRenderingBackend::_add_sleepers(
             Track &p_track, const Ref<Curve3D> &p_curve, const Ref<TrackCurve> &p_track_curve,
-            const TrackData &p_description) const {
+            const TrackData &p_description, const Vector3 &p_origin) const {
         const Vector<Transform3D> sleepers = _place_sleepers(p_curve, p_track_curve, p_description);
         if (sleepers.is_empty()) {
             return;
@@ -453,9 +466,11 @@ namespace godot {
             rendering->multimesh_set_mesh(multimesh, mesh->get_rid());
             rendering->multimesh_allocate_data(multimesh, count, RenderingServer::MULTIMESH_TRANSFORM_3D);
             for (int index = 0; index < count; index++) {
-                rendering->multimesh_instance_set_transform(multimesh, index, sleepers[first + index]);
+                rendering->multimesh_instance_set_transform(
+                        multimesh, index, sleepers[first + index].translated(-p_origin));
             }
             const RID instance = rendering->instance_create2(multimesh, p_track.scenario);
+            rendering->instance_set_transform(instance, Transform3D(Basis(), p_origin));
             rendering->instance_geometry_set_visibility_range(
                     instance, 0.0F, static_cast<float>(SLEEPERS_DISTANCE), static_cast<float>(SLEEPERS_BEGIN_MARGIN),
                     static_cast<float>(SLEEPERS_END_MARGIN), RenderingServer::VISIBILITY_RANGE_FADE_SELF);
