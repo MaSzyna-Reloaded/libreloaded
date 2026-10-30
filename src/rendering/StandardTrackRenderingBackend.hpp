@@ -26,9 +26,6 @@ namespace godot {
             /// The look the tracks are drawn with, by its path
             static constexpr const char *LOOK_SETTING = "reloaded/tracks/look";
             static constexpr const char *DEFAULT_LOOK = "res://addons/libreloaded/tracks/track_look.tres";
-            /// Under the default: the core's tracks are unfinished, a plugin's backend draws them
-            /// where one is registered (the operator, 2026-10-30)
-            static constexpr double PRIORITY = 0.5;
 
             /// A curve is drawn in sections this far apart [m], a straight one in sections of up to
             /// STRAIGHT_SEGMENT_LENGTH
@@ -141,6 +138,8 @@ namespace godot {
             StandardTrackRenderingBackend();
             ~StandardTrackRenderingBackend() override;
 
+            /// Under the default: the core's tracks are unfinished, a plugin's backend draws them where
+            /// one is registered (the operator, 2026-10-30)
             double get_priority() const override;
 
             void track_create(const RID &p_track_render, const RID &p_track) override;

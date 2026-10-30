@@ -10,7 +10,7 @@ const RAIL_HEAD: float = 0.18
 const BALLAST_FOOT: float = -(0.2 + 0.3)
 ## Its half width there: the crest (half a sleeper and the shoulder) and the slope down to the foot
 const BALLAST_FOOT_HALF_WIDTH: float = 1.3 + 0.4 + (0.2 + 0.3 - 0.03) * 1.5
-## A backend's priority unless it gives its own (TrackRenderingBackend.DEFAULT_PRIORITY)
+## A backend's priority unless it gives its own (TrackRenderingBackend.get_priority())
 const DEFAULT_PRIORITY: float = 1.0
 
 var _backend: StandardTrackRenderingBackend = null

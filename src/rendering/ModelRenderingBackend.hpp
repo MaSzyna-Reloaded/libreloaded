@@ -21,9 +21,6 @@ namespace godot {
             GDCLASS(ModelRenderingBackend, Object)
 
         public:
-            /// A backend's priority unless it gives its own (get_priority())
-            static constexpr double DEFAULT_PRIORITY = 1.0;
-
             using Instancer = ModelRenderingServer::Instancer;
             using InstanceKind = ModelRenderingServer::InstanceKind;
 
@@ -35,7 +32,8 @@ namespace godot {
             static void _bind_methods();
 
         public:
-            /// How well it draws against the other backends, the higher the better
+            /// How well it draws against the other backends, the higher the better; 1.0 unless it says
+            /// otherwise
             virtual double get_priority() const;
             /// The model of the name, shared by every instance of it while it lives; the backend finds
             /// its file

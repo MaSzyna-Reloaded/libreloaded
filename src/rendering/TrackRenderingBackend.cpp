@@ -23,6 +23,6 @@ namespace godot {
     }
 
     double TrackRenderingBackend::get_priority() const {
-        return DEFAULT_PRIORITY;
+        return 1.0;
     }
 } // namespace godot

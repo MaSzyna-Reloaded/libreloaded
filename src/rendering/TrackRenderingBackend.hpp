@@ -13,16 +13,13 @@ namespace godot {
     class TrackRenderingBackend : public Object {
             GDCLASS(TrackRenderingBackend, Object)
 
-        public:
-            /// A backend's priority unless it gives its own (get_priority())
-            static constexpr double DEFAULT_PRIORITY = 1.0;
-
         protected:
             static void _bind_methods();
 
         public:
-            /// How well it draws against the other backends: a track is drawn by the backend of the
-            /// highest priority, the one its data names on a tie (TrackRenderingServer::AUTO_BACKEND)
+            /// How well it draws against the other backends, 1.0 unless it says otherwise: a track is
+            /// drawn by the backend of the highest priority, the one its data names on a tie
+            /// (TrackRenderingServer::AUTO_BACKEND)
             virtual double get_priority() const;
             /// The track of TrackServer's p_track is drawn by this backend under p_track_render
             virtual void track_create(const RID &p_track_render, const RID &p_track) = 0;

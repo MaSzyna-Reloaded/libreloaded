@@ -101,7 +101,7 @@ namespace godot {
             const RID & /* p_track_render */, const double /* p_offset1 */, const double /* p_offset2 */) {}
 
     double StandardTrackRenderingBackend::get_priority() const {
-        return PRIORITY;
+        return 0.5;
     }
 
     bool StandardTrackRenderingBackend::track_stream(const RID & /* p_track_render */) {
