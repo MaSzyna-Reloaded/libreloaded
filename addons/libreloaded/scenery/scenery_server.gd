@@ -285,7 +285,7 @@ static func _instantiate_infrastructure(
     var built_count:int = 0
     var track_rids:Array[RID] = []
     for track_data:TrackData in compiled.tracks:
-        var built:Dictionary = build_track(track_data, world_3d)
+        var built:Dictionary = build_track(track_data, world_3d, compiled.track_rendering_backend)
         root._track_rids.append(built["track_rid"])
         track_rids.append(built["track_rid"])
         root._track_render_rids.append(built["track_render_rid"])
@@ -396,10 +396,13 @@ static func run_on_worker(
 ## _update_track_rendering() (addons/libreloaded/tracks/track_normal_3d.gd,
 ## track_switch_3d.gd), minus the Node - see instantiate()'s doc comment for why. The rendering
 ## meshes are not built here: track_stream() leaves that to SceneryStreamingServer.
-static func build_track(track_data:TrackData, world_3d:World3D) -> Dictionary:
+## [param preferred_backend] is the backend the track's scenery prefers
+## (CompiledScenery.track_rendering_backend, TrackRenderingServer.track_set_preferred_backend()).
+static func build_track(track_data:TrackData, world_3d:World3D, preferred_backend:StringName = &"") -> Dictionary:
     var track_rid:RID = TrackServer.track_create()
     var track_render_rid:RID = TrackRenderingServer.track_create(track_rid)
     TrackRenderingServer.track_set_scenario(track_render_rid, world_3d.scenario)
+    TrackRenderingServer.track_set_preferred_backend(track_render_rid, preferred_backend)
 
     TrackServer.track_update_curves(track_rid, track_data.curve, track_data.diverging_curve)
     TrackServer.track_update(track_rid, track_data.kind, track_data.name, track_data.width)

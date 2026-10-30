@@ -4,7 +4,7 @@
 		Draws the tracks and roads of [TrackServer], each by a render RID of its own.
 	</brief_description>
 	<description>
-		Keeps a track's streaming, scenario, visibility and description (what the track is, a [TrackData]) and forwards its drawing to the backend its data names ([method TrackData.get_rendering_backend]; the project setting [code]reloaded/tracks/backend[/code] for none): the core's [StandardTrackRenderingBackend], or one a plugin registers ([method backend_register]). A streamed track is built while the camera is within [member tracks_distance] of it ([SceneryStreamingServer]).
+		Keeps a track's streaming, scenario, visibility and description (what the track is, a [TrackData]) and forwards its drawing to the backend its data names ([method TrackData.get_rendering_backend]): the core's [StandardTrackRenderingBackend], or one a plugin registers ([method backend_register]). A track whose data names none is drawn by the one the project setting [code]reloaded/tracks/backend[/code] names, or by default ([code]auto[/code]) by the one of the highest priority ([method TrackRenderingBackend.get_priority]), the one its scenery prefers on a tie ([method track_set_preferred_backend]). A streamed track is built while the camera is within [member tracks_distance] of it ([SceneryStreamingServer]).
 	</description>
 	<tutorials>
 	</tutorials>
@@ -98,6 +98,14 @@
 			<param index="1" name="description" type="TrackData" />
 			<description>
 				What the track is: the backend its data names draws it. Given before the track is streamed or built.
+			</description>
+		</method>
+		<method name="track_set_preferred_backend">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="backend" type="StringName" />
+			<description>
+				The backend the track's scenery prefers ([member CompiledScenery.track_rendering_backend]): it draws a track whose data names no backend unless another one has a higher priority ([method TrackRenderingBackend.get_priority]).
 			</description>
 		</method>
 		<method name="track_set_scenario">

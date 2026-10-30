@@ -138,6 +138,10 @@ namespace godot {
             StandardTrackRenderingBackend();
             ~StandardTrackRenderingBackend() override;
 
+            /// Under the default: the core's tracks are unfinished, a plugin's backend draws them where
+            /// one is registered (the operator, 2026-10-30)
+            double get_priority() const override;
+
             void track_create(const RID &p_track_render, const RID &p_track) override;
             void track_free(const RID &p_track_render) override;
             void track_set_description(const RID &p_track_render, const Ref<TrackData> &p_description) override;

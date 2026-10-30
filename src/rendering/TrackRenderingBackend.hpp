@@ -8,7 +8,8 @@ namespace godot {
      * data (TrackData.rendering_backend), registered by its name
      * (TrackRenderingServer::backend_register()). It keeps what it draws of each track under the
      * track's render RID, from track_create() to track_free(), and reads the track's curves from
-     * TrackServer as it builds it. */
+     * TrackServer as it builds it. Its priority says how well it draws against the other backends
+     * (TrackRenderingServer::AUTO_BACKEND). */
     class TrackRenderingBackend : public Object {
             GDCLASS(TrackRenderingBackend, Object)
 
@@ -16,6 +17,10 @@ namespace godot {
             static void _bind_methods();
 
         public:
+            /// How well it draws against the other backends, 1.0 unless it says otherwise: a track whose
+            /// data names no backend is drawn by the one of the highest priority, the one its scenery
+            /// prefers on a tie (TrackRenderingServer::AUTO_BACKEND)
+            virtual double get_priority() const;
             /// The track of TrackServer's p_track is drawn by this backend under p_track_render
             virtual void track_create(const RID &p_track_render, const RID &p_track) = 0;
             /// What the track drew goes, and the track with it

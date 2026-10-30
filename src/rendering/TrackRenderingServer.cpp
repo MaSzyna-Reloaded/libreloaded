@@ -24,6 +24,9 @@ namespace godot {
                 D_METHOD("track_set_description", "track_render", "description"),
                 &TrackRenderingServer::track_set_description);
         ClassDB::bind_method(
+                D_METHOD("track_set_preferred_backend", "track_render", "backend"),
+                &TrackRenderingServer::track_set_preferred_backend);
+        ClassDB::bind_method(
                 D_METHOD("track_set_visible", "track_render", "visible"), &TrackRenderingServer::track_set_visible);
         ClassDB::bind_method(
                 D_METHOD("track_set_scenario", "track_render", "scenario"), &TrackRenderingServer::track_set_scenario);
@@ -164,6 +167,15 @@ namespace godot {
         }
     }
 
+    void TrackRenderingServer::track_set_preferred_backend(const RID &p_track_render, const StringName &p_backend) {
+        Track *track = tracks.getptr(p_track_render);
+        ERR_FAIL_NULL(track);
+        track->preferred_backend = p_backend;
+        if (_get_backend_name(*track) != track->backend) {
+            _assign_backend(p_track_render, *track);
+        }
+    }
+
     void TrackRenderingServer::track_set_visible(const RID &p_track_render, const bool p_visible) {
         Track *track = tracks.getptr(p_track_render);
         ERR_FAIL_NULL(track);
@@ -244,7 +256,20 @@ namespace godot {
         if (named != StringName() && backends.has(named)) {
             return named;
         }
-        return ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, DEFAULT_BACKEND);
+        StringName setting = ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, AUTO_BACKEND);
+        if (setting != StringName(AUTO_BACKEND) && backends.has(setting)) {
+            return setting;
+        }
+        StringName best;
+        double best_priority = -Math::INF;
+        for (const KeyValue<StringName, TrackRenderingBackend *> &entry: backends) {
+            const double priority = entry.value->get_priority();
+            if (priority > best_priority || (priority == best_priority && entry.key == p_track.preferred_backend)) {
+                best = entry.key;
+                best_priority = priority;
+            }
+        }
+        return best;
     }
 
     TrackRenderingBackend *TrackRenderingServer::_get_backend(const Track &p_track) const {

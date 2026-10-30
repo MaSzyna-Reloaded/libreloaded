@@ -33,6 +33,9 @@
 		<member name="stations" type="StationData[]" setter="set_stations" getter="get_stations" default="[]">
 			The stations, for a list of them (not drawn).
 		</member>
+		<member name="track_rendering_backend" type="StringName" setter="set_track_rendering_backend" getter="get_track_rendering_backend" default="&amp;&quot;&quot;">
+			The [TrackRenderingServer] backend the scenery's tracks of no backend of their own prefer: it draws them unless another one has a higher priority ([method TrackRenderingServer.track_set_preferred_backend]); empty for none.
+		</member>
 		<member name="tracks" type="TrackData[]" setter="set_tracks" getter="get_tracks" default="[]">
 			Its tracks and roads.
 		</member>

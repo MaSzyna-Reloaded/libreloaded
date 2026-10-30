@@ -28,6 +28,10 @@ const SCENERY_FILE:String = "scenery.res"
 const SCENARIO_FILE:String = "scenario.res"
 ## The sections (WorldSection), a file a cell (section_file())
 const SECTIONS_DIR:String = "sections"
+## The track backend a world of the core's format prefers for its tracks of no backend of their own:
+## the core's (StandardTrackRenderingBackend::NAME) - it draws them unless another one has a higher
+## priority (CompiledScenery.track_rendering_backend)
+const TRACK_RENDERING_BACKEND:StringName = &"standard"
 
 ## The world's name: its .json and its signalling system's (get_scenery_name())
 var world_name:String = ""
@@ -123,6 +127,7 @@ func _instantiate_content() -> void:
     if not scenario and ResourceLoader.exists(world_dir.path_join(SCENARIO_FILE)):
         scenario = load(world_dir.path_join(SCENARIO_FILE)) as CompiledScenery
     var compiled:CompiledScenery = CompiledScenery.new()
+    compiled.track_rendering_backend = TRACK_RENDERING_BACKEND
     if scenario:
         compiled.trainsets.append_array(scenario.trainsets)
         compiled.sounds.append_array(scenario.sounds)

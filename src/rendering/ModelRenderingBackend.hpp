@@ -15,7 +15,8 @@ namespace godot {
      * registered by its name (ModelRenderingServer::backend_register()). It loads a model of its own by
      * its file, and places, poses, lights and picks its instances by RID. Every instance it makes is
      * announced by instance_created - also one it makes for itself, outside the server - so that the
-     * server forwards the instance's calls to it. */
+     * server forwards the instance's calls to it. Its priority says how well it draws against the
+     * other backends; a model is still drawn by the backend that names it. */
     class ModelRenderingBackend : public Object {
             GDCLASS(ModelRenderingBackend, Object)
 
@@ -31,6 +32,9 @@ namespace godot {
             static void _bind_methods();
 
         public:
+            /// How well it draws against the other backends, the higher the better; 1.0 unless it says
+            /// otherwise
+            virtual double get_priority() const;
             /// The model of the name, shared by every instance of it while it lives; the backend finds
             /// its file
             virtual Ref<Resource> model_load(const String &p_name) = 0;

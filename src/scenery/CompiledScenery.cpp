@@ -24,5 +24,6 @@ namespace godot {
                 CompiledScenery, Variant::ARRAY, stations, PROPERTY_HINT_TYPE_STRING, "StationData");
         BIND_PROPERTY_W_HINT_RES_ARRAY(
                 CompiledScenery, Variant::ARRAY, signal_boxes, PROPERTY_HINT_TYPE_STRING, "SignalBoxData");
+        BIND_PROPERTY(CompiledScenery, Variant::STRING_NAME, track_rendering_backend);
     }
 } // namespace godot

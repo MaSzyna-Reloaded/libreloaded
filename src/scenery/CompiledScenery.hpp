@@ -36,6 +36,10 @@ namespace godot {
             /* The stations and signal boxes, for a list of them (not drawn) */
             TypedArray<StationData> stations;
             TypedArray<SignalBoxData> signal_boxes;
+            /* The TrackRenderingServer backend the scenery's tracks of no backend of their own prefer: it
+             * draws them unless another one has a higher priority; empty for none
+             * (TrackRenderingServer::track_set_preferred_backend()) */
+            StringName track_rendering_backend;
 
         protected:
             static void _bind_methods();
@@ -52,5 +56,6 @@ namespace godot {
             MAKE_GS_NR(TypedArray<String>, scripts);
             MAKE_GS_NR(TypedArray<StationData>, stations);
             MAKE_GS_NR(TypedArray<SignalBoxData>, signal_boxes);
+            MAKE_GS_NR(StringName, track_rendering_backend);
     };
 } // namespace godot

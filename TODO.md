@@ -523,6 +523,10 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 
 ## Rendering
 
+* **A model's backend is still the one its caller names** (`ModelRenderingServer`):
+  `ModelRenderingBackend.get_priority()` is given but picks nothing yet. The provider of a model
+  is chosen by the registry of models and vehicles (the operator, 2026-10-30), which hands out a
+  model's metadata from the backend of the highest priority that has it, the world's own first.
 * **GPU 22 ms of a 33 ms frame** (RX 580, 3607 draw calls) - measure on `make compile-profiling`
   and split by pass before any hypothesis.
 * **Mirror reflections (`PlanarMirror3D`) are smeared** (Impuls 36WEa, `td_impuls`). Not
