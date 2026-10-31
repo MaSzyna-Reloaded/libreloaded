@@ -46,27 +46,34 @@
 			How far off the emitter's up axis a particle may leave [lb]deg[rb].
 		</member>
 		<member name="inclination_min" type="float" setter="set_inclination_min" getter="get_inclination_min" default="0.0">
+			How far off the emitter's up axis a particle leaves at least [lb]deg[rb]; the angle is picked between this and [member inclination_max].
 		</member>
 		<member name="opacity_limit_max" type="float" setter="set_opacity_limit_max" getter="get_opacity_limit_max" default="1.0">
+			The opacity a particle gaining it ([member opacity_step] above 0) stops at.
 		</member>
 		<member name="opacity_limit_min" type="float" setter="set_opacity_limit_min" getter="get_opacity_limit_min" default="0.0">
+			The opacity a fading particle ([member opacity_step] below 0) stops at.
 		</member>
 		<member name="opacity_max" type="float" setter="set_opacity_max" getter="get_opacity_max" default="1.0">
 			The opacity a particle is born with, picked between [member opacity_min] and this.
 		</member>
 		<member name="opacity_min" type="float" setter="set_opacity_min" getter="get_opacity_min" default="1.0">
+			The opacity a particle is born with at least; picked between this and [member opacity_max].
 		</member>
 		<member name="opacity_step" type="float" setter="set_opacity_step" getter="get_opacity_step" default="0.0">
 			How much opacity a particle loses a second (below 0), within [member opacity_limit_min] and [member opacity_limit_max].
 		</member>
 		<member name="size_limit_max" type="float" setter="set_size_limit_max" getter="get_size_limit_max" default="inf">
+			The size a growing particle ([member size_step] above 0) stops at.
 		</member>
 		<member name="size_limit_min" type="float" setter="set_size_limit_min" getter="get_size_limit_min" default="0.0">
+			The size a shrinking particle ([member size_step] below 0) stops at.
 		</member>
 		<member name="size_max" type="float" setter="set_size_max" getter="get_size_max" default="1.0">
 			The size a particle is born with over the sprite's own, picked between [member size_min] and this.
 		</member>
 		<member name="size_min" type="float" setter="set_size_min" getter="get_size_min" default="1.0">
+			The size a particle is born with at least, over the sprite's own; picked between this and [member size_max].
 		</member>
 		<member name="size_step" type="float" setter="set_size_step" getter="get_size_step" default="0.0">
 			How much a particle grows a second, within [member size_limit_min] and [member size_limit_max].
@@ -78,6 +85,7 @@
 			The speed a particle leaves at [lb]m/s[rb], picked between [member velocity_min] and this.
 		</member>
 		<member name="velocity_min" type="float" setter="set_velocity_min" getter="get_velocity_min" default="1.0">
+			The speed a particle leaves at least [lb]m/s[rb]; picked between this and [member velocity_max].
 		</member>
 	</members>
 </class>

@@ -340,6 +340,7 @@
 		</method>
 	</methods>
 	<members>
+		<member name="category" type="int" setter="set_category" getter="get_category" overrides="VehicleController" enum="VehicleController.Category" default="1" />
 		<member name="coupler_adapter_height" type="float" setter="set_coupler_adapter_height" getter="get_coupler_adapter_height" default="0.95">
 			[code]coupleradapter:[/code] - the height over the rail of the adapter this vehicle hands a neighbour of another coupler type [m]; the original's own without the key (DynObj.cpp:1765-1769).
 		</member>
@@ -353,6 +354,7 @@
 			[code]Param.HeatingP[/code]
 			Power drawn for heating, in kW.
 		</member>
+		<member name="implementation" type="StringName" setter="set_implementation" getter="get_implementation" overrides="VehicleController" default="&amp;&quot;maszyna_mover&quot;" />
 		<member name="light_power" type="float" setter="set_light_power" getter="get_light_power" default="0.0">
 			[code]Param.LightP[/code]
 			Power drawn for lighting, in kW.
