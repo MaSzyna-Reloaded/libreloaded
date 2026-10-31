@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Assemble the Jekyll site of libreloaded and the plugins built into it (make docs-site).
+"""Assemble the Jekyll site of one source - libreloaded or a plugin built into it (make docs-site).
 
-The site is libreloaded's docs/ with each plugin's guides beside it: the plugin's docs/ (its pages
-and assets, without its own _config.yml) goes into <site dir>/<plugin name>/, and the pages its
-docs/_config.yml lists under header_pages join the site's menu after libreloaded's, as
-<plugin name>/<page>. A plugin's page links libreloaded's pages and the class reference relatively
-(`../architecture.html`, `../api/VehicleServer.html`). The class reference of every source is
-generated into <site dir>/api by scripts/make-api-docs. The plugins are LIBRELOADED_PLUGINS, as
-the library is built with them (scripts/reloaded_sources.py), so the site documents what that
-build holds. The site is generated, not versioned.
+The site is the source's docs/ - its pages, assets and _config.yml, which gives the site's title,
+description and menu (header_pages) - on libreloaded's site machinery (its layouts, includes,
+Gemfile and 404 page), with the class reference of every source generated into <site dir>/api by
+scripts/make-api-docs. A plugin's page links libreloaded's guides on libreloaded's own site
+(https://maszyna-reloaded.github.io/libreloaded/). The sources are libreloaded and
+LIBRELOADED_PLUGINS, as the library is built with them (scripts/reloaded_sources.py), so the
+reference documents what that build holds. The site is generated, not versioned.
 
-Usage: scripts/make-docs-site <site dir>
+Usage: scripts/make-docs-site <site dir> [<source name>]   (libreloaded when left out)
 """
 
 import os
@@ -25,65 +24,32 @@ from reloaded_sources import ROOT, sources
 # record behind FINDINGS.md, not a guide) - never part of the site
 IGNORED = shutil.ignore_patterns("_site", ".jekyll-cache", ".jekyll-metadata", ".sass-cache", "vendor", "api",
                                  "Makefile", "findings-archive.md")
-# what of a plugin's docs/ is not its pages: the site's configuration and machinery are libreloaded's
-PLUGIN_IGNORED = shutil.ignore_patterns("_config.yml", "_layouts", "_includes", "Gemfile", "Gemfile.lock",
-                                        "Makefile", "404.html", ".bundle", ".gitignore", "_site",
-                                        ".jekyll-cache", "vendor", "api")
-
-
-def header_pages(config_text: str) -> list:
-    """header_pages of a _config.yml, as listed"""
-    pages, listing = [], False
-    for line in config_text.splitlines():
-        if line.startswith("header_pages:"):
-            listing = True
-        elif listing and line.strip().startswith("- "):
-            pages.append(line.strip()[2:].strip())
-        elif listing and line.strip():
-            listing = False
-    return pages
-
-
-def with_header_pages(config_text: str, pages: list) -> str:
-    """The _config.yml with its header_pages replaced by `pages`"""
-    out, listing = [], False
-    for line in config_text.splitlines():
-        if line.startswith("header_pages:"):
-            listing = True
-            out.append(line)
-            out.extend(f"  - {page}" for page in pages)
-            continue
-        if listing and (line.strip().startswith("- ") or not line.strip()):
-            if not line.strip():
-                listing = False
-                out.append(line)
-            continue
-        listing = False
-        out.append(line)
-    return "\n".join(out) + "\n"
+# libreloaded's docs/ that is the machinery of every site, not its pages
+MACHINERY = ("_layouts", "_includes", "Gemfile", "Gemfile.lock", "404.html", ".bundle")
 
 
 def main() -> None:
-    if not len(sys.argv) == 2:
+    if not len(sys.argv) in (2, 3):
         sys.exit(__doc__)
     site = Path(sys.argv[1]).resolve()
+    name = sys.argv[2] if len(sys.argv) == 3 else "libreloaded"
     core, *plugins = sources()
+    documented = next((source for source in (core, *plugins) if source.name == name), None)
+    if documented is None:
+        sys.exit(f"{name}: neither libreloaded nor a plugin of LIBRELOADED_PLUGINS")
     if site.exists():
         shutil.rmtree(site)
-    shutil.copytree(core.docs_dir, site, ignore=IGNORED)
-    config = site / "_config.yml"
-    menu = header_pages(config.read_text())
-    for plugin in plugins:
-        if not plugin.docs_dir.is_dir():
-            continue
-        shutil.copytree(plugin.docs_dir, site / plugin.name, ignore=PLUGIN_IGNORED)
-        plugin_config = plugin.docs_dir / "_config.yml"
-        if plugin_config.exists():
-            menu += [f"{plugin.name}/{page}" for page in header_pages(plugin_config.read_text())]
-    config.write_text(with_header_pages(config.read_text(), menu))
+    shutil.copytree(documented.docs_dir, site, ignore=IGNORED)
+    if documented is not core:
+        for entry in MACHINERY:
+            source = core.docs_dir / entry
+            if source.is_dir():
+                shutil.copytree(source, site / entry, dirs_exist_ok=True)
+            else:
+                shutil.copy2(source, site / entry)
     subprocess.run([sys.executable, str(ROOT / "scripts" / "make-api-docs"), str(site / "api")],
                    check=True, env=os.environ)
-    print(f"{site}: libreloaded" + "".join(f" + {plugin.name}" for plugin in plugins))
+    print(f"{site}: {name}, the class reference of libreloaded" + "".join(f" + {plugin.name}" for plugin in plugins))
 
 
 if __name__ == "__main__":

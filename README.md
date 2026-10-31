@@ -80,14 +80,15 @@ implementation steps its vehicles internally is up to the implementation.
 ## Documentation
 
 The documentation is a Jekyll site. It contains the pages in `docs/` and an API reference generated
-from `doc_classes/` and from the `##` comments in the scripts. When the site is built with plugins,
-it also contains each plugin's pages and classes.
+from `doc_classes/` and from the `##` comments in the scripts. When the library is built with
+plugins, the API reference also contains their classes, and `DOCS_SOURCE=<plugin>` builds the
+plugin's own site from its `docs/`.
 
 ```bash
-make docs-site [LIBRELOADED_PLUGINS=...]   # builds the site in build-docs/site
-make docs-server                           # serves it locally (Jekyll, or Ruby in Docker)
-make docs-pdf                              # builds one PDF, build-docs/reloaded-docs.pdf
-make docs                                  # updates doc_classes/ from the built library
+make docs-site [LIBRELOADED_PLUGINS=... DOCS_SOURCE=...]  # builds the site in build-docs/site
+make docs-server                                          # serves it locally (Jekyll, or Ruby in Docker)
+make docs-pdf                                             # builds one PDF, build-docs/reloaded-docs.pdf
+make docs                                                 # updates doc_classes/ from the built library
 ```
 
 `make docs` updates the XML of every class in the library and puts each file into the repository
