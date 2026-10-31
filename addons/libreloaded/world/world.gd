@@ -133,6 +133,9 @@ func _instantiate_content() -> void:
         compiled.traction.append_array(scenery.traction)
         compiled.power_sources.append_array(scenery.power_sources)
         compiled.models.append_array(scenery.models)
+        # its stations, for a list of them (SceneryServer.station_list()): left behind, a world's
+        # list was empty
+        compiled.stations.append_array(scenery.stations)
     # the worlds' provider registers the world's models, signals and trainsets
     await SceneryServer.instantiate_compiled(self, compiled, measurement, WorldSceneryProvider)
     if is_load_given_up() or not section_cells:
