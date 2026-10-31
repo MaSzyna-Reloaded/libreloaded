@@ -408,6 +408,7 @@ static func build_track(track_data:TrackData, world_3d:World3D, looks:Dictionary
     TrackServer.track_update_properties(track_rid, track_data.damage, track_data.friction, track_data.joint_spacing)
     TrackServer.track_set_velocity(track_rid, track_data.speed_limit)
     TrackServer.track_set_meta(track_rid, track_data.meta)
+    TrackServer.track_set_covered(track_rid, track_data.structure == TrackData.STRUCTURE_TUNNEL)
 
     TrackRenderingServer.track_set_description(track_render_rid, track_data)
     TrackRenderingServer.track_set_visible(track_render_rid, track_data.visible)

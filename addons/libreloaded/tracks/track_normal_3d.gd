@@ -34,6 +34,7 @@ func _update_track_data() -> void:
     TrackServer.track_update_properties(_track_rid, damage_flag, friction, joint_spacing)
     TrackServer.track_set_velocity(_track_rid, speed_limit)
     TrackServer.track_set_meta(_track_rid, meta)
+    TrackServer.track_set_covered(_track_rid, structure == TrackData.STRUCTURE_TUNNEL)
 
 func _process_dirty(_delta: float) -> void:
     super._process_dirty(_delta)
