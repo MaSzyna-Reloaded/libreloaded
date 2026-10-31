@@ -64,7 +64,8 @@ Debt on record (2026-10-09, `TODO.md`): `RailVehicleServer`'s coupling (`vehicle
 added that way.
 
 Autoloads are listed in `demo/project.godot`; C++ singletons are registered in
-`src/register_types.cpp`. A singleton is reached by its typed `get_instance()` and the result is
+`src/register_types.cpp` and documented in `doc_classes/<Class>.xml` (AGENTS.md,
+"Documentation"). A singleton is reached by its typed `get_instance()` and the result is
 null-checked - never by node path, never by `call("name")`.
 
 ## The core's data is the interface; plugins give backends
