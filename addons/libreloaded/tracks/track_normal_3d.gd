@@ -54,6 +54,7 @@ func _create_track() -> void:
     _track_rid = TrackServer.track_create()
     _track_render_rid = TrackRenderingServer.track_create(_track_rid)
     TrackRenderingServer.track_set_scenario(_track_render_rid, get_world_3d().scenario)
+    TrackRenderingServer.track_set_looks(_track_render_rid, looks)
 
 func _free_track() -> void:
     if _track_render_rid.is_valid():

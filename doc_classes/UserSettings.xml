@@ -25,6 +25,12 @@
 				The game's own data - its worlds and their assets - absolute: the [code]reloaded/data_dir[/code] the player chose, relative to the directory the game sits in ([signal data_dir_changed]).
 			</description>
 		</method>
+		<method name="get_declarations" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				The game's settings ([code]reloaded/user_settings/declarations[/code], [code]{"sections": [...]}[/code]) with every [UserSettingsProvider]'s merged in - a provider's section of a title the game has adding its settings to it - as the settings screen shows them. Only their [code]"project"[/code] settings are a player's, applied from [code]user://settings.cfg[/code].
+			</description>
+		</method>
 		<method name="get_setting" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="section" type="String" />
@@ -56,6 +62,13 @@
 			<param index="2" name="value" type="Variant" />
 			<description>
 				Sets [param key] of [param section] in memory and saves it at once, and only this key - the rest of the configuration may hold changes not saved yet.
+			</description>
+		</method>
+		<method name="provider_add">
+			<return type="void" />
+			<param index="0" name="provider" type="UserSettingsProvider" />
+			<description>
+				[param provider]'s settings added to the game's ([method get_declarations]), the player's values of its [code]"project"[/code] ones applied now ([signal config_changed]). A plugin's are added as the library starts ([method ReloadedPlugin.get_user_settings_provider]).
 			</description>
 		</method>
 		<method name="save_config">

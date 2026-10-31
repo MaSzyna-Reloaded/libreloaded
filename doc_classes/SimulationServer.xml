@@ -96,7 +96,7 @@
 		<method name="simulation_get_weather_friction_factor" qualifiers="const">
 			<return type="float" />
 			<description>
-				The rails' friction under the [member weather]: wet and snowy rails grip less - 0.85 in rain, 0.75 in snow, 1 otherwise ([code]Global.FrictionWeatherFactor[/code], [code]simulationenvironment.cpp:198-201[/code]).
+				The rails' friction under the [member weather]: wet and snowy rails grip less - 0.85 in rain, 0.75 in snow, 1 otherwise ([code]Global.FrictionWeatherFactor[/code], [code]simulationenvironment.cpp:198-201[/code]). Or [member weather_friction_factor], when a weather simulation set it.
 			</description>
 		</method>
 		<method name="simulation_is_paused" qualifiers="const">
@@ -169,6 +169,9 @@
 		</member>
 		<member name="weather" type="int" setter="set_weather" getter="get_weather" enum="SimulationServer.Weather" default="0">
 			What falls from the sky ([code]Global.Weather[/code], [code]simulationenvironment.cpp:198[/code]); rain and snow lower the rails' friction ([method simulation_get_weather_friction_factor]).
+		</member>
+		<member name="weather_friction_factor" type="float" setter="set_weather_friction_factor" getter="get_weather_friction_factor" default="-1.0">
+			The rails' grip a weather simulation works out of its weather - a rain's onset on a dirty rail, a drizzle, glaze ice, leaves - for [method simulation_get_weather_friction_factor]; below 0 the [member weather]'s own. Reset by [method environment_reset].
 		</member>
 	</members>
 	<signals>

@@ -77,3 +77,4 @@ build-*/
 .comments/
 
 __pycache__/
+/.build.lock

@@ -7,8 +7,10 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/rid.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
+#include <godot_cpp/variant/variant.hpp>
 
 #include "scenery/SceneryModelPlacement.hpp"
 #include "utils/RIDHash.hpp"
@@ -155,6 +157,8 @@ namespace godot {
 
             /// Drawn over the instance's own materials (an outline), none for nothing
             void instance_set_material_overlay(const RID &p_instance, const Ref<Material> &p_material);
+            /// What is drawn over the instance's own materials, none for nothing
+            Ref<Material> instance_get_material_overlay(const RID &p_instance) const;
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const;

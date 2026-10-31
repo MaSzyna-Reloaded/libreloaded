@@ -481,6 +481,12 @@ namespace godot {
         _apply(*instance);
     }
 
+    Ref<Material> SceneModelRenderingBackend::instance_get_material_overlay(const RID &p_instance) const {
+        const InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL_V(instance, Ref<Material>());
+        return instance->overlay;
+    }
+
     /// Against the triangles of its visible meshes, posed
     Dictionary SceneModelRenderingBackend::instance_intersect_segment(
             const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const {

@@ -4,10 +4,13 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
+
+#include "UserSettingsProvider.hpp"
 
 namespace godot {
 
@@ -25,6 +28,9 @@ namespace godot {
             String data_dir;
             /// The configuration as the file has it - last loaded or saved - what a change is told from
             String saved_text;
+            /// The settings added to the game's: the plugins' (ReloadedPlugin::get_user_settings_provider())
+            /// and those added since (provider_add())
+            Vector<Ref<UserSettingsProvider>> providers;
 
             static constexpr const char *DATA_DIR_SECTION = "reloaded";
             static constexpr const char *DATA_DIR_KEY = "data_dir";
@@ -37,6 +43,8 @@ namespace godot {
             static constexpr const char *DECLARATIONS_SETTING = "reloaded/user_settings/declarations";
 
             void _apply_defaults();
+            /// The player's values of the project settings `p_sections` declare a player's
+            void _apply_project_values(const Array &p_sections);
             void _set_project_setting(const String &p_name, const Variant &p_value);
             void _update_data_dir();
 
@@ -68,6 +76,13 @@ namespace godot {
 
         public:
             void load_config();
+
+            /// The game's settings (DECLARATIONS_SETTING) with every provider's merged in: {"sections":
+            /// [...]}, a provider's section of a title the game has adding its settings to it
+            Dictionary get_declarations() const;
+            /// `p_provider`'s settings added to the game's, the player's values of its "project" ones
+            /// applied now (config_changed)
+            void provider_add(const Ref<UserSettingsProvider> &p_provider);
 
             /// Set in memory and in effect at once; saved by save_config(), dropped by load_config()
             void set_setting(const String &p_section, const String &p_key, const Variant &p_value);

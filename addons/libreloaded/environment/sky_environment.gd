@@ -18,8 +18,9 @@ const AMBIENT_DAY_FULL_ELEVATION: float = 6.0
 const GLOW_INTENSITY_DEFAULT: float = 1.37
 const BLOOM_INTENSITY_DEFAULT: float = 0.3
 ## The player's gamma (render/gamma): the picture's mid-tones as x^(1/gamma) - above 1 brighter,
-## below darker, black and white staying put - through the environment's colour correction, a
-## curve of this many steps; at 1 there is no correction at all
+## below darker, black and white staying put - through the environment's colour correction: baked
+## into the colour correction look-up table (color_correction), or a curve of this many steps
+## without one; at 1 the table as it is, or no correction at all
 const GAMMA_DEFAULT: float = 1.0
 const GAMMA_CURVE_STEPS: int = 256
 
@@ -75,6 +76,9 @@ const REVERSE_CULL_FACE_SETTING: StringName = &"reloaded/lights/reverse_cull_fac
 ## as sharp as with one light
 const IMPROVED_CABIN_SHADOW_ATLAS_SIZE: int = 8192
 const DIRECTIONAL_SHADOW_16_BITS_SETTING: StringName = &"rendering/lights_and_shadows/directional_shadow/16_bits"
+## The project's own atlas size, which the atlas goes back to with the cab light gone
+const DIRECTIONAL_SHADOW_SIZE_SETTING: StringName = &"rendering/lights_and_shadows/directional_shadow/size"
+const DIRECTIONAL_SHADOW_SIZE: int = 4096
 const CABIN_LIGHT_NAME: StringName = &"CabinLight"
 
 ## Which settings a directional light takes: the world's sun the scenery ones, the cab light the
@@ -111,13 +115,14 @@ const FOG_NIGHT_DISTANCE_FACTOR_SETTING: StringName = &"reloaded/weather/fog/nig
 const FOG_CURVE_SETTING: StringName = &"reloaded/weather/fog/curve"
 const FOG_CURVE_DEFAULT: float = 1.5
 const FOG_CURVE_MIN: float = 0.5
-## How much fog there is looking up, as a distance: the sky takes the share of the fog a terrain
-## that far away would (share = (height / fog_distance) ^ fog_curve, at most 1). A fog reaching
-## kilometres is a thin layer and leaves the stars, the moon and the clouds alone; a fog of a
-## hundred metres hides them. Rain is no thin layer - it fills the air all the way up - so the fog
-## a downpour brings reaches the sky in full.
-const FOG_SKY_HEIGHT_SETTING: StringName = &"reloaded/weather/fog/sky_height"
-const FOG_SKY_HEIGHT_DEFAULT: float = 1000.0
+## How much fog the sky takes, by how far the fog reaches: a fog of FOG_SKY_NEAR or closer hides the
+## whole sky, one of FOG_SKY_FAR or further leaves the stars, the moon and the clouds alone, and
+## between the two the share falls smoothly with the distance's logarithm - a 1 km fog takes about
+## half. Rain is no thin layer - it fills the air all the way up - so the fog a downpour brings
+## reaches the sky in full (the backends).
+## No setting - the look is worked out here, not left to the player.
+const FOG_SKY_NEAR: float = 300.0
+const FOG_SKY_FAR: float = 3000.0
 ## How much the fog takes the colour of the sky's radiance instead of its own
 ## (Environment.fog_aerial_perspective). Off by default: at dusk that radiance is as dark as the
 ## scene itself, so a fully fogged object stays a dark silhouette against a brighter sky instead of
@@ -190,6 +195,14 @@ const FOG_NIGHT_DISTANCE_FACTOR_DEFAULT: float = 0.4255
         adjustment_enabled = value
         _dirty_visuals = true
 
+## A look-up table every colour of the picture goes through (Environment.adjustment_color_correction):
+## a Texture3D - a LUT, e.g. a strip of slices imported as Texture3D - or a Texture2D of one row,
+## a curve for every channel; the player's gamma (render/gamma) is baked into it
+@export var color_correction: Texture = null:
+    set(value):
+        color_correction = value
+        _dirty_visuals = true
+
 @export_subgroup("Day")
 @export_range(0.01, 8.0, 0.01) var day_adjustment_brightness: float = 1.0:
     set(value):
@@ -250,6 +263,15 @@ const FOG_NIGHT_DISTANCE_FACTOR_DEFAULT: float = 0.4255
 @export_range(0.01, 64.0, 0.01) var auto_exposure_speed: float = 0.5:
     set(value):
         auto_exposure_speed = value
+        _dirty_visuals = true
+
+## The share of the picture's darkest pixels, in percent, the exposure is not measured by
+## (RenderingServer.camera_attributes_set_auto_exposure_low_percent(),
+## godot-patches/0003-local-auto-exposure-metering.patch): raised, a cab's window frame or a dark
+## wagon near the camera does not brighten the picture; a plain Godot keeps it and leaves it out
+@export_range(0.0, 89.0, 0.1, "suffix:%") var auto_exposure_low_percent: float = 10.0:
+    set(value):
+        auto_exposure_low_percent = value
         _dirty_visuals = true
 
 @export_subgroup("Day")
@@ -367,10 +389,12 @@ var _dirty_time: bool = true
 ## What the day and the night tell apart taken again: its values changed, or the sun moved
 ## (_apply_day_and_night())
 var _dirty_day_and_night: bool = true
-## The gamma the colour correction curve was made for - it is made again only when that changes -
-## and the curve itself, none at the default
+## The gamma and the look-up table the environment's colour correction was made for - it is made
+## again only when either changes - and the correction itself: the table as it is at the default
+## gamma, the gamma baked into it otherwise, none without a table at the default gamma
 var _gamma: float = GAMMA_DEFAULT
-var _gamma_curve: ImageTexture = null
+var _color_correction_table: Texture = null
+var _color_correction: Texture = null
 
 
 func _ready() -> void:
@@ -493,6 +517,11 @@ func _apply_environment_configuration() -> void:
     _environment.sdfgi_enabled = bool(UserSettings.get_setting("render", "sdfgi_enabled", true))
     _camera_attributes.auto_exposure_enabled = auto_exposure_enabled
     _camera_attributes.auto_exposure_speed = auto_exposure_speed
+    # By name: the method is only in Godot built with godot-patches/0003-local-auto-exposure-
+    # metering.patch, and a plain Godot's editor must still compile and run this script
+    if RenderingServer.has_method(&"camera_attributes_set_auto_exposure_low_percent"):
+        RenderingServer.call(&"camera_attributes_set_auto_exposure_low_percent",
+                _camera_attributes.get_rid(), auto_exposure_low_percent)
     _environment.sdfgi_energy = sdfgi_energy
     _environment.sdfgi_bounce_feedback = sdfgi_bounce_feedback
     _environment.glow_enabled = bool(UserSettings.get_setting("render", "glow_enabled", true))
@@ -502,17 +531,44 @@ func _apply_environment_configuration() -> void:
         UserSettings.get_setting("render", "bloom_intensity", BLOOM_INTENSITY_DEFAULT))
     _environment.adjustment_enabled = adjustment_enabled
     var gamma: float = float(UserSettings.get_setting("render", "gamma", GAMMA_DEFAULT))
-    if not is_equal_approx(gamma, _gamma):
+    if not is_equal_approx(gamma, _gamma) or not color_correction == _color_correction_table:
         _gamma = gamma
-        _gamma_curve = null
+        _color_correction_table = color_correction
+        _color_correction = color_correction
         if not is_equal_approx(gamma, GAMMA_DEFAULT):
-            # one row, the input along it, the output in every channel
-            var curve: Image = Image.create(GAMMA_CURVE_STEPS, 1, false, Image.FORMAT_RGB8)
-            for step: int in GAMMA_CURVE_STEPS:
-                var value: float = pow(float(step) / float(GAMMA_CURVE_STEPS - 1), 1.0 / gamma)
-                curve.set_pixel(step, 0, Color(value, value, value))
-            _gamma_curve = ImageTexture.create_from_image(curve)
-    _environment.adjustment_color_correction = _gamma_curve
+            # the table's images - a Texture3D's slices, a Texture2D's row, without a table one row
+            # of the input along it in every channel - and x^(1/gamma) of every value they give
+            var images: Array[Image] = []
+            if color_correction is Texture3D:
+                for slice: Image in (color_correction as Texture3D).get_data():
+                    images.append(slice.duplicate() as Image)
+            elif color_correction is Texture2D:
+                images.append((color_correction as Texture2D).get_image().duplicate() as Image)
+            else:
+                var curve: Image = Image.create(GAMMA_CURVE_STEPS, 1, false, Image.FORMAT_RGBA8)
+                for step: int in GAMMA_CURVE_STEPS:
+                    var value: float = float(step) / float(GAMMA_CURVE_STEPS - 1)
+                    curve.set_pixel(step, 0, Color(value, value, value))
+                images.append(curve)
+            for image: Image in images:
+                if image.is_compressed():
+                    image.decompress()
+                image.convert(Image.FORMAT_RGBA8)
+                for y: int in image.get_height():
+                    for x: int in image.get_width():
+                        var value: Color = image.get_pixel(x, y)
+                        image.set_pixel(x, y, Color(pow(value.r, 1.0 / gamma), pow(value.g, 1.0 / gamma),
+                                pow(value.b, 1.0 / gamma), value.a))
+            if color_correction is Texture3D:
+                # a renderer that keeps no texture data (--headless) gives no slices: the table as it is
+                if images:
+                    var table: ImageTexture3D = ImageTexture3D.new()
+                    table.create(Image.FORMAT_RGBA8, images[0].get_width(), images[0].get_height(), images.size(),
+                            false, images)
+                    _color_correction = table
+            else:
+                _color_correction = ImageTexture.create_from_image(images[0])
+    _environment.adjustment_color_correction = _color_correction
     _environment.fog_enabled = fog_active
     # the sky backends leave these two alone
     _environment.fog_aerial_perspective = float(ProjectSettings.get_setting(
@@ -524,12 +580,12 @@ func _apply_environment_configuration() -> void:
     )
 
 
-## The share of the depth fog the sky takes for a fog reaching [param fog_distance]: as much as a
-## terrain FOG_SKY_HEIGHT_SETTING away takes, (height / fog_distance) ^ fog curve, at most 1 - for a
-## backend to scale by the fog's density (Environment.fog_sky_affect fogs the sky whatever it is)
+## The share of the depth fog the sky takes for a fog reaching [param fog_distance] (FOG_SKY_NEAR,
+## FOG_SKY_FAR) - for a backend to scale by the fog's density (Environment.fog_sky_affect fogs the
+## sky whatever it is)
 func get_fog_sky_share(fog_distance: float) -> float:
-    return clampf(pow(float(ProjectSettings.get_setting(FOG_SKY_HEIGHT_SETTING, FOG_SKY_HEIGHT_DEFAULT))
-            / fog_distance, _environment.fog_depth_curve), 0.0, 1.0)
+    return smoothstep(0.0, 1.0,
+        log(FOG_SKY_FAR / maxf(fog_distance, 0.001)) / log(FOG_SKY_FAR / FOG_SKY_NEAR))
 
 
 ## The day's or the night's ambient light, fog light, AgX contrast, adjustments and auto exposure by the
@@ -608,11 +664,17 @@ func _create_cabin_light(world_light: DirectionalLight3D) -> void:
     )
 
 
-## The world light gives the cab light back the cab layer it took
+## The world light gives the cab light back the cab layer it took, the atlas goes back to the
+## project's size: it stayed IMPROVED_CABIN_SHADOW_ATLAS_SIZE till the game was started again
 func _free_cabin_light(world_light: DirectionalLight3D) -> void:
     world_light.light_cull_mask |= EnvironmentNode.CABIN_RENDER_LAYER
     _cabin_lights[world_light].queue_free()
     _cabin_lights.erase(world_light)
+    if _cabin_lights.is_empty():
+        RenderingServer.directional_shadow_atlas_set_size(
+            int(ProjectSettings.get_setting(DIRECTIONAL_SHADOW_SIZE_SETTING, DIRECTIONAL_SHADOW_SIZE)),
+            bool(ProjectSettings.get_setting(DIRECTIONAL_SHADOW_16_BITS_SETTING, true))
+        )
 
 
 ## A world light takes the scenery settings, its cab light the cabin ones; the cab light is there

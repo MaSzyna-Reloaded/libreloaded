@@ -1,4 +1,6 @@
 #include "UserSettings.hpp"
+#include "plugins/ReloadedPlugin.hpp"
+#include "plugins/ReloadedPluginServer.hpp"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -36,6 +38,20 @@ namespace godot {
         defaults[DATA_DIR_SECTION] = reloaded;
         defaults["render"] = render;
 
+        // the plugins' settings, theirs applied as the game's are: before any server reads them
+        ReloadedPluginServer *plugin_server = ReloadedPluginServer::get_instance();
+        if (plugin_server != nullptr) {
+            const TypedArray<ReloadedPlugin> plugins = plugin_server->plugin_get_list();
+            for (int64_t index = 0; index < plugins.size(); index++) {
+                const ReloadedPlugin *plugin = Object::cast_to<ReloadedPlugin>(plugins[index]);
+                const Ref<UserSettingsProvider> provider =
+                        plugin != nullptr ? plugin->get_user_settings_provider() : Ref<UserSettingsProvider>();
+                if (provider.is_valid()) {
+                    providers.push_back(provider);
+                }
+            }
+        }
+
         load_config();
     }
 
@@ -58,6 +74,8 @@ namespace godot {
 
         ClassDB::bind_method(D_METHOD("persist_setting", "section", "key", "value"), &UserSettings::persist_setting);
         ClassDB::bind_method(D_METHOD("get_data_dir"), &UserSettings::get_data_dir);
+        ClassDB::bind_method(D_METHOD("get_declarations"), &UserSettings::get_declarations);
+        ClassDB::bind_method(D_METHOD("provider_add", "provider"), &UserSettings::provider_add);
 
         ADD_SIGNAL(MethodInfo(config_changed_signal));
         ADD_SIGNAL(MethodInfo(
@@ -109,17 +127,22 @@ namespace godot {
         _update_data_dir();
 
         /* The player's own values of the project's settings, keyed by their full name - only the
-         * ones the game's settings declare a player's (DECLARATIONS_SETTING); a value the game no
+         * ones the game's settings declare a player's (get_declarations()); a value the game no
          * longer declares stays in the file and is not applied (2026-10-17: the draw distance taken
          * out of the game's Settings still overrode the project's). The constructor runs before
          * every server's, so each server reads them at its own init. */
+        _apply_project_values(get_declarations().get("sections", Array()));
+        saved_text = config->encode_to_text();
+
+        emit_signal(config_changed_signal);
+        if (data_dir != previous_data_dir) {
+            emit_signal(data_dir_changed_signal);
+        }
+    }
+
+    void UserSettings::_apply_project_values(const Array &p_sections) {
         PackedStringArray declared;
-        const String declarations = project_settings->get_setting(DECLARATIONS_SETTING, "");
-        const Variant parsed =
-                declarations.is_empty() ? Variant() : JSON::parse_string(FileAccess::get_file_as_string(declarations));
-        const Array sections =
-                parsed.get_type() == Variant::DICTIONARY ? Array(Dictionary(parsed).get("sections", Array())) : Array();
-        for (const Variant &section: sections) {
+        for (const Variant &section: p_sections) {
             for (const Variant &setting: Array(Dictionary(section).get("settings", Array()))) {
                 const Dictionary entry = setting;
                 if (entry.get("store", "") == Variant("project")) {
@@ -134,12 +157,44 @@ namespace godot {
                 }
             }
         }
-        saved_text = config->encode_to_text();
+    }
 
-        emit_signal(config_changed_signal);
-        if (data_dir != previous_data_dir) {
-            emit_signal(data_dir_changed_signal);
+    Dictionary UserSettings::get_declarations() const {
+        const String declarations = ProjectSettings::get_singleton()->get_setting(DECLARATIONS_SETTING, "");
+        const Variant parsed =
+                declarations.is_empty() ? Variant() : JSON::parse_string(FileAccess::get_file_as_string(declarations));
+        Array sections =
+                parsed.get_type() == Variant::DICTIONARY ? Array(Dictionary(parsed).get("sections", Array())) : Array();
+        for (const Ref<UserSettingsProvider> &provider: providers) {
+            for (const Variant &added: provider->get_sections()) {
+                const Dictionary added_section = added;
+                bool merged = false;
+                for (const Variant &existing: sections) {
+                    Dictionary section = existing;
+                    if (section.get("title", "") == added_section.get("title", "")) {
+                        Array settings = section.get("settings", Array());
+                        settings.append_array(added_section.get("settings", Array()));
+                        section["settings"] = settings;
+                        merged = true;
+                        break;
+                    }
+                }
+                if (!merged) {
+                    sections.append(added_section.duplicate(true));
+                }
+            }
         }
+        Dictionary result;
+        result["sections"] = sections;
+        return result;
+    }
+
+    void UserSettings::provider_add(const Ref<UserSettingsProvider> &p_provider) {
+        ERR_FAIL_COND(p_provider.is_null());
+        ERR_FAIL_COND_MSG(config.is_null(), "UserSettings config is null.");
+        providers.push_back(p_provider);
+        _apply_project_values(p_provider->get_sections());
+        emit_signal(config_changed_signal);
     }
 
     void UserSettings::set_setting(const String &p_section, const String &p_key, const Variant &p_value) {

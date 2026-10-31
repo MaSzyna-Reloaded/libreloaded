@@ -107,11 +107,6 @@ func _enter_tree():
     # The backend a track whose data names none is drawn by, by the name it is registered under
     # (TrackRenderingServer.BACKEND_SETTING): the core's StandardTrackRenderingBackend
     add_custom_project_setting("reloaded/tracks/backend", &"standard", TYPE_STRING_NAME)
-    # The assets StandardTrackRenderingBackend draws the tracks with (a TrackRenderingLook)
-    add_custom_project_setting(
-        "reloaded/tracks/look", "res://addons/libreloaded/tracks/track_look.tres", TYPE_STRING,
-        PROPERTY_HINT_FILE, "*.tres,*.res"
-    )
     # ...and the traction (TractionData.rendering_backend)
     add_custom_project_setting(TRACTION.RENDERING_BACKEND_SETTING, TRACTION.PLAIN_BACKEND, TYPE_STRING_NAME)
     # How long the simulation's running speed takes to reach one set, like a tape's motor
@@ -294,10 +289,6 @@ func _enter_tree():
     add_custom_project_setting(
         SkyEnvironment.FOG_CURVE_SETTING, SkyEnvironment.FOG_CURVE_DEFAULT, TYPE_FLOAT,
         PROPERTY_HINT_EXP_EASING, "positive_only"
-    )
-    add_custom_project_setting(
-        SkyEnvironment.FOG_SKY_HEIGHT_SETTING, SkyEnvironment.FOG_SKY_HEIGHT_DEFAULT,
-        TYPE_FLOAT, PROPERTY_HINT_RANGE, "10.0,5000.0,10.0,or_greater,suffix:m"
     )
     add_custom_project_setting(
         SkyEnvironment.FOG_AERIAL_PERSPECTIVE_SETTING,

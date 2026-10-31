@@ -1,5 +1,6 @@
 #include "RailVehicleEngine.hpp"
 #include "macros.hpp"
+#include "simulation/SimulationServer.hpp"
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -157,6 +158,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_tractive_force"), &RailVehicleEngine::get_tractive_force);
         ClassDB::bind_method(D_METHOD("get_power"), &RailVehicleEngine::get_power);
         ClassDB::bind_method(D_METHOD("get_rpm_count"), &RailVehicleEngine::get_rpm_count);
+        ClassDB::bind_method(D_METHOD("get_temperature"), &RailVehicleEngine::get_temperature);
         ClassDB::bind_method(D_METHOD("get_angle"), &RailVehicleEngine::get_angle);
         ClassDB::bind_method(D_METHOD("get_rpm_ratio"), &RailVehicleEngine::get_rpm_ratio);
         ClassDB::bind_method(D_METHOD("get_damage"), &RailVehicleEngine::get_damage);
@@ -174,6 +176,21 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_current2"), &RailVehicleEngine::get_current2);
     }
 
+    double RailVehicleEngine::get_temperature() const {
+        const SimulationServer *simulation = SimulationServer::get_instance();
+        if (simulation == nullptr) {
+            return SimulationServer::DEFAULT_AIR_TEMPERATURE;
+        }
+        const double air = simulation->get_air_temperature();
+        if (running_changed_time < 0.0) {
+            return air;
+        }
+        const double target = running ? air + ENGINE_WARM_RISE : air;
+        const double time = running ? ENGINE_WARM_UP_TIME : ENGINE_COOL_DOWN_TIME;
+        const double elapsed = MAX(0.0, simulation->simulation_get_time() - running_changed_time);
+        return target + ((running_changed_temperature - target) * Math::exp(-elapsed / time));
+    }
+
     // Original engine: the main switch closing and opening is what "the engine started/stopped"
     // means here. Detected once per tick against this part's own member - it
     // used to be compared against the state dictionary while that dictionary was being filled,
@@ -181,6 +198,14 @@ namespace godot {
     void RailVehicleEngine::_do_process_component(const double p_delta) {
         if (drive_unit != nullptr) {
             drive_unit->process(this, p_delta);
+        }
+        // the engine's warmth goes on from when it started or stopped
+        if (const bool now_running = get_main_switch_enabled() || get_rpm_count() > 0.0; now_running != running) {
+            if (const SimulationServer *simulation = SimulationServer::get_instance(); simulation != nullptr) {
+                running_changed_temperature = get_temperature();
+                running_changed_time = simulation->simulation_get_time();
+            }
+            running = now_running;
         }
         const bool main_switch_enabled = get_main_switch_enabled();
         if (previous_main_switch == main_switch_enabled) {

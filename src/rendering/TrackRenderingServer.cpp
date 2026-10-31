@@ -27,6 +27,8 @@ namespace godot {
                 D_METHOD("track_set_visible", "track_render", "visible"), &TrackRenderingServer::track_set_visible);
         ClassDB::bind_method(
                 D_METHOD("track_set_scenario", "track_render", "scenario"), &TrackRenderingServer::track_set_scenario);
+        ClassDB::bind_method(
+                D_METHOD("track_set_looks", "track_render", "looks"), &TrackRenderingServer::track_set_looks);
         ClassDB::bind_method(D_METHOD("track_stream", "track_render"), &TrackRenderingServer::track_stream);
         ClassDB::bind_method(D_METHOD("track_rebuild", "track_render"), &TrackRenderingServer::track_rebuild);
         ClassDB::bind_method(D_METHOD("track_get_track", "track_render"), &TrackRenderingServer::track_get_track);
@@ -164,6 +166,19 @@ namespace godot {
         }
     }
 
+    /* The backend's look, and the track's description again: a backend reads the look by it */
+    void TrackRenderingServer::track_set_looks(const RID &p_track_render, const Dictionary &p_looks) {
+        Track *track = tracks.getptr(p_track_render);
+        ERR_FAIL_NULL(track);
+        track->looks = p_looks;
+        if (TrackRenderingBackend *backend = _get_backend(*track); backend != nullptr) {
+            backend->track_set_look(p_track_render, p_looks.get(track->backend, Variant()));
+            if (track->description.is_valid()) {
+                backend->track_set_description(p_track_render, track->description);
+            }
+        }
+    }
+
     void TrackRenderingServer::track_set_visible(const RID &p_track_render, const bool p_visible) {
         Track *track = tracks.getptr(p_track_render);
         ERR_FAIL_NULL(track);
@@ -262,6 +277,7 @@ namespace godot {
         backend->track_create(p_track_render, p_track.track);
         backend->track_set_scenario(p_track_render, p_track.scenario);
         backend->track_set_visible(p_track_render, p_track.visible);
+        backend->track_set_look(p_track_render, p_track.looks.get(p_track.backend, Variant()));
         if (p_track.description.is_valid()) {
             backend->track_set_description(p_track_render, p_track.description);
         }

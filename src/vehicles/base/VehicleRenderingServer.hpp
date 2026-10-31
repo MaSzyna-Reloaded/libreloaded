@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
@@ -55,6 +56,14 @@ namespace godot {
              * frame [ms]; a build that started is finished, so a frame builds at least one - the
              * streaming's own budget (SceneryStreamingServer::BUDGET_MSEC) */
             static constexpr uint64_t BUILD_BUDGET_MSEC = 4;
+            /* A vehicle drawn in detail with snow on it draws it with a copy of its own of its snow
+             * material (vehicle_set_snow_material()), how much snow lies on it, 0-1, in the copy's
+             * VEHICLE_SNOW_PARAMETER - near the camera only, within the detail distance */
+            static constexpr const char *VEHICLE_SNOW_PARAMETER = "vehicle_snow";
+            /* Less snow than this is not drawn: the vehicle's overlay is taken off */
+            static constexpr float SNOW_DRAWN_MIN = 0.001F;
+            /* A change of the snow smaller than this is not sent to the models */
+            static constexpr float SNOW_SEND_THRESHOLD = 0.01F;
 
         protected:
             /* A submodel of the exterior model that moves, and where it rests in the vehicle's own
@@ -116,6 +125,8 @@ namespace godot {
                     /* Every pose of the exterior, sent to it in one call */
                     Dictionary poses;
                     Ref<Material> head_display_material;
+                    /* What its snow is drawn with (vehicle_set_snow_material()); none - no snow drawn */
+                    Ref<ShaderMaterial> snow_overlay;
                     /* Born optimized: a scenery's vehicles built as node hierarchies (cars,
                      * interiors) filled the load; _update_detail() details the near ones */
                     bool detailed = false;
@@ -127,6 +138,13 @@ namespace godot {
                     RID detection_shape;
                     /* vehicle_set_shown_cabin() */
                     RID shown_cabin;
+                    /* The snow on it, 0-1, as whoever simulates the weather tells it
+                     * (vehicle_set_snow()) - drawn or not; snow_sent is what was sent last */
+                    float snow = 0.0F;
+                    float snow_sent = 0.0F;
+                    /* The overlay its snow is drawn with (snow_overlay, its own copy), there only
+                     * while it is drawn in detail with snow on it */
+                    Ref<ShaderMaterial> snow_material;
             };
 
             /* Where the kind's server placed the vehicle; false while it stands nowhere */
@@ -166,6 +184,10 @@ namespace godot {
             virtual void _vehicle_pose(const RID &p_vehicle) {}
             /* vehicle_set_shown_cabin() changed */
             virtual void _vehicle_shown_cabin_changed(const RID &p_vehicle) {}
+            /* The overlay the vehicle's snow is drawn with (Visual::snow_material) was laid over its
+             * exterior and attachments, or taken off them - null: what the renderer draws of its own
+             * takes it too. Only the overlay: how much snow it draws changes in it */
+            virtual void _vehicle_snow_changed(const RID &p_vehicle, const Ref<Material> &p_overlay) {}
             /* Once a frame, after every vehicle's own work */
             virtual void _frame_processed(double p_delta) {}
 
@@ -230,6 +252,8 @@ namespace godot {
             void _move(const RID &p_vehicle, Visual &p_visual);
             void _show_models(const RID &p_vehicle, const Visual &p_visual, const RID &p_scenario);
             void _send_poses(Visual &p_visual);
+            void _send_snow(const RID &p_vehicle, Visual &p_visual);
+            void _lay_snow(const RID &p_vehicle, const Visual &p_visual);
             void _update_detail(const RID &p_vehicle, Visual &p_visual);
             void _set_detailed(const RID &p_vehicle, Visual &p_visual, bool p_detailed);
             /* The models built from the appearance - created, the parts found in them */
@@ -284,6 +308,14 @@ namespace godot {
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
             void vehicle_set_head_display_material(const RID &p_vehicle, const Ref<Material> &p_material);
+            /* What the vehicle's snow is drawn with, given by whoever builds it (its scenery's,
+             * SceneryContentNode.vehicle_snow_material) once it is attached - the snow drawn is a copy
+             * of it; none, no snow is drawn. Nothing here loads one of its own */
+            void vehicle_set_snow_material(const RID &p_vehicle, const Ref<ShaderMaterial> &p_material);
+            /* How much snow lies on the vehicle, 0-1, by whoever simulates the weather - nothing here
+             * gathers or melts it; drawn while the vehicle is drawn in detail */
+            void vehicle_set_snow(const RID &p_vehicle, float p_snow);
+            float vehicle_get_snow(const RID &p_vehicle) const;
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
              * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
              * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every

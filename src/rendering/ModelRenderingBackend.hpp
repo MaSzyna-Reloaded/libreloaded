@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
+#include <godot_cpp/variant/variant.hpp>
 
 namespace godot {
     /* What ModelRenderingServer forwards the drawing of a model to: the renderer of one kind of models,
@@ -102,6 +103,8 @@ namespace godot {
 
             /// Drawn over the instance's own materials (an outline), none for nothing
             virtual void instance_set_material_overlay(const RID &p_instance, const Ref<Material> &p_material) = 0;
+            /// What is drawn over the instance's own materials, none for nothing
+            virtual Ref<Material> instance_get_material_overlay(const RID &p_instance) const = 0;
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             virtual Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const = 0;

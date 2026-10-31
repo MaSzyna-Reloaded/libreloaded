@@ -3,6 +3,8 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include "utils/UserSettingsProvider.hpp"
+
 namespace godot {
     /* A plugin of Rails Reloaded, compiled into this library (CMake LIBRELOADED_PLUGINS): what it is
      * for the player - its name, description and logo - and what it adds to the core at two points
@@ -34,6 +36,11 @@ namespace godot {
             virtual void create_servers() {}
             /* Frees what create_servers() made, in reverse */
             virtual void free_servers() {}
+            /* The plugin's settings, added to the game's (UserSettings) as it starts, after the
+             * plugins' classes and before their servers; none - null */
+            virtual Ref<UserSettingsProvider> get_user_settings_provider() const {
+                return {};
+            }
 
             String get_name() const;
             String get_description() const;

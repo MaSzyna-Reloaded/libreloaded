@@ -57,6 +57,13 @@
 				The exterior model as [ModelRenderingServer] draws it.
 			</description>
 		</method>
+		<method name="vehicle_get_snow" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				How much snow lies on the vehicle, 0-1, as [method vehicle_set_snow] last told.
+			</description>
+		</method>
 		<method name="vehicle_get_transform" qualifiers="const">
 			<return type="Transform3D" />
 			<param index="0" name="vehicle" type="RID" />
@@ -115,6 +122,22 @@
 			<param index="1" name="material" type="Material" />
 			<description>
 				The material the vehicle's head display is drawn with.
+			</description>
+		</method>
+		<method name="vehicle_set_snow">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="snow" type="float" />
+			<description>
+				How much snow lies on the vehicle, 0-1, told by whoever simulates the weather - nothing here gathers or melts it. It is drawn with the vehicle's snow material ([method vehicle_set_snow_material]) while the vehicle is drawn in detail.
+			</description>
+		</method>
+		<method name="vehicle_set_snow_material">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="material" type="ShaderMaterial" />
+			<description>
+				What the snow on the vehicle is drawn with, given by whoever builds it (its scenery's [code]vehicle_snow_material[/code]) once it is attached: the snow drawn is a copy of it. Without one no snow is drawn. The server loads none of its own.
 			</description>
 		</method>
 		<method name="vehicle_set_models">

@@ -97,6 +97,9 @@ namespace godot {
                 D_METHOD("instance_set_material_overlay", "instance", "material"),
                 &ModelRenderingServer::instance_set_material_overlay);
         ClassDB::bind_method(
+                D_METHOD("instance_get_material_overlay", "instance"),
+                &ModelRenderingServer::instance_get_material_overlay);
+        ClassDB::bind_method(
                 D_METHOD("instance_intersect_segment", "instance", "from", "to"),
                 &ModelRenderingServer::instance_intersect_segment);
 
@@ -426,6 +429,12 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_material_overlay(p_instance, p_material);
+    }
+
+    Ref<Material> ModelRenderingServer::instance_get_material_overlay(const RID &p_instance) const {
+        const ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL_V(backend, Ref<Material>());
+        return backend->instance_get_material_overlay(p_instance);
     }
 
     Dictionary ModelRenderingServer::instance_intersect_segment(
