@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Assemble the Jekyll site into one Markdown book for pandoc (make docs-pdf).
 
-The site is the one scripts/make-docs-site assembles - libreloaded's guides, each plugin's under
-its name and the class reference in api/. The book is the home page, the guides in the order of
+The site is the one scripts/make-docs-site assembles - one source's guides and the class
+reference in api/. The book is the home page, the guides in the order of
 the site's menu (header_pages of its _config.yml) and the class reference last, in the order of
 its index. What only Jekyll understands is turned into
 pandoc's own: the front matter becomes the chapter's heading, a kramdown `{: #id}` line the
@@ -21,7 +21,7 @@ from pathlib import Path
 API_PAGE = "api/index.md"
 BOOK_FILE = "book.md"
 HOME_TITLE = "Introduction"
-API_TITLE = "API reference"
+API_TITLE = "API Reference"
 # a class page is a section of the API reference chapter, one level below the guides' chapters
 API_CLASS_LEVEL = 2
 # A table row cannot break across pages: a longer cell (a default value spelled out in full) goes

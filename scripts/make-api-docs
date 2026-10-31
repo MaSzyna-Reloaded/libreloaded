@@ -387,7 +387,7 @@ class Writer:
         return cls.language_anchor(language) + "-" + re.sub(r"[^a-z0-9]+", "-", namespace.lower())
 
     def index(self) -> str:
-        out = ["---", "layout: api", "title: API reference", "permalink: /api/", "---", "",
+        out = ["---", "layout: api", "title: API Reference", "permalink: /api/", "---", "",
                "Every class libreloaded and the plugins built into it register (C++) or declare with "
                "`class_name` (GDScript), generated from their `doc_classes/*.xml` and the scripts' `##` doc "
                "comments by libreloaded's `scripts/make-api-docs`. A namespace is the class's repository and "

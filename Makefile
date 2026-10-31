@@ -266,24 +266,26 @@ $(ANDROID_TEMPLATES) &: | $(GODOT_SOURCE_DIR)
 	    && cd platform/android/java && ./gradlew generateGodotTemplates
 
 
-# The documentation of libreloaded and the plugins of LIBRELOADED_PLUGINS, as the library is built
-# with them: libreloaded's docs/, each plugin's docs/ under its name and the class reference of all
-# of them (scripts/make-docs-site, make-api-docs) - assembled into DOCS_BUILD_DIR, not versioned. A
-# plugin or a game passes its own: make -C vendor/libreloaded docs-site LIBRELOADED_PLUGINS=<path>
-# DOCS_BUILD_DIR=$(CURDIR)/build-docs
+# The site of DOCS_SOURCE - libreloaded or a plugin of LIBRELOADED_PLUGINS: its docs/ and the
+# class reference of libreloaded and the plugins, as the library is built with them
+# (scripts/make-docs-site, make-api-docs) - assembled into DOCS_BUILD_DIR, not versioned. A plugin
+# passes its own: make -C vendor/libreloaded docs-site LIBRELOADED_PLUGINS=<path>
+# DOCS_SOURCE=<plugin> DOCS_BUILD_DIR=$(CURDIR)/build-docs
 DOCS_BUILD_DIR?=$(CURDIR)/build-docs
 DOCS_SITE_DIR=$(DOCS_BUILD_DIR)/site
+DOCS_SOURCE?=libreloaded
 docs-site:
-	LIBRELOADED_PLUGINS="$(LIBRELOADED_PLUGINS)" scripts/make-docs-site $(DOCS_SITE_DIR)
+	LIBRELOADED_PLUGINS="$(LIBRELOADED_PLUGINS)" scripts/make-docs-site $(DOCS_SITE_DIR) $(DOCS_SOURCE)
 
 
 docs-install:
 	cd docs && make install
 
 
-# Assembles the site and serves it; without Ruby on the host, Jekyll runs in Docker
+# Assembles the site and serves it under the source's name, as GitHub Pages serves its repository;
+# without Ruby on the host, Jekyll runs in Docker
 docs-server: docs-site
-	$(MAKE) -C docs runserver SITE=$(DOCS_SITE_DIR)
+	$(MAKE) -C docs runserver SITE=$(DOCS_SITE_DIR) BASEURL=/$(DOCS_SOURCE)
 
 
 # The site as one PDF: the home page, the guides in the order of its menu and the class reference
