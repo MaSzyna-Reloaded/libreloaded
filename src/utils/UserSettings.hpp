@@ -76,6 +76,10 @@ namespace godot {
 
         public:
             void load_config();
+            /// The file the configuration is loaded from and saved to - the player's settings.cfg;
+            /// another one (the tests') is loaded at once, the player's file left as it is
+            void set_config_path(const String &p_path);
+            String get_config_path() const;
 
             /// The game's settings (DECLARATIONS_SETTING) with every provider's merged in: {"sections":
             /// [...]}, a provider's section of a title the game has adding its settings to it
