@@ -154,6 +154,18 @@ msgstr "lusterka"
 msgid "radio call 1"
 msgstr "zew 1"
 
+msgid "wiper 1 handle"
+msgstr "rączka wycieraczki 1"
+
+msgid "wiper 2 handle"
+msgstr "rączka wycieraczki 2"
+
+msgid "wiper 3 handle"
+msgstr "rączka wycieraczki 3"
+
+msgid "wiper 4 handle"
+msgstr "rączka wycieraczki 4"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "Stacje"

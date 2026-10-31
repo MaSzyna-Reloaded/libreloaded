@@ -10,12 +10,22 @@ namespace godot {
 
     /* The vehicle's wipers: the positions of their switch, each with the wipers it sets going and
      * how they sweep, and where every wiper stands. The switch is this component's; how the wipers
-     * move is the backend's. */
+     * move is the backend's. Wipers driven by hand (DRIVE_MANUAL) have no switch: each stands where
+     * the driver's hand puts its handle (wipers_manual_set_<wiper>, wipers_manual_set_all: 0 parked -
+     * 1 across the sweep). */
     class RailVehicleWipers : public RailVehicleComponent {
             GDCLASS(RailVehicleWipers, RailVehicleComponent);
 
 
         public:
+            /* What moves the wipers: their motor, by the switch, or the driver's hand */
+            enum Drive {
+                DRIVE_AUTOMATIC,
+                DRIVE_MANUAL,
+            };
+            /* The most wipers driven by hand, each with a command of its own */
+            static constexpr int MANUAL_WIPERS_MAX = 4;
+
             int get_component_type() const override {
                 return VehicleComponentType::COMPONENT_WIPERS;
             }
@@ -30,6 +40,9 @@ namespace godot {
             // the list switches on.
             int wiper_count = 0;
             TypedArray<RailVehicleWiperListItem> positions;
+            Drive drive = DRIVE_AUTOMATIC;
+            /* Where the hand put each wiper driven by hand, 0-1 */
+            PackedFloat64Array manual_positions;
             void _set_switch_position(int p_position);
 
         protected:
@@ -53,5 +66,18 @@ namespace godot {
             MAKE_GS(int, wiper_count);
             TypedArray<RailVehicleWiperListItem> get_positions() const;
             void set_positions(const TypedArray<RailVehicleWiperListItem> &p_value);
+            void set_drive(Drive p_drive);
+            Drive get_drive() const;
+            /* Wipers driven by hand, p_count of them (at most MANUAL_WIPERS_MAX), by whoever builds
+             * the vehicle - one whose data gives its wipers no switch; one that has a switch keeps
+             * its motor */
+            void manual_fit(int p_count);
+            /* The hand puts p_wiper's handle at p_position, 0 parked - 1 across the sweep; or every
+             * wiper's (wipers_manual_set_all) */
+            void manual_set_position(double p_position, int p_wiper);
+            void manual_set_all(double p_position);
+            double manual_get_position(int p_wiper) const;
     };
 } // namespace godot
+
+VARIANT_ENUM_CAST(RailVehicleWipers::Drive);

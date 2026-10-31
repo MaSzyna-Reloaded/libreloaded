@@ -154,6 +154,18 @@ msgstr "zrcátka"
 msgid "radio call 1"
 msgstr "volání 1"
 
+msgid "wiper 1 handle"
+msgstr "rukojeť stěrače 1"
+
+msgid "wiper 2 handle"
+msgstr "rukojeť stěrače 2"
+
+msgid "wiper 3 handle"
+msgstr "rukojeť stěrače 3"
+
+msgid "wiper 4 handle"
+msgstr "rukojeť stěrače 4"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "Stanice"

@@ -154,6 +154,18 @@ msgstr "后视镜"
 msgid "radio call 1"
 msgstr "无线电1号频道呼叫"
 
+msgid "wiper 1 handle"
+msgstr "雨刷手柄1"
+
+msgid "wiper 2 handle"
+msgstr "雨刷手柄2"
+
+msgid "wiper 3 handle"
+msgstr "雨刷手柄3"
+
+msgid "wiper 4 handle"
+msgstr "雨刷手柄4"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "车站"
