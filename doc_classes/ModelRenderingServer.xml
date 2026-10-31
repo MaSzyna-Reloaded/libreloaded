@@ -259,6 +259,15 @@
 				Scenario of an [constant INSTANCER_OPTIMIZED] instance. Rebuilds an already built instance.
 			</description>
 		</method>
+		<method name="instance_set_shader_parameter">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="name" type="StringName" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				A per-instance uniform of the instance's shaders ([code]instance uniform[/code]), on all its meshes, kept when the instance is built again. [code]null[/code] takes it off.
+			</description>
+		</method>
 		<method name="instance_set_transform">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

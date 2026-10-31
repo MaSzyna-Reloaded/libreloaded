@@ -273,6 +273,9 @@ namespace godot {
                 D_METHOD("vehicle_set_snow", "vehicle", "snow"), &VehicleRenderingServer::vehicle_set_snow);
         ClassDB::bind_method(D_METHOD("vehicle_get_snow", "vehicle"), &VehicleRenderingServer::vehicle_get_snow);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_shader_parameter", "vehicle", "name", "value"),
+                &VehicleRenderingServer::vehicle_set_shader_parameter);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
                 &VehicleRenderingServer::vehicle_set_shown_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_is_detailed", "vehicle"), &VehicleRenderingServer::vehicle_is_detailed);
@@ -499,6 +502,30 @@ namespace godot {
         return visual->snow;
     }
 
+    void VehicleRenderingServer::vehicle_set_shader_parameter(
+            const RID &p_vehicle, const StringName &p_name, const Variant &p_value) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        // a null is kept too: it takes the uniform off models built again
+        visual->shader_parameters[p_name] = p_value;
+        _lay_shader_parameters(*visual);
+    }
+
+    void VehicleRenderingServer::_lay_shader_parameters(const Visual &p_visual) {
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        if (models == nullptr) {
+            return;
+        }
+        for (const Variant &name: p_visual.shader_parameters.keys()) {
+            if (p_visual.model.is_valid()) {
+                models->instance_set_shader_parameter(p_visual.model, name, p_visual.shader_parameters[name]);
+            }
+            for (const RID &instance: p_visual.attachments) {
+                models->instance_set_shader_parameter(instance, name, p_visual.shader_parameters[name]);
+            }
+        }
+    }
+
     void
     VehicleRenderingServer::vehicle_set_head_display_material(const RID &p_vehicle, const Ref<Material> &p_material) {
         Visual *visual = vehicles.getptr(p_vehicle);
@@ -650,6 +677,7 @@ namespace godot {
         _vehicle_models_created(p_vehicle);
         // the new instances carry the snow the vehicle has, if it is drawn in detail
         _send_snow(p_vehicle, p_visual);
+        _lay_shader_parameters(p_visual);
         _register_pickable(p_vehicle, p_visual);
     }
 

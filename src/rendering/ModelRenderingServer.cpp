@@ -97,6 +97,9 @@ namespace godot {
                 D_METHOD("instance_set_material_overlay", "instance", "material"),
                 &ModelRenderingServer::instance_set_material_overlay);
         ClassDB::bind_method(
+                D_METHOD("instance_set_shader_parameter", "instance", "name", "value"),
+                &ModelRenderingServer::instance_set_shader_parameter);
+        ClassDB::bind_method(
                 D_METHOD("instance_get_material_overlay", "instance"),
                 &ModelRenderingServer::instance_get_material_overlay);
         ClassDB::bind_method(
@@ -429,6 +432,13 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_material_overlay(p_instance, p_material);
+    }
+
+    void ModelRenderingServer::instance_set_shader_parameter(
+            const RID &p_instance, const StringName &p_name, const Variant &p_value) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_shader_parameter(p_instance, p_name, p_value);
     }
 
     Ref<Material> ModelRenderingServer::instance_get_material_overlay(const RID &p_instance) const {

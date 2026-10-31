@@ -157,6 +157,15 @@
 				The world the vehicle's scene node is in, an empty RID out of it: the models this server built for [param vehicle] are drawn there - the node's [constant Node3D.NOTIFICATION_ENTER_WORLD]/[constant Node3D.NOTIFICATION_EXIT_WORLD], as [VisualInstance3D]'s.
 			</description>
 		</method>
+		<method name="vehicle_set_shader_parameter">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="name" type="StringName" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				A per-instance uniform of the shaders of the vehicle's exterior and its attachments ([code]instance uniform[/code]), by whoever draws more on it - the vehicle's own value of a material its kind shares. Kept while its models are built again; [code]null[/code] takes it off.
+			</description>
+		</method>
 		<method name="vehicle_set_shown_cabin">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />

@@ -145,6 +145,9 @@ namespace godot {
                     /* The overlay its snow is drawn with (snow_overlay, its own copy), there only
                      * while it is drawn in detail with snow on it */
                     Ref<ShaderMaterial> snow_material;
+                    /* Per-instance uniforms of its exterior's shaders (vehicle_set_shader_parameter()),
+                     * laid on its models as they are built */
+                    Dictionary shader_parameters;
             };
 
             /* Where the kind's server placed the vehicle; false while it stands nowhere */
@@ -254,6 +257,7 @@ namespace godot {
             void _send_poses(Visual &p_visual);
             void _send_snow(const RID &p_vehicle, Visual &p_visual);
             void _lay_snow(const RID &p_vehicle, const Visual &p_visual);
+            void _lay_shader_parameters(const Visual &p_visual);
             void _update_detail(const RID &p_vehicle, Visual &p_visual);
             void _set_detailed(const RID &p_vehicle, Visual &p_visual, bool p_detailed);
             /* The models built from the appearance - created, the parts found in them */
@@ -316,6 +320,10 @@ namespace godot {
              * gathers or melts it; drawn while the vehicle is drawn in detail */
             void vehicle_set_snow(const RID &p_vehicle, float p_snow);
             float vehicle_get_snow(const RID &p_vehicle) const;
+            /* A per-instance uniform of the shaders of the vehicle's exterior and its attachments
+             * ("instance uniform"), by whoever draws more on it - a vehicle's own of a material its
+             * kind shares; kept while its models are built again, null takes it off */
+            void vehicle_set_shader_parameter(const RID &p_vehicle, const StringName &p_name, const Variant &p_value);
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
              * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
              * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every

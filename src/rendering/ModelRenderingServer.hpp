@@ -159,6 +159,9 @@ namespace godot {
             void instance_set_material_overlay(const RID &p_instance, const Ref<Material> &p_material);
             /// What is drawn over the instance's own materials, none for nothing
             Ref<Material> instance_get_material_overlay(const RID &p_instance) const;
+            /// A per-instance uniform of the instance's shaders ("instance uniform"), on all its meshes -
+            /// kept across a rebuild; null takes it off
+            void instance_set_shader_parameter(const RID &p_instance, const StringName &p_name, const Variant &p_value);
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const;
