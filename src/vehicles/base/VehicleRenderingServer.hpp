@@ -191,6 +191,11 @@ namespace godot {
              * exterior and attachments, or taken off them - null: what the renderer draws of its own
              * takes it too. Only the overlay: how much snow it draws changes in it */
             virtual void _vehicle_snow_changed(const RID &p_vehicle, const Ref<Material> &p_overlay) {}
+            /* The wipers of the vehicle's exterior model, as vehicle_get_wiper_sweeps() gives them;
+             * the base knows of none */
+            virtual PackedVector4Array _vehicle_get_wiper_sweeps(const RID &p_vehicle) const {
+                return {};
+            }
             /* Once a frame, after every vehicle's own work */
             virtual void _frame_processed(double p_delta) {}
 
@@ -324,6 +329,11 @@ namespace godot {
              * ("instance uniform"), by whoever draws more on it - a vehicle's own of a material its
              * kind shares; kept while its models are built again, null takes it off */
             void vehicle_set_shader_parameter(const RID &p_vehicle, const StringName &p_name, const Variant &p_value);
+            /* The wipers of the vehicle's exterior model, three vectors each in the model's frame:
+             * where its arm turns about and how long the arm is (x, y, z; w), which way it points at
+             * rest and the most it turns away from there (x, y, z; w, radians, signed about the
+             * axis), and the axis it turns about (x, y, z); none while its model is not built */
+            PackedVector4Array vehicle_get_wiper_sweeps(const RID &p_vehicle) const;
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
              * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
              * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every

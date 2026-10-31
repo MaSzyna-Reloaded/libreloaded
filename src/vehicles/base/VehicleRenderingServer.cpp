@@ -276,6 +276,8 @@ namespace godot {
                 D_METHOD("vehicle_set_shader_parameter", "vehicle", "name", "value"),
                 &VehicleRenderingServer::vehicle_set_shader_parameter);
         ClassDB::bind_method(
+                D_METHOD("vehicle_get_wiper_sweeps", "vehicle"), &VehicleRenderingServer::vehicle_get_wiper_sweeps);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
                 &VehicleRenderingServer::vehicle_set_shown_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_is_detailed", "vehicle"), &VehicleRenderingServer::vehicle_is_detailed);
@@ -509,6 +511,11 @@ namespace godot {
         // a null is kept too: it takes the uniform off models built again
         visual->shader_parameters[p_name] = p_value;
         _lay_shader_parameters(*visual);
+    }
+
+    PackedVector4Array VehicleRenderingServer::vehicle_get_wiper_sweeps(const RID &p_vehicle) const {
+        ERR_FAIL_COND_V(!vehicles.has(p_vehicle), PackedVector4Array());
+        return _vehicle_get_wiper_sweeps(p_vehicle);
     }
 
     void VehicleRenderingServer::_lay_shader_parameters(const Visual &p_visual) {
