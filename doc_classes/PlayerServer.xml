@@ -22,6 +22,12 @@
 				The player as a person ([PersonServer]) - where it sits and in what role is [VehicleServer]'s.
 			</description>
 		</method>
+		<method name="player_get_start_vehicle" qualifiers="const">
+			<return type="RID" />
+			<description>
+				The vehicle the player was started in ([method player_start]); an invalid [RID] for none, or once the vehicle is freed.
+			</description>
+		</method>
 		<method name="player_get_vehicle" qualifiers="const">
 			<return type="RID" />
 			<description>
@@ -34,22 +40,16 @@
 				The driver aboard the player's vehicle drives it from the player's cabin, the player rides along ([code]aidriverenable[/code], [code]Train.cpp:1088-1118[/code]); [method player_take_back_vehicle] takes it back. Nothing without a driver aboard.
 			</description>
 		</method>
-		<method name="player_leave_vehicle">
-			<return type="void" />
-			<description>
-				The player lets the trainset go: its drivers drive it again (simulation.cpp:257-270).
-			</description>
-		</method>
-		<method name="player_get_start_vehicle" qualifiers="const">
-			<return type="RID" />
-			<description>
-				The vehicle the player was started in ([method player_start]); an invalid [RID] for none, or once the vehicle is freed.
-			</description>
-		</method>
 		<method name="player_is_started" qualifiers="const">
 			<return type="bool" />
 			<description>
 				Whether the player has started ([method player_start]) and not stopped since.
+			</description>
+		</method>
+		<method name="player_leave_vehicle">
+			<return type="void" />
+			<description>
+				The player lets the trainset go: its drivers drive it again (simulation.cpp:257-270).
 			</description>
 		</method>
 		<method name="player_start">

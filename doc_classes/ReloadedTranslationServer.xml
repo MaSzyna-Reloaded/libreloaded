@@ -16,13 +16,6 @@
 				The languages there is a catalogue for in the catalogue directory ([code]template.po[/code] excepted), with [code]"en"[/code] - the untranslated strings - always first.
 			</description>
 		</method>
-		<method name="translation_set_catalogue_dir">
-			<return type="void" />
-			<param index="0" name="dir" type="String" />
-			<description>
-				The directory of the data's catalogues, one [code]&lt;language&gt;.po[/code] each, merged over the wrapper's own: the languages are read from it again. A plugin gives it; without one only the wrapper's own strings are translated.
-			</description>
-		</method>
 		<method name="translation_load">
 			<return type="void" />
 			<param index="0" name="po_path" type="String" />
@@ -30,9 +23,16 @@
 				Replaces the game's catalogue with the one in [param po_path] and rebuilds the merged catalogue. Without such a file only the wrapper's own strings are translated.
 			</description>
 		</method>
+		<method name="translation_set_catalogue_dir">
+			<return type="void" />
+			<param index="0" name="dir" type="String" />
+			<description>
+				The directory of the data's catalogues, one [code]&lt;language&gt;.po[/code] each, merged over the wrapper's own: the languages are read from it again. A plugin gives it; without one only the wrapper's own strings are translated.
+			</description>
+		</method>
 	</methods>
 	<members>
-		<member name="language" type="String" setter="set_language" getter="get_language" default="&quot;en&quot;">
+		<member name="language" type="String" setter="set_language" getter="get_language">
 			The language of the game's strings, by the name of its catalogue in the catalogue directory ([method translation_get_languages]).
 		</member>
 	</members>

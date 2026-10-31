@@ -410,6 +410,23 @@ of C++ is saved by its name alone, whichever file declares it; a class a world n
 or the world's plugin's, never one of another plugin (libmaszyna's `Maszyna*` stay GDScript and are
 no world's).
 
+### Class reference
+
+What a C++ class registers is documented in `doc_classes/<Class>.xml` (AGENTS.md, "Documentation"),
+in Godot's BBCode, for whoever calls it from GDScript or reads the API reference:
+
+* `<brief_description>`: one line - what the class is (`The particle emitters of the world, by RID.`)
+* `<description>`: what it does and for whom, what it owns and what it leaves to others; the
+  original's quirk it handles, in words a reader without the code understands
+* a method: what it does or returns, by its parameters (`[param emitter]`); what an empty RID, a 0 or
+  a null means for it
+* a property or a constant: what the value means, its unit as `[lb]m/s[rb]`, its range or default
+  where it matters, the other members it works with (`[member size_max]`)
+* links, never bare names: `[ClassName]`, `[method name]`, `[member name]`, `[constant NAME]`,
+  `[enum Name]`, `[param name]`; `[code]...[/code]` for a key, a path or a value
+* never the implementation (a private field, a container, the lock) - the comment in the header
+  says that
+
 ### No pointers in a public API
 
 Applies to C++ above all, and to servers first. A public method takes and returns `RID`s,
