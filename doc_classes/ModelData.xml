@@ -27,9 +27,6 @@
 		<member name="model" type="String" setter="set_model" getter="get_model" default="&quot;&quot;">
 			The model's name; the backend of [member rendering_backend] finds its file.
 		</member>
-		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
-			The name of the model renderer's backend the model is the one of ([ModelRenderingServer]); empty for the default one.
-		</member>
 		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
 			The placement's name - the resource's own ([member Resource.resource_name]) - empty for none; a signal head is registered under it.
 		</member>
@@ -41,6 +38,9 @@
 		</member>
 		<member name="range_min" type="float" setter="set_range_min" getter="get_range_min" default="0.0">
 			Visible from this distance.
+		</member>
+		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
+			The name of the model renderer's backend the model is the one of ([ModelRenderingServer]); empty for the default one.
 		</member>
 		<member name="rotation" type="Vector3" setter="set_rotation" getter="get_rotation" default="Vector3(0, 0, 0)">
 			Euler angles (radians), same order as [member Node3D.rotation].

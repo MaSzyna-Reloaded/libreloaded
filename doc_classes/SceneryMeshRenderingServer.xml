@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SceneryMeshRenderingServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The meshes a scenery places as they are, drawn while the camera is near, by RID.
+	</brief_description>
+	<description>
+		Meshes a scenery places as they are - a plugin's world's buildings, platforms and bridges, made as [ArrayMesh] resources of its sectors. The server keeps each mesh with its surfaces' materials and draws it with a [RenderingServer] instance only while the camera is within its range ([SceneryStreamingServer]); nothing more is done with it.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="mesh_create">
+			<return type="RID" />
+			<param index="0" name="mesh" type="Mesh" />
+			<param index="1" name="transform" type="Transform3D" />
+			<param index="2" name="range_end" type="float" />
+			<param index="3" name="scenario" type="RID" />
+			<description>
+				[param mesh] placed by [param transform] in [param scenario], drawn while the camera is within [param range_end] of its centre; 0 takes the draw distance.
+			</description>
+		</method>
+		<method name="mesh_free">
+			<return type="void" />
+			<param index="0" name="mesh" type="RID" />
+			<description>
+				[param mesh] freed with its instance and its registration in [SceneryStreamingServer].
+			</description>
+		</method>
+		<method name="mesh_set_scenario">
+			<return type="void" />
+			<param index="0" name="mesh" type="RID" />
+			<param index="1" name="scenario" type="RID" />
+			<description>
+				The world [param mesh] is drawn in; an empty RID draws it nowhere, as when its node is out of the world.
+			</description>
+		</method>
+	</methods>
+</class>
