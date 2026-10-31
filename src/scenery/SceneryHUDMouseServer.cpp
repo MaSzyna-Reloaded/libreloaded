@@ -189,17 +189,30 @@ namespace godot {
         }
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         ERR_FAIL_NULL(models);
+        // the overlay the model had comes back - unless its owner laid another over it meanwhile (a
+        // vehicle's snow that came or went), which stays
         if (const Pickable *previous = pickables.getptr(hovered); previous != nullptr) {
-            models->instance_set_material_overlay(previous->instance, Ref<Material>());
+            if (models->instance_get_material_overlay(previous->instance) == hovered_laid) {
+                models->instance_set_material_overlay(previous->instance, hovered_overlay);
+            }
         }
+        hovered_overlay.unref();
+        hovered_laid.unref();
         hovered = p_pickable;
         if (!hovered.is_valid()) {
             emit_signal(pickable_unhovered_signal);
             return;
         }
         const Pickable &pickable = pickables[hovered];
-        models->instance_set_material_overlay(
-                pickable.instance, pickable.vehicle.is_valid() ? vehicle_outline_material : outline_material);
+        hovered_overlay = models->instance_get_material_overlay(pickable.instance);
+        const Ref<Material> outline = pickable.vehicle.is_valid() ? vehicle_outline_material : outline_material;
+        hovered_laid = outline;
+        // the overlay it had drawn still, the outline after it - on a copy, the owner's own untouched
+        if (hovered_overlay.is_valid()) {
+            hovered_laid = hovered_overlay->duplicate();
+            hovered_laid->set_next_pass(outline);
+        }
+        models->instance_set_material_overlay(pickable.instance, hovered_laid);
         emit_signal(pickable_hovered_signal, pickable.caption, pickable.hints);
     }
 } // namespace godot

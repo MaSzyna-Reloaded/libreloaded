@@ -81,6 +81,9 @@ namespace godot {
                 D_METHOD("instance_set_material_overlay", "instance", "material"),
                 &ModelRenderingBackend::instance_set_material_overlay);
         ClassDB::bind_method(
+                D_METHOD("instance_get_material_overlay", "instance"),
+                &ModelRenderingBackend::instance_get_material_overlay);
+        ClassDB::bind_method(
                 D_METHOD("instance_intersect_segment", "instance", "from", "to"),
                 &ModelRenderingBackend::instance_intersect_segment);
 

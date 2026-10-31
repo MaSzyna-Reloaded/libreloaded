@@ -15,7 +15,7 @@ VERSION="$(make -s -C "$REPO_DIR" godot-version)"
 BUILD="$(make -s -C "$REPO_DIR" godot-build)"
 TAG="godot-$BUILD-double"
 REPOSITORY="${GODOT_RELEASE_REPOSITORY:-MaSzyna-Reloaded/libreloaded}"
-GODOT_BIN="$REPO_DIR/build-godot-$BUILD/bin"
+GODOT_BIN="$(make -s -C "$REPO_DIR" godot-bin)"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/$VERSION.stable.double"
 

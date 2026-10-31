@@ -49,6 +49,10 @@ var _resize_handle: TextureRect
         title = value
         queue_redraw()
 
+## The input action that shows and hides the window, the key of its menu entry (DebugHud.fill_menu());
+## none - only its entry
+@export var toggle_action: StringName = &""
+
 
 func _enter_tree() -> void:
     _ensure_resize_handle()

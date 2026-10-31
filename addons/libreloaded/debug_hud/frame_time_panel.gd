@@ -3,7 +3,15 @@ extends VBoxContainer
 ## Where a frame actually goes. The F3 debug menu reports only the renderer's own CPU time
 ## (RenderingServer.viewport_get_measured_render_time_cpu) and the GPU time, so a frame that is
 ## slow in scripts or physics shows up there as a gap between "Total" and CPU+GPU with nothing to
-## explain it. These are the monitors that fill that gap in.
+## explain it. These are the monitors that fill that gap in - and what the viewport draws, the
+## visible pass and the shadow pass apart (RenderingServer.viewport_get_render_info()): which of
+## them a frame's GPU time goes to, many objects or many primitives.
+
+## The viewport's passes a row each of objects, draw calls and primitives
+const RENDER_PASSES:Dictionary[String, RenderingServer.ViewportRenderInfoType] = {
+    "Visible": RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE,
+    "Shadow": RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW,
+}
 
 ## Seconds between refreshes
 const REFRESH_INTERVAL:float = 0.25
@@ -18,6 +26,9 @@ func _ready() -> void:
         "Physics steps", "Objects", "Draw calls", "Primitives", "Video memory",
     ]:
         _rows[caption] = _add_row(caption)
+    for render_pass:String in RENDER_PASSES:
+        for info:String in ["objects", "draw calls", "primitives"]:
+            _rows["%s %s" % [render_pass, info]] = _add_row("%s %s" % [render_pass, info])
     _refresh()
 
 
@@ -58,6 +69,14 @@ func _refresh() -> void:
     _rows["Draw calls"].text = str(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
     _rows["Primitives"].text = str(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))
     _rows["Video memory"].text = "%.0f MB" % (Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0)
+    for render_pass:String in RENDER_PASSES:
+        var type:RenderingServer.ViewportRenderInfoType = RENDER_PASSES[render_pass]
+        _rows["%s objects" % render_pass].text = str(RenderingServer.viewport_get_render_info(
+            viewport, type, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME))
+        _rows["%s draw calls" % render_pass].text = str(RenderingServer.viewport_get_render_info(
+            viewport, type, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME))
+        _rows["%s primitives" % render_pass].text = "%.2f M" % (RenderingServer.viewport_get_render_info(
+            viewport, type, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME) / 1000000.0)
 
 
 func _add_row(caption:String) -> Label:

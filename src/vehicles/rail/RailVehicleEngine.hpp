@@ -42,6 +42,11 @@ namespace godot {
             bool get_relay_overvoltage() const;
             bool get_relay_ground() const;
             int get_circuit_rlist_size() const;
+            /* How warm the engine is [deg C]: from the moment it started (its main switch closed, or
+             * its motors turning) it warms towards the air's ENGINE_WARM_RISE above it, over
+             * ENGINE_WARM_UP_TIME; stopped, it cools back to the air's over ENGINE_COOL_DOWN_TIME -
+             * from where it was when it started or stopped, at the simulation's clock */
+            virtual double get_temperature() const;
             /* The engine's ammeters [A]: the total and the two motor branches. A vehicle without
              * an engine has none - its cab reads the powered vehicle's (TTrain::mvControlled,
              * Train.cpp:8638). */
@@ -130,6 +135,17 @@ namespace godot {
             /// engine_start on its first tick, as it did when this was compared against the
             /// not-yet-filled state dictionary.
             bool previous_main_switch = false;
+
+            /* How much above the air an engine running long warms [deg C], how long it takes to get
+             * most of the way [s], and how long a stopped one takes to cool most of the way [s] */
+            static constexpr double ENGINE_WARM_RISE = 60.0;
+            static constexpr double ENGINE_WARM_UP_TIME = 1200.0;
+            static constexpr double ENGINE_COOL_DOWN_TIME = 3600.0;
+            /* Running or not, when it started or stopped (the simulation's time; -1: never) and how
+             * warm it was then - get_temperature() goes on from them; changed in the tick */
+            bool running = false;
+            double running_changed_time = -1.0;
+            double running_changed_temperature = 0.0;
 
 
         public:

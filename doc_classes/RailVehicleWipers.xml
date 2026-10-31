@@ -23,6 +23,35 @@
 				Where the wiper switch stands.
 			</description>
 		</method>
+		<method name="manual_fit">
+			<return type="void" />
+			<param index="0" name="count" type="int" />
+			<description>
+				Wipers driven by hand, [param count] of them (at most [constant MANUAL_WIPERS_MAX]), by whoever builds the vehicle - one whose data gives its wipers no switch. A vehicle with a switch keeps its motor.
+			</description>
+		</method>
+		<method name="manual_get_position" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="wiper" type="int" />
+			<description>
+				Where the hand put [param wiper]'s handle, 0 parked - 1 across the sweep.
+			</description>
+		</method>
+		<method name="manual_set_all">
+			<return type="void" />
+			<param index="0" name="position" type="float" />
+			<description>
+				The hand puts every wiper's handle at [param position] - the command [code]wipers_manual_set_all[/code].
+			</description>
+		</method>
+		<method name="manual_set_position">
+			<return type="void" />
+			<param index="0" name="position" type="float" />
+			<param index="1" name="wiper" type="int" />
+			<description>
+				The hand puts [param wiper]'s handle at [param position], 0 parked - 1 across the sweep - the command [code]wipers_manual_set_&lt;wiper&gt;[/code]. Nothing while the wipers have a motor.
+			</description>
+		</method>
 		<method name="switch_decrease">
 			<return type="void" />
 			<description>
@@ -45,6 +74,9 @@
 			[code]WiperList:Default[/code]
 			Starting switch position, counting from 0.
 		</member>
+		<member name="drive" type="int" setter="set_drive" getter="get_drive" enum="RailVehicleWipers.Drive" default="0">
+			What moves the wipers: their motor, by the switch, or the driver's hand.
+		</member>
 		<member name="positions" type="RailVehicleWiperListItem[]" setter="set_positions" getter="get_positions" default="[]">
 			[code]WiperList[/code]
 			The wiper switch's position table.
@@ -53,4 +85,15 @@
 			How many wipers the vehicle has; 0 counts them from the masks of the wiper list.
 		</member>
 	</members>
+	<constants>
+		<constant name="DRIVE_AUTOMATIC" value="0" enum="Drive">
+			The wipers' motor moves them, by the switch.
+		</constant>
+		<constant name="DRIVE_MANUAL" value="1" enum="Drive">
+			The driver's hand moves each wiper by its handle.
+		</constant>
+		<constant name="MANUAL_WIPERS_MAX" value="4">
+			The most wipers driven by hand, each with a command of its own.
+		</constant>
+	</constants>
 </class>

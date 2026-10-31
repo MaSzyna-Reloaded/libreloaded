@@ -46,6 +46,8 @@ namespace godot {
                     HashMap<StringName, float> part_emission;
                     float emission_energy = -1.0F;
                     Ref<Material> overlay;
+                    /* Per-instance uniforms of its shaders (instance_set_shader_parameter()) */
+                    Dictionary shader_parameters;
                     RID signal_head;
                     /// A streamed placement: its stream, and the model's path it loads when built
                     RID stream_rid;
@@ -125,6 +127,9 @@ namespace godot {
             void instance_attach_signal_head(const RID &p_instance, const RID &p_signal_head) override;
             RID signal_head_get_instance(const RID &p_signal_head) const override;
             void instance_set_material_overlay(const RID &p_instance, const Ref<Material> &p_material) override;
+            Ref<Material> instance_get_material_overlay(const RID &p_instance) const override;
+            void instance_set_shader_parameter(
+                    const RID &p_instance, const StringName &p_name, const Variant &p_value) override;
             Dictionary instance_intersect_segment(
                     const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const override;
     };

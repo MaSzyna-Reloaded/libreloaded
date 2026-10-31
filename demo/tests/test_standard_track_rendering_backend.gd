@@ -14,6 +14,9 @@ const BALLAST_FOOT_HALF_WIDTH: float = 1.3 + 0.4 + (0.2 + 0.3 - 0.03) * 1.5
 const FAR_START: Vector3 = Vector3(40000.0, 0.0, 40000.0)
 ## How near its start a track's vertices and sleepers lie: the track's own size, not the world's [m]
 const NEAR_START: float = 25.0
+## What the tracks are drawn with, as a scenery's world gives it (SceneryContentNode.track_looks)
+const LOOKS: Dictionary[StringName, Resource] = {
+    &"standard": preload("res://addons/libreloaded/tracks/track_look.tres")}
 
 var _backend: StandardTrackRenderingBackend = null
 var _track: RID = RID()
@@ -24,6 +27,7 @@ func before_each() -> void:
     _backend = instance_from_id(TrackRenderingServer.backend_get(&"standard"))
     _track = build_track("standard", TRACK_LENGTH)
     _track_render = TrackRenderingServer.track_create(_track)
+    TrackRenderingServer.track_set_looks(_track_render, LOOKS)
 
 
 func after_each() -> void:

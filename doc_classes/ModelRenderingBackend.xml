@@ -56,6 +56,13 @@
 				The bounds of every mesh of the model, in the model's space.
 			</description>
 		</method>
+		<method name="instance_get_material_overlay" qualifiers="const">
+			<return type="Material" />
+			<param index="0" name="instance" type="RID" />
+			<description>
+				What is drawn over every part of the instance ([method instance_set_material_overlay]); [code]null[/code] for none.
+			</description>
+		</method>
 		<method name="instance_get_part_transform" qualifiers="const">
 			<return type="Transform3D" />
 			<param index="0" name="instance" type="RID" />

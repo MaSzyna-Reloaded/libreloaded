@@ -2,6 +2,7 @@
 #include "utils/RIDHash.hpp"
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -57,6 +58,11 @@ namespace godot {
             Ref<StandardMaterial3D> outline_material;
             Ref<StandardMaterial3D> vehicle_outline_material;
             RID hovered;
+            /// The overlay the hovered model had before its outline (a vehicle's snow), given back
+            /// when it is unhovered, and the overlay laid while it is hovered: the outline, after a
+            /// copy of that overlay when it had one, so the snow stays drawn under the outline
+            Ref<Material> hovered_overlay;
+            Ref<Material> hovered_laid;
 
             void _set_hovered(const RID &p_pickable);
             void _on_instance_freed(const RID &p_instance);

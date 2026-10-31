@@ -1,4 +1,4 @@
-.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version godot-build docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
+.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version godot-build godot-bin docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
 .DEFAULT_GOAL = compile-debug
 
 # The Godot project the library is built into (its bin/libreloaded/) and whose addons/ CMake links
@@ -9,6 +9,13 @@ GODOT_PROJECT_DIR?=demo
 # core alone; libmaszyna and a game pass theirs: make compile-debug LIBRELOADED_PLUGINS=<path>
 LIBRELOADED_PLUGINS?=
 CMAKE_PROJECT_ARGS=-DGODOT_PROJECT_DIR=$(GODOT_PROJECT_DIR) "-DLIBRELOADED_PLUGINS=$(LIBRELOADED_PLUGINS)"
+# A build's directories are its plugins' own (build-debug-<tag>, the core alone's build-debug): the
+# games built on this checkout - each its plugins - build side by side instead of reconfiguring one
+# directory in turn, and one build's objects never land in another's library
+BUILD_TAG:=$(if $(LIBRELOADED_PLUGINS),-$(shell printf '%s' "$(LIBRELOADED_PLUGINS)" | sha256sum | cut -c1-8))
+# Every step of a build holds this checkout's lock: two builds at once wait for each other rather
+# than write the same files (gnd-sfx's, a directory of the same plugins)
+BUILD_LOCK=flock $(CURDIR)/.build.lock
 CMAKE_BUILD_JOBS=$(shell cores=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1); if [ "$$cores" -gt 2 ]; then echo $$((cores - 2)); else echo 1; fi)
 CLANG_TIDY_BUILD_DIR=build-clang-tidy
 CLANG_TIDY_COMPILE_COMMANDS_FILE=$(CLANG_TIDY_BUILD_DIR)/compile_commands.json
@@ -50,10 +57,16 @@ LINUX_SDK_PLUGIN_DIRS=$(filter-out $(LINUX_SDK_MOUNT)/% $(CURDIR)/%,$(filter /%,
 LINUX_SDK_PLUGIN_MOUNTS=$(foreach dir,$(LINUX_SDK_PLUGIN_DIRS),-v $(dir):$(dir))
 # The host's ccache directory, mounted, so the container's builds reuse and fill the same cache
 CCACHE_DIR?=$(HOME)/.cache/ccache
-LINUX_SDK_RUN=mkdir -p $(CCACHE_DIR) && docker run --rm --user $(shell id -u):$(shell id -g) \
-    -v $(LINUX_SDK_MOUNT):$(LINUX_SDK_MOUNT) $(LINUX_SDK_OWN_MOUNT) $(LINUX_SDK_PLUGIN_MOUNTS) -w $(CURDIR) -v $(CCACHE_DIR):/ccache -e CCACHE_DIR=/ccache \
+LINUX_SDK_RUN=mkdir -p $(CCACHE_DIR) && $(BUILD_LOCK) docker run --rm --user $(shell id -u):$(shell id -g) \
+    -v $(LINUX_SDK_MOUNT):$(LINUX_SDK_MOUNT) $(LINUX_SDK_OWN_MOUNT) $(LINUX_SDK_PLUGIN_MOUNTS) $(LINUX_SDK_ENGINE_MOUNT) -w $(CURDIR) -v $(CCACHE_DIR):/ccache -e CCACHE_DIR=/ccache \
     -e CMAKE_C_COMPILER_LAUNCHER=ccache -e CMAKE_CXX_COMPILER_LAUNCHER=ccache $(LINUX_SDK_IMAGE)
-GODOT_SOURCE_DIR:=build-godot-$(GODOT_BUILD)
+# The engines are built outside the checkout, one directory for every checkout of this machine - a
+# game's vendor/libreloaded, a plugin's, this one - so each engine build is cloned and built once;
+# make -s godot-bin says where its files are. Building one, a checkout takes the engines' lock
+# instead of its own, and the Linux SDK mounts them (LINUX_SDK_ENGINE_MOUNT)
+GODOT_BUILDS_DIR?=$(HOME)/.cache/godot-builds
+GODOT_BUILD_LOCK=mkdir -p $(GODOT_BUILDS_DIR) && flock $(GODOT_BUILDS_DIR)/.build.lock
+GODOT_SOURCE_DIR:=$(GODOT_BUILDS_DIR)/build-godot-$(GODOT_BUILD)
 GODOT_BIN:=$(GODOT_SOURCE_DIR)/bin
 GODOT_SCONS=scons precision=double production=yes -j$(CMAKE_BUILD_JOBS)
 LINUX_TEMPLATE:=$(GODOT_BIN)/godot.linuxbsd.template_release.double.x86_64
@@ -61,8 +74,8 @@ ANDROID_TEMPLATES:=$(GODOT_BIN)/android_release.apk $(GODOT_BIN)/android_debug.a
 
 #Helper for CLion so it would see generated bindings
 generate-bindings: $(CMAKE_GODOTCPP_API_FILE)
-	cmake -B cmake-build-debug -DGODOTCPP_PRECISION=$(CMAKE_GODOTCPP_PRECISION) -DGODOTCPP_CUSTOM_API_FILE=$(CMAKE_GODOTCPP_API_FILE)
-	cmake --build cmake-build-debug --target generate_bindings
+	$(BUILD_LOCK) cmake -B cmake-build-debug -DGODOTCPP_PRECISION=$(CMAKE_GODOTCPP_PRECISION) -DGODOTCPP_CUSTOM_API_FILE=$(CMAKE_GODOTCPP_API_FILE)
+	$(BUILD_LOCK) cmake --build cmake-build-debug --target generate_bindings
 
 
 # Refreshes doc_classes/*.xml of libreloaded and of every plugin of LIBRELOADED_PLUGINS from the
@@ -79,11 +92,11 @@ cleanup:
 
 
 cleanup-build-debug:
-	rm -rf build-debug
+	rm -rf build-debug$(BUILD_TAG)
 
 
 cleanup-build-release:
-	rm -rf build-release
+	rm -rf build-release$(BUILD_TAG)
 
 
 cleanup-builds: cleanup-build-debug cleanup-build-release
@@ -92,17 +105,17 @@ cleanup-builds: cleanup-build-debug cleanup-build-release
 # gnd-sfx, the sound addon the project links (CMakeLists.txt, reloaded_link_addon), is a GDExtension of
 # its own: its library is built by its own Makefile, in this library's precision, beside every build
 # of this one
-GND_SFX_MAKE=$(MAKE) -C vendor/gnd-sfx PRECISION=double GODOT=$(GODOT)
+GND_SFX_MAKE=$(BUILD_LOCK) $(MAKE) -C vendor/gnd-sfx PRECISION=double GODOT=$(GODOT)
 
 compile-debug: $(CLANG_TIDY_COMPILE_COMMANDS_FILE) $(CLANG_TIDY_BINDINGS_FILE)
-	cmake -B build-debug $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Debug -DGODOTCPP_TARGET=template_debug -DLIBRELOADED_DEBUG=$(LIBRELOADED_DEBUG) -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
-	cmake --build build-debug --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-debug$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Debug -DGODOTCPP_TARGET=template_debug -DLIBRELOADED_DEBUG=$(LIBRELOADED_DEBUG) -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
+	$(BUILD_LOCK) cmake --build build-debug$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 	$(GND_SFX_MAKE) compile-debug
 
 
 compile-release:
-	cmake -B build-release $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
-	cmake --build build-release --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-release$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
+	$(BUILD_LOCK) cmake --build build-release$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 	$(GND_SFX_MAKE) compile-release
 
 
@@ -111,8 +124,8 @@ compile-release:
 # than it is in a shipped build and sends any frame-time investigation after the wrong subsystem.
 # Overwrites the same .so as compile-debug; run that to go back.
 compile-profiling:
-	cmake -B build-profiling $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGODOTCPP_TARGET=template_debug -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
-	cmake --build build-profiling --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-profiling$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGODOTCPP_TARGET=template_debug -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
+	$(BUILD_LOCK) cmake --build build-profiling$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 
 
 # A shipped build that keeps its symbols, for turning a core dump into names. The switch that
@@ -121,8 +134,8 @@ compile-profiling:
 # price is -O2 instead of -O3, so this build is for diagnosing a crash and not for measuring frame
 # times. It writes the same library as compile-release, so rebuild that one afterwards.
 compile-release-symbols:
-	cmake -B build-release-symbols $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
-	cmake --build build-release-symbols --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-release-symbols$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=RelWithDebInfo -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
+	$(BUILD_LOCK) cmake --build build-release-symbols$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 
 
 compile-all: compile-debug compile-release
@@ -132,13 +145,13 @@ cross-compile-release: compile-release compile-windows-release
 
 
 cross-compile-debug: $(CLANG_TIDY_COMPILE_COMMANDS_FILE) $(CLANG_TIDY_BINDINGS_FILE)
-	cmake -B build-linux64-debug $(CMAKE_PROJECT_ARGS) \
+	$(BUILD_LOCK) cmake -B build-linux64-debug$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) \
           -DCMAKE_BUILD_TYPE=Debug \
           -DGODOTCPP_TARGET="template_debug" \
           -DLIBRELOADED_DEBUG=ON \
           -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION)
-	cmake --build build-linux64-debug --parallel $(CMAKE_BUILD_JOBS)
-	cmake -B build-win64-debug $(CMAKE_PROJECT_ARGS) \
+	$(BUILD_LOCK) cmake --build build-linux64-debug$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-win64-debug$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) \
           -DCMAKE_BUILD_TYPE=Debug \
           -DGODOTCPP_TARGET="template_debug" \
           -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) \
@@ -148,11 +161,11 @@ cross-compile-debug: $(CLANG_TIDY_COMPILE_COMMANDS_FILE) $(CLANG_TIDY_BINDINGS_F
           -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
           -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
           -DCMAKE_SIZEOF_VOID_P=8
-	cmake --build build-win64-debug --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake --build build-win64-debug$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 
 
 compile-windows-debug:
-	cmake -B build-win64-debug $(CMAKE_PROJECT_ARGS) \
+	$(BUILD_LOCK) cmake -B build-win64-debug$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) \
           -DCMAKE_BUILD_TYPE=Debug \
           -DGODOTCPP_TARGET="template_debug" \
           -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) \
@@ -161,11 +174,11 @@ compile-windows-debug:
           -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
           -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
           -DCMAKE_SIZEOF_VOID_P=8
-	cmake --build build-win64-debug --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake --build build-win64-debug$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 
 
 compile-windows-release:
-	cmake -B build-win64-release $(CMAKE_PROJECT_ARGS) \
+	$(BUILD_LOCK) cmake -B build-win64-release$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) \
           -DCMAKE_BUILD_TYPE=Release \
           -DGODOTCPP_TARGET="template_release" \
           -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) \
@@ -174,7 +187,7 @@ compile-windows-release:
           -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
           -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
           -DCMAKE_SIZEOF_VOID_P=8
-	cmake --build build-win64-release --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake --build build-win64-release$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 	$(GND_SFX_MAKE) compile-windows-release
 
 
@@ -182,14 +195,14 @@ compile-windows-release:
 ANDROID_NDK_ROOT?=$(ANDROID_NDK_LATEST_HOME)
 
 compile-android-debug:
-	cmake -B build-android-debug $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Debug -DGODOTCPP_TARGET=template_debug -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) -DGODOTCPP_PLATFORM=android -DANDROID_NDK_ROOT=$(ANDROID_NDK_ROOT)
-	cmake --build build-android-debug --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-android-debug$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Debug -DGODOTCPP_TARGET=template_debug -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) -DGODOTCPP_PLATFORM=android -DANDROID_NDK_ROOT=$(ANDROID_NDK_ROOT)
+	$(BUILD_LOCK) cmake --build build-android-debug$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 	$(GND_SFX_MAKE) compile-android-debug
 
 
 compile-android-release:
-	cmake -B build-android-release $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) -DGODOTCPP_PLATFORM=android -DANDROID_NDK_ROOT=$(ANDROID_NDK_ROOT)
-	cmake --build build-android-release --parallel $(CMAKE_BUILD_JOBS)
+	$(BUILD_LOCK) cmake -B build-android-release$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) -DGODOTCPP_PLATFORM=android -DANDROID_NDK_ROOT=$(ANDROID_NDK_ROOT)
+	$(BUILD_LOCK) cmake --build build-android-release$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)
 	$(GND_SFX_MAKE) compile-android-release
 
 
@@ -209,7 +222,7 @@ $(CMAKE_GODOTCPP_API_FILE):
 
 
 compile-release-linux: $(CMAKE_GODOTCPP_API_FILE) linux-sdk-image
-	$(LINUX_SDK_RUN) sh -c 'cmake -B build-release-linux $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) && cmake --build build-release-linux --parallel $(CMAKE_BUILD_JOBS)'
+	$(LINUX_SDK_RUN) sh -c 'cmake -B build-release-linux$(BUILD_TAG) $(CMAKE_PROJECT_ARGS) -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=template_release -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) && cmake --build build-release-linux$(BUILD_TAG) --parallel $(CMAKE_BUILD_JOBS)'
 	$(GND_SFX_MAKE) compile-release-linux
 
 
@@ -225,12 +238,12 @@ $(PYTHON_RUNTIME_DIR)/lib/libpython2.7.so.1.0: scripts/build-python-runtime | li
 	$(LINUX_SDK_RUN) scripts/build-python-runtime $(PYTHON_RUNTIME_DIR) $(PYTHON_RUNTIME_BUILD_DIR)
 
 
-# patched before it takes its name: a clone a patch failed on is not taken for the engine's source
+# patched before it takes its name: a clone a patch failed on is not taken for the engine's source;
+# a checkout that waited for the lock finds the clone another one made
 $(GODOT_SOURCE_DIR):
-	rm -rf $@.tmp
-	git clone --depth 1 --branch $(GODOT_VERSION)-stable https://github.com/godotengine/godot.git $@.tmp
-	$(if $(GODOT_PATCHES),git -C $@.tmp apply $(GODOT_PATCHES))
-	mv $@.tmp $@
+	$(GODOT_BUILD_LOCK) sh -c 'test -d $@ || { rm -rf $@.tmp \
+	    && git clone --depth 1 --branch $(GODOT_VERSION)-stable https://github.com/godotengine/godot.git $@.tmp \
+	    $(if $(GODOT_PATCHES),&& git -C $@.tmp apply $(GODOT_PATCHES)) && mv $@.tmp $@; }'
 
 
 # Godot publishes no double precision build, so the engine is built here, once per engine version.
@@ -245,25 +258,42 @@ godot-build:
 	@echo $(GODOT_BUILD)
 
 
+# Where the engine's build puts its files (GODOT_BIN) - what a game installs its templates from,
+# and ci/fetch-godot.sh fetches into
+godot-bin:
+	@echo $(GODOT_BIN)
+
+
+# The engine's files are built under the engines' lock, the Linux ones with the engines mounted into
+# the SDK and through ccache (scons' compiler launchers, given the environment ccache needs - scons
+# passes none on by itself), its paths taken relative to the engines' directory so that another
+# engine build hits the same cache
+$(GODOT_BIN)/%: BUILD_LOCK=$(GODOT_BUILD_LOCK)
+$(GODOT_BIN)/%: LINUX_SDK_ENGINE_MOUNT=-v $(GODOT_BUILDS_DIR):$(GODOT_BUILDS_DIR) -e CCACHE_BASEDIR=$(GODOT_BUILDS_DIR)
+
+
 # The editor too is built in the SDK - the host's own is linked against the host's glibc, and this
-# one runs on the CI runner as well
+# one runs on the CI runner as well. The editor is linked without LTO: it is the tool the game is
+# made and exported with, and LTO's link of it takes most of its build; the templates keep it
 $(GODOT_BIN)/godot.linuxbsd.%.double.x86_64: | $(GODOT_SOURCE_DIR) linux-sdk-image
-	$(LINUX_SDK_RUN) sh -c 'cd $(GODOT_SOURCE_DIR) && $(GODOT_SCONS) platform=linuxbsd arch=x86_64 target=$*'
+	$(LINUX_SDK_RUN) sh -c 'cd $(GODOT_SOURCE_DIR) && $(GODOT_SCONS) platform=linuxbsd arch=x86_64 target=$* \
+	    $(if $(filter editor,$*),lto=none) \
+	    c_compiler_launcher=ccache cpp_compiler_launcher=ccache import_env_vars=HOME,CCACHE_DIR,CCACHE_BASEDIR'
 
 
 # Direct3D 12 is not supported by the project, so the template is built without it and needs none
 # of its SDK
 $(GODOT_BIN)/godot.windows.%.double.x86_64.exe: | $(GODOT_SOURCE_DIR)
-	cd $(GODOT_SOURCE_DIR) && $(GODOT_SCONS) platform=windows arch=x86_64 target=$* d3d12=no
+	$(BUILD_LOCK) sh -c 'cd $(GODOT_SOURCE_DIR) && $(GODOT_SCONS) platform=windows arch=x86_64 target=$* d3d12=no'
 
 
 # The export presets do not use a gradle build, so the export takes the ready APKs; scons puts the
 # native libraries where gradle packs them from. Needs ANDROID_HOME and a JDK 17. Built without
 # the Swappy frame pacing library, which scons refuses to build without otherwise.
 $(ANDROID_TEMPLATES) &: | $(GODOT_SOURCE_DIR)
-	cd $(GODOT_SOURCE_DIR) && $(GODOT_SCONS) platform=android arch=arm64 target=template_release swappy=no \
+	$(BUILD_LOCK) sh -c 'cd $(GODOT_SOURCE_DIR) && $(GODOT_SCONS) platform=android arch=arm64 target=template_release swappy=no \
 	    && $(GODOT_SCONS) platform=android arch=arm64 target=template_debug swappy=no \
-	    && cd platform/android/java && ./gradlew generateGodotTemplates
+	    && cd platform/android/java && ./gradlew generateGodotTemplates'
 
 
 # The site of DOCS_SOURCE - libreloaded or a plugin of LIBRELOADED_PLUGINS: its docs/ and the
@@ -316,11 +346,11 @@ watch-and-compile:
 
 $(CLANG_TIDY_COMPILE_COMMANDS_FILE): $(CMAKE_GODOTCPP_API_FILE)
 	@echo "Style: configuring clang-tidy database..." && \
-	cmake --log-level=ERROR -S . -B $(CLANG_TIDY_BUILD_DIR) -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) "-DLIBRELOADED_PLUGINS=$(LIBRELOADED_PLUGINS)"
+	$(BUILD_LOCK) cmake --log-level=ERROR -S . -B $(CLANG_TIDY_BUILD_DIR) -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DGODOTCPP_API_VERSION=$(CMAKE_GODOTCPP_API_VERSION) "-DLIBRELOADED_PLUGINS=$(LIBRELOADED_PLUGINS)" "-DGODOT_PROJECT_DIR=$(GODOT_PROJECT_DIR)"
 
 $(CLANG_TIDY_BINDINGS_FILE): $(CLANG_TIDY_BUILD_DIR)/CMakeCache.txt
 	@echo "Style: generating clang-tidy bindings..." && \
-	cmake --build $(CLANG_TIDY_BUILD_DIR) --target generate_bindings
+	$(BUILD_LOCK) cmake --build $(CLANG_TIDY_BUILD_DIR) --target generate_bindings
 
 style-check: $(CLANG_TIDY_COMPILE_COMMANDS_FILE) $(CLANG_TIDY_BINDINGS_FILE)
 	@LIBRELOADED_PLUGINS="$(LIBRELOADED_PLUGINS)" scripts/style-check $(STYLE_FILE)
