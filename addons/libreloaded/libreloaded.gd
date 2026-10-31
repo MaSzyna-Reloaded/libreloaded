@@ -81,7 +81,7 @@ func _enter_tree():
     # when the camera comes near and let go when it leaves; off, they are all loaded with the
     # scenery and kept, and the streaming only builds and clears their instances. The
     # --enable-lazy-loading command-line switch turns it on (read at startup)
-    add_custom_project_setting("reloaded/resources/lazy_loading", true, TYPE_BOOL)
+    add_custom_project_setting("reloaded/resources/lazy_loading", false, TYPE_BOOL)
     # SceneryStreamingServer's own reach: it streams the scenery's pieces and the vehicles in and out
     # around the camera, caps every piece's own range and stands in for the pieces that declare none
     # (read at startup)
