@@ -12,7 +12,9 @@ namespace godot {
      * how they sweep, and where every wiper stands. The switch is this component's; how the wipers
      * move is the backend's. Wipers driven by hand (DRIVE_MANUAL) have no switch: each stands where
      * the driver's hand puts its handle (wipers_manual_set_<wiper>, wipers_manual_set_all: 0 parked -
-     * 1 across the sweep). */
+     * 1 across the sweep). Such a wiper may have an air motor of its own too: opened by its valve
+     * (wipers_valve_set_<wiper>, wipers_valve_set_all: 0 closed - 1 open) it goes by itself, the
+     * backend moving it and its handle with it. */
     class RailVehicleWipers : public RailVehicleComponent {
             GDCLASS(RailVehicleWipers, RailVehicleComponent);
 
@@ -43,6 +45,8 @@ namespace godot {
             Drive drive = DRIVE_AUTOMATIC;
             /* Where the hand put each wiper driven by hand, 0-1 */
             PackedFloat64Array manual_positions;
+            /* How far each wiper's valve is open, 0-1 */
+            PackedFloat64Array valves;
             void _set_switch_position(int p_position);
 
         protected:
@@ -77,6 +81,12 @@ namespace godot {
             void manual_set_position(double p_position, int p_wiper);
             void manual_set_all(double p_position);
             double manual_get_position(int p_wiper) const;
+            /* The driver opens p_wiper's valve to p_opening, 0 closed - 1 open; or every wiper's */
+            void valve_set_opening(double p_opening, int p_wiper);
+            void valve_set_all(double p_opening);
+            double valve_get_opening(int p_wiper) const;
+            /* Its air motor takes p_wiper to p_position, the backend's: its handle goes with it */
+            void valve_move_wiper(double p_position, int p_wiper);
     };
 } // namespace godot
 

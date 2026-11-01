@@ -166,6 +166,18 @@ msgstr "rukojeť stěrače 3"
 msgid "wiper 4 handle"
 msgstr "rukojeť stěrače 4"
 
+msgid "wiper 1 valve"
+msgstr "ventil stěrače 1"
+
+msgid "wiper 2 valve"
+msgstr "ventil stěrače 2"
+
+msgid "wiper 3 valve"
+msgstr "ventil stěrače 3"
+
+msgid "wiper 4 valve"
+msgstr "ventil stěrače 4"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "Stanice"

@@ -166,6 +166,18 @@ msgstr "rączka wycieraczki 3"
 msgid "wiper 4 handle"
 msgstr "rączka wycieraczki 4"
 
+msgid "wiper 1 valve"
+msgstr "zawór wycieraczki 1"
+
+msgid "wiper 2 valve"
+msgstr "zawór wycieraczki 2"
+
+msgid "wiper 3 valve"
+msgstr "zawór wycieraczki 3"
+
+msgid "wiper 4 valve"
+msgstr "zawór wycieraczki 4"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "Stacje"

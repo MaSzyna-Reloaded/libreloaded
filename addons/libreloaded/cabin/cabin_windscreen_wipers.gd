@@ -41,9 +41,13 @@ var _now:float = 0.0
 var _pass_time:Image = Image.create_empty(PASS_BINS, WIPERS, false, Image.FORMAT_RF)
 var _pass_texture:ImageTexture
 var _last_sweep:Vector4 = -Vector4.ONE
+## Each wiper is driven by hand, its handle and its valve for one pane of the glass: numbered the same
+## from either cab
+var _by_hand:bool = false
 
 
 func _ready() -> void:
+    _by_hand = CabinSystem.vehicle_config(vehicle_rid).get("wipers_drive", RailVehicleWipers.DRIVE_AUTOMATIC) == RailVehicleWipers.DRIVE_MANUAL
     _pass_time.fill(Color(PASSED_NEVER, 0.0, 0.0))
     _pass_texture = ImageTexture.create_from_image(_pass_time)
     RenderingServer.global_shader_parameter_set("reloaded_wiper_pass_time", _pass_texture)
@@ -63,7 +67,7 @@ func _process(frame_delta:float) -> void:
             _last_sweep[i] = -1.0
             continue
         # the wipers are numbered from the side of the active cab
-        var position:float = positions[i if cab > 0 else positions.size() - 1 - i]
+        var position:float = positions[i if cab > 0 or _by_hand else positions.size() - 1 - i]
         var sweep:float = position if position <= 1.0 else position - 1.0
         # The original hands the shader the plain position while the arms move eased
         # (smoothInterpolate(), DynObj.cpp:726), so the wiped edge runs up to a tenth of the sweep

@@ -166,6 +166,18 @@ msgstr ""
 msgid "wiper 4 handle"
 msgstr ""
 
+msgid "wiper 1 valve"
+msgstr ""
+
+msgid "wiper 2 valve"
+msgstr ""
+
+msgid "wiper 3 valve"
+msgstr ""
+
+msgid "wiper 4 valve"
+msgstr ""
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr ""
