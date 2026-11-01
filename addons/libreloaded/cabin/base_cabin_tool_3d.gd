@@ -34,6 +34,17 @@ signal vehicle_rid_changing
 @export var target:CabinState.Target = CabinState.Target.OCCUPIED
 ## The keys of this control, named under its caption - the cab logic takes them (CabinLogic.input())
 @export var hint_actions:PackedStringArray = []
+## Turn the mesh about its own axes as its parent sees them, its scale kept: a mesh scaled unevenly
+## (an EU07's wiper handle, 3.2 x 5.2 x 9.9) shears when turned in its own frame, as the original's
+## gauges turn - a game's own controls (a patch's) turn as a real one does
+@export var turn_unscaled:bool = false
+## The mesh's rotation at each whole position from the first, between them in proportion - a switch
+## whose positions do not follow one turn (a ČD 181's wiper switch: 0 up, 1 left, 2 right); none,
+## the control's own offset and step
+@export var position_rotations:PackedVector3Array = []:
+    set(x):
+        position_rotations = x
+        _dirty = true
 ## A wiper animation (MMD `wip`): the control's first submodel below it and that one's first turn
 ## with it, by the same angle (TGauge gt_Wiper, Gauge.cpp:469-479) - wipers, folding doors, the
 ## alarm chain's handle
@@ -156,6 +167,25 @@ func _on_cabin_control_changed(cabin:RID, p_control_id:StringName, value:Variant
 
 func _apply_control_value(_value:Variant) -> void:
     pass
+
+
+## The mesh's basis turned by `rotation` (degrees, X, Y, Z as the widgets animate) from `original`
+func _turned_basis(original:Basis, rotation:Vector3) -> Basis:
+    if not turn_unscaled:
+        return original * Basis(Vector3.RIGHT, deg_to_rad(rotation.x)) * Basis(Vector3.UP, deg_to_rad(rotation.y)) \
+                * Basis(Vector3.FORWARD, deg_to_rad(rotation.z))
+    # about its own axes as its parent sees them: a mesh of uneven scale turns, not shears
+    var turned:Basis = Basis((original * Vector3.FORWARD).normalized(), deg_to_rad(rotation.z)) * original
+    turned = Basis((original * Vector3.UP).normalized(), deg_to_rad(rotation.y)) * turned
+    return Basis((original * Vector3.RIGHT).normalized(), deg_to_rad(rotation.x)) * turned
+
+
+## The rotation at `at` positions from the first, of position_rotations
+func _position_rotation(at:float) -> Vector3:
+    at = clampf(at, 0.0, position_rotations.size() - 1)
+    var below:int = floori(at)
+    var above:int = mini(below + 1, position_rotations.size() - 1)
+    return position_rotations[below].lerp(position_rotations[above], at - below)
 
 
 ## Makes `mesh` operable by mouse with this control's own operations; an empty `increase` leaves

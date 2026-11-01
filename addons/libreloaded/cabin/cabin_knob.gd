@@ -47,13 +47,6 @@ enum ControllerMode { OnOff, On, Off }
         mesh_rotation_offset = x
         _dirty = true
 
-## The mesh's rotation at each whole value from value_min, between them in proportion - a switch
-## whose positions do not follow one turn (a ČD 181's wiper switch: 0 up, 1 left, 2 right); none,
-## mesh_rotation_offset and mesh_rotation times the value's share
-@export var position_rotations:PackedVector3Array = []:
-    set(x):
-        position_rotations = x
-        _dirty = true
 
 ## How fast the control follows its value - 1 / the MMD's friction; 0 moves it at once
 ## (TGauge::Update(), Gauge.cpp:364-375)
@@ -129,10 +122,7 @@ func _take_value() -> void:
     _value_normalized = value / (value_max - value_min)
     _target_mesh_position = mesh_position_offset + mesh_position * _value_normalized
     if position_rotations:
-        var at:float = clampf(value - value_min, 0.0, position_rotations.size() - 1)
-        var below:int = floori(at)
-        var above:int = mini(below + 1, position_rotations.size() - 1)
-        _target_mesh_rotation = position_rotations[below].lerp(position_rotations[above], at - below)
+        _target_mesh_rotation = _position_rotation(value - value_min)
     else:
         _target_mesh_rotation = mesh_rotation_offset + mesh_rotation * _value_normalized
 
@@ -166,11 +156,7 @@ func _process_tool(delta):
         _sounded_value = value
 
     if is_instance_valid(_mesh):
-        var new_basis = _mesh_original_basis
-        new_basis *= Basis(Vector3.RIGHT, deg_to_rad(_current_rotation.x))
-        new_basis *= Basis(Vector3.UP, deg_to_rad(_current_rotation.y))
-        new_basis *= Basis(Vector3.FORWARD, deg_to_rad(_current_rotation.z))
-        _mesh.transform.basis = new_basis
+        _mesh.transform.basis = _turned_basis(_mesh_original_basis, _current_rotation)
         _mesh.position = _mesh_original_position + _current_position
 
 
