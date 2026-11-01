@@ -45,6 +45,9 @@ signal vehicle_rid_changing
     set(x):
         position_rotations = x
         _dirty = true
+## The axis the mesh turns about, in its own frame, by the turn about its up (position_rotations' y):
+## ZERO, its own axes - a knob on a slanted stem turns about none of them
+@export var turn_axis:Vector3 = Vector3.ZERO
 ## The point the mesh turns about, in its own frame: ZERO, its origin - a mesh made where its origin
 ## lies off it (a cab model's knob built at the cab floor's origin) turns about its own middle
 @export var turn_pivot:Vector3 = Vector3.ZERO:
@@ -179,7 +182,9 @@ func _apply_control_value(_value:Variant) -> void:
 ## from where it was made (`original_basis`, `original_position`), its turn_pivot standing still
 func _place_mesh(mesh:Node3D, original_basis:Basis, original_position:Vector3, rotation:Vector3, offset:Vector3) -> void:
     var turned:Basis = original_basis
-    if turn_unscaled:
+    if not turn_axis == Vector3.ZERO:
+        turned = Basis((original_basis * turn_axis).normalized(), deg_to_rad(rotation.y)) * turned
+    elif turn_unscaled:
         # about its own axes as its parent sees them: a mesh of uneven scale turns, not shears
         turned = Basis((original_basis * Vector3.FORWARD).normalized(), deg_to_rad(rotation.z)) * turned
         turned = Basis((original_basis * Vector3.UP).normalized(), deg_to_rad(rotation.y)) * turned
