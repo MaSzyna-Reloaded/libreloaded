@@ -78,6 +78,16 @@ func test_hover_outlines_and_captions_the_control() -> void:
     assert_null(_mesh.material_overlay)
 
 
+func test_the_outline_is_as_wide_whatever_the_scale_of_the_mesh() -> void:
+    _move_to(_over_control())
+    var width:float = (_mesh.material_overlay as BaseMaterial3D).stencil_outline_thickness
+    _move_to(Vector2.ONE)
+    _mesh.scale = Vector3.ONE * 40.0
+    _move_to(_over_control())
+    assert_almost_eq((_mesh.material_overlay as BaseMaterial3D).stencil_outline_thickness * 40.0, width, 0.00001)
+    assert_almost_eq(_mesh.material_overlay.next_pass.grow_amount * 40.0, width, 0.00001, "what grows the outline")
+
+
 func test_click_presses_and_releases() -> void:
     _move_to(_over_control())
     assert_true(_left_button(true))

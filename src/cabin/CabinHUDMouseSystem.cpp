@@ -534,15 +534,23 @@ namespace godot {
 
     void CabinHUDMouseSystem::_set_outline(const RID &p_control, const bool p_outlined) {
         const Control &control = controls[p_control];
-        Ref<Material> material;
-        if (p_outlined) {
-            material = control.small ? small_outline_material : large_outline_material;
-        }
         for (const Part &part: control.pickable.parts) {
             MeshInstance3D *mesh = mesh_of(part.mesh);
             if (mesh != nullptr) {
-                mesh->set_material_overlay(material);
+                mesh->set_material_overlay(p_outlined ? _outline_of(*mesh, control.small) : Ref<Material>());
             }
         }
+    }
+
+    Ref<Material> CabinHUDMouseSystem::_outline_of(const MeshInstance3D &p_mesh, const bool p_small) const {
+        const Vector3 scale = p_mesh.get_global_transform().basis.get_scale().abs();
+        const double mean_scale = (scale.x + scale.y + scale.z) / 3.0;
+        if (Math::is_equal_approx(mean_scale, 1.0) || Math::is_zero_approx(mean_scale)) {
+            return p_small ? small_outline_material : large_outline_material;
+        }
+        // the outline grows in the mesh's own space: a model may scale a control by tens (an EU07's
+        // valves, 42.5 times), its outline then wider than the cab's desk
+        return p_small ? mouse_picking::outline_material(SMALL_OUTLINE_WIDTH / mean_scale, SMALL_OUTLINE_FILL_ALPHA)
+                       : mouse_picking::outline_material(LARGE_OUTLINE_WIDTH / mean_scale, 0.0);
     }
 } // namespace godot
