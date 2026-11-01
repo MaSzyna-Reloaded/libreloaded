@@ -45,6 +45,12 @@ signal vehicle_rid_changing
     set(x):
         position_rotations = x
         _dirty = true
+## The point the mesh turns about, in its own frame: ZERO, its origin - a mesh made where its origin
+## lies off it (a cab model's knob built at the cab floor's origin) turns about its own middle
+@export var turn_pivot:Vector3 = Vector3.ZERO:
+    set(x):
+        turn_pivot = x
+        _dirty = true
 ## A wiper animation (MMD `wip`): the control's first submodel below it and that one's first turn
 ## with it, by the same angle (TGauge gt_Wiper, Gauge.cpp:469-479) - wipers, folding doors, the
 ## alarm chain's handle
@@ -169,15 +175,20 @@ func _apply_control_value(_value:Variant) -> void:
     pass
 
 
-## The mesh's basis turned by `rotation` (degrees, X, Y, Z as the widgets animate) from `original`
-func _turned_basis(original:Basis, rotation:Vector3) -> Basis:
-    if not turn_unscaled:
-        return original * Basis(Vector3.RIGHT, deg_to_rad(rotation.x)) * Basis(Vector3.UP, deg_to_rad(rotation.y)) \
+## Sets `mesh` turned by `rotation` (degrees, X, Y, Z as the widgets animate) and moved by `offset`
+## from where it was made (`original_basis`, `original_position`), its turn_pivot standing still
+func _place_mesh(mesh:Node3D, original_basis:Basis, original_position:Vector3, rotation:Vector3, offset:Vector3) -> void:
+    var turned:Basis = original_basis
+    if turn_unscaled:
+        # about its own axes as its parent sees them: a mesh of uneven scale turns, not shears
+        turned = Basis((original_basis * Vector3.FORWARD).normalized(), deg_to_rad(rotation.z)) * turned
+        turned = Basis((original_basis * Vector3.UP).normalized(), deg_to_rad(rotation.y)) * turned
+        turned = Basis((original_basis * Vector3.RIGHT).normalized(), deg_to_rad(rotation.x)) * turned
+    else:
+        turned = turned * Basis(Vector3.RIGHT, deg_to_rad(rotation.x)) * Basis(Vector3.UP, deg_to_rad(rotation.y)) \
                 * Basis(Vector3.FORWARD, deg_to_rad(rotation.z))
-    # about its own axes as its parent sees them: a mesh of uneven scale turns, not shears
-    var turned:Basis = Basis((original * Vector3.FORWARD).normalized(), deg_to_rad(rotation.z)) * original
-    turned = Basis((original * Vector3.UP).normalized(), deg_to_rad(rotation.y)) * turned
-    return Basis((original * Vector3.RIGHT).normalized(), deg_to_rad(rotation.x)) * turned
+    mesh.transform.basis = turned
+    mesh.position = original_position + offset + original_basis * turn_pivot - turned * turn_pivot
 
 
 ## The rotation at `at` positions from the first, of position_rotations

@@ -168,8 +168,7 @@ func _process_tool(delta):
         _current_position = _current_position.lerp(_target_mesh_position, weight)
 
     if is_instance_valid(_mesh):
-        _mesh.transform.basis = _turned_basis(_mesh_original_basis, _current_rotation)
-        _mesh.position = _mesh_original_position + _current_position
+        _place_mesh(_mesh, _mesh_original_basis, _mesh_original_position, _current_rotation, _current_position)
 
 func _apply_control_value(p_value:Variant) -> void:
     switch_position = int(p_value)
