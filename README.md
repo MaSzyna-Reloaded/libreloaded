@@ -41,6 +41,9 @@ make run-tests            # runs the GUT tests of demo/ headless
 `demo/bin/libreloaded/`. To enable the `DEBUG` macro, add `LIBRELOADED_DEBUG=ON`. The build uses
 all CPU cores but two.
 
+The build uses `ccache` if it is installed, and works the same without it, only slower. All
+checkouts under your home directory share its cache.
+
 ### Other platforms
 
 | Target | Builds |

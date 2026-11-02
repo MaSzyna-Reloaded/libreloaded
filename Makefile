@@ -9,6 +9,15 @@ GODOT_PROJECT_DIR?=demo
 # core alone; libmaszyna and a game pass theirs: make compile-debug LIBRELOADED_PLUGINS=<path>
 LIBRELOADED_PLUGINS?=
 CMAKE_PROJECT_ARGS=-DGODOT_PROJECT_DIR=$(GODOT_PROJECT_DIR) "-DLIBRELOADED_PLUGINS=$(LIBRELOADED_PLUGINS)"
+# Compiled through ccache where the machine has one, gnd-sfx's build too; without it the same build,
+# only slower. The paths are taken relative to the home directory and the working directory is left
+# out of the hash, so that another checkout or build directory of the same code hits the same cache
+ifneq ($(shell command -v ccache 2>/dev/null),)
+export CMAKE_C_COMPILER_LAUNCHER?=ccache
+export CMAKE_CXX_COMPILER_LAUNCHER?=ccache
+export CCACHE_BASEDIR?=$(HOME)
+export CCACHE_NOHASHDIR?=1
+endif
 CMAKE_BUILD_JOBS=$(shell cores=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1); if [ "$$cores" -gt 2 ]; then echo $$((cores - 2)); else echo 1; fi)
 CLANG_TIDY_BUILD_DIR=build-clang-tidy
 CLANG_TIDY_COMPILE_COMMANDS_FILE=$(CLANG_TIDY_BUILD_DIR)/compile_commands.json
@@ -48,10 +57,11 @@ LINUX_SDK_MOUNT?=$(CURDIR)
 LINUX_SDK_OWN_MOUNT:=$(if $(filter $(LINUX_SDK_MOUNT)/%,$(CURDIR)/.),,-v $(CURDIR):$(CURDIR))
 LINUX_SDK_PLUGIN_DIRS=$(filter-out $(LINUX_SDK_MOUNT)/% $(CURDIR)/%,$(filter /%,$(subst ;, ,$(LIBRELOADED_PLUGINS))))
 LINUX_SDK_PLUGIN_MOUNTS=$(foreach dir,$(LINUX_SDK_PLUGIN_DIRS),-v $(dir):$(dir))
-# The host's ccache directory, mounted, so the container's builds reuse and fill the same cache
+# The host's ccache directory, mounted, so the container's builds reuse and fill the same cache; the
+# checkouts are mounted at their own paths, so the same base directory holds in the container
 CCACHE_DIR?=$(HOME)/.cache/ccache
 LINUX_SDK_RUN=mkdir -p $(CCACHE_DIR) && docker run --rm --user $(shell id -u):$(shell id -g) \
-    -v $(LINUX_SDK_MOUNT):$(LINUX_SDK_MOUNT) $(LINUX_SDK_OWN_MOUNT) $(LINUX_SDK_PLUGIN_MOUNTS) -w $(CURDIR) -v $(CCACHE_DIR):/ccache -e CCACHE_DIR=/ccache \
+    -v $(LINUX_SDK_MOUNT):$(LINUX_SDK_MOUNT) $(LINUX_SDK_OWN_MOUNT) $(LINUX_SDK_PLUGIN_MOUNTS) -e CCACHE_BASEDIR=$(HOME) -w $(CURDIR) -v $(CCACHE_DIR):/ccache -e CCACHE_DIR=/ccache \
     -e CMAKE_C_COMPILER_LAUNCHER=ccache -e CMAKE_CXX_COMPILER_LAUNCHER=ccache $(LINUX_SDK_IMAGE)
 GODOT_SOURCE_DIR:=build-godot-$(GODOT_BUILD)
 GODOT_BIN:=$(GODOT_SOURCE_DIR)/bin
