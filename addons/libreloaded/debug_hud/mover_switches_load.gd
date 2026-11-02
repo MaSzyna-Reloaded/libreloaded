@@ -1,7 +1,7 @@
 extends "mover_switches_section.gd"
 
-## The load of the vehicle and its exchange at a platform: what it carries, what is still to get off
-## and on, and how long that takes; the buttons let a group off or on at both sides
+## The load of the vehicle and its exchange at a platform: whose it is, what it carries, what is
+## still to get off and on, and how long that takes; the buttons let a group off or on at both sides
 ## (RailVehicleServer.load_remove()/load_add())
 
 ## The group the buttons let off or on
@@ -20,6 +20,8 @@ func _do_update():
     super._do_update()
     _load = _component(VehicleComponentType.COMPONENT_LOAD) as RailVehicleLoad
     _show_applicable(not _load == null)
+    if _load:
+        %VehicleName.text = VehicleServer.vehicle_get_name(target_vehicle)
 
 
 func _on_refresh_timer_timeout() -> void:
