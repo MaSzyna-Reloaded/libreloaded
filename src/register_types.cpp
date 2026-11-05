@@ -6,6 +6,7 @@
 #include "driver/DriverState.hpp"
 #include "game_data/GameDataServer.hpp"
 #include "hud/HUDServer.hpp"
+#include "hud/RailMiniMap.hpp"
 #include "loaders/OggVorbisFormatLoader.hpp"
 #include "logging/GameLog.hpp"
 #include "logging/GameLogFileHandler.hpp"
@@ -202,6 +203,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(ResourceCache);
         GDREGISTER_CLASS(ResourceLazyLoader);
         GDREGISTER_CLASS(PlanarMirror3D);
+        GDREGISTER_CLASS(RailMiniMap);
         GDREGISTER_CLASS(ModelRenderingServer);
         GDREGISTER_ABSTRACT_CLASS(ModelRenderingBackend);
         GDREGISTER_ABSTRACT_CLASS(TrackRenderingBackend);

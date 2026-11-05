@@ -10,7 +10,7 @@
 [ext_resource type="PackedScene" path="res://addons/libreloaded/debug_hud/mover_switches_load.tscn" id="36_load"]
 [ext_resource type="PackedScene" uid="uid://bqm2tjc1181ek" path="res://addons/libreloaded/debug_hud/mover_switches_security.tscn" id="8_h5mje"]
 [ext_resource type="Script" uid="uid://bwbpde8e6vyk" path="res://addons/libreloaded/debug_hud/window.gd" id="9_window"]
-[ext_resource type="PackedScene" uid="uid://b1d2e3f4g5h6j" path="res://addons/libreloaded/minimap/mini_map.tscn" id="11_minimap"]
+[ext_resource type="PackedScene" uid="uid://b1d2e3f4g5h6j" path="res://addons/libreloaded/minimap/rail_mini_map.tscn" id="11_minimap"]
 [ext_resource type="PackedScene" uid="uid://dqg8w15j37q0" path="res://addons/libreloaded/debug_hud/mover_switches_controller.tscn" id="20_5crau"]
 [ext_resource type="PackedScene" uid="uid://cs3n2ry5tr34m" path="res://addons/libreloaded/scenery/scenery_streaming_panel.tscn" id="21_streaming"]
 [ext_resource type="PackedScene" path="res://addons/libreloaded/scenery/stations_panel.tscn" id="25_stations"]
@@ -232,7 +232,7 @@ script = ExtResource("9_window")
 title = "Mini Map"
 metadata/_custom_type_script = "uid://bwbpde8e6vyk"
 
-[node name="MiniMapControl" parent="MiniMap" unique_id=234941782 instance=ExtResource("11_minimap")]
+[node name="RailMiniMap" parent="MiniMap" unique_id=234941782 instance=ExtResource("11_minimap")]
 layout_mode = 2
 
 [node name="SceneryStreaming" type="Container" parent="." unique_id=609847832]
