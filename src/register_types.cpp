@@ -53,6 +53,7 @@
 #include "scenery/SoundData.hpp"
 #include "scenery/StationData.hpp"
 #include "scenery/TrainsetData.hpp"
+#include "scenery/TrainsetMemberData.hpp"
 #include "scenery/VehicleData.hpp"
 #include "scripting/ScenarioScriptAction.hpp"
 #include "scripting/ScenarioScriptCabinImplementation.hpp"
@@ -250,6 +251,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(SignalBoxData);
         GDREGISTER_CLASS(SoundData);
         GDREGISTER_CLASS(VehicleData);
+        GDREGISTER_CLASS(TrainsetMemberData);
         GDREGISTER_CLASS(TrainsetData);
         GDREGISTER_CLASS(CompiledScenery);
         GDREGISTER_CLASS(WorldLayer);

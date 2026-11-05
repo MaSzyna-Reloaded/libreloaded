@@ -27,6 +27,7 @@ namespace godot {
 
         public:
             static const char *vehicle_changed_signal;
+            static const char *trainset_placement_changed_signal;
 
         private:
             NodePath controller_path;
@@ -41,6 +42,10 @@ namespace godot {
             String start_track_name;
             double start_track_offset = 0.0;
             TrackServer::Direction start_direction = TrackServer::DIRECTION_NORMAL;
+            /* In a TrainSet3D: how far it stands behind the vehicle before it [m] - the `offset` of its
+             * `dynamic` - and how it couples to the next one */
+            double trainset_gap = 0.0;
+            RailVehicleController::CouplingMode trainset_coupling_mode = RailVehicleController::COUPLING_MODE_NONE;
             Ref<Material> head_display_material;
 
             /* The vehicle this node draws - the handle its VehiclePhysicsNode built, or the one it
@@ -110,6 +115,10 @@ namespace godot {
             double get_start_track_offset() const;
             void set_start_direction(TrackServer::Direction p_value);
             TrackServer::Direction get_start_direction() const;
+            void set_trainset_gap(double p_value);
+            double get_trainset_gap() const;
+            void set_trainset_coupling_mode(RailVehicleController::CouplingMode p_value);
+            RailVehicleController::CouplingMode get_trainset_coupling_mode() const;
             void set_head_display_material(const Ref<Material> &p_value);
             Ref<Material> get_head_display_material() const;
     };

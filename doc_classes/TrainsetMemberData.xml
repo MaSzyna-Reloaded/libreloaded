@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="TrainsetMemberData" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A vehicle of a trainset and how it stands in it.
+	</brief_description>
+	<description>
+		Which vehicle it is ([VehicleData]), which way it stands, how far behind the vehicle before it and how it couples to the next one - a [code]dynamic[/code] of a scenery's [code]trainset[/code] ([TrainsetData]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="coupling_mode" type="int" setter="set_coupling_mode" getter="get_coupling_mode" enum="RailVehicleController.CouplingMode" default="0">
+			How it couples to the next vehicle of the trainset - read from the scenery, changed by the player in an arranged trainset; the flags that takes are what [method RailVehicleController.coupling_mode_get_flags] gives of what the couplers of both allow, when the trainset is placed ([method RailVehicleServer.trainset_place]).
+		</member>
+		<member name="direction" type="int" setter="set_direction" getter="get_direction" enum="TrackServer.Direction" default="0">
+			Reversed in its trainset or not.
+		</member>
+		<member name="gap" type="float" setter="set_gap" getter="get_gap" default="0.0">
+			How far it stands behind the vehicle before it [m].
+		</member>
+		<member name="trainset_index" type="int" setter="set_trainset_index" getter="get_trainset_index" default="-1">
+			In a trainset as the player arranged it: its place in the trainset as the scenery declares it, front first, by which it is paired with its declared member; -1: a vehicle added to it.
+		</member>
+		<member name="vehicle" type="VehicleData" setter="set_vehicle" getter="get_vehicle">
+			Which vehicle it is.
+		</member>
+	</members>
+</class>

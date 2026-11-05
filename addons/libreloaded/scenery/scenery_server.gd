@@ -188,22 +188,27 @@ static func instantiate_trainsets(
     var placed:Array[TrainsetData] = []
     var tracks:Array[RID] = []
     var vehicles:Array[Array] = []
-    # the vehicles of each placed trainset, as this load arranges them (trainset_override)
-    var vehicle_data:Array[Array] = []
+    # the members of each placed trainset, as this load arranges them (trainset_override)
+    var member_data:Array[Array] = []
     for trainset_data:TrainsetData in trainsets:
         var track:RID = TrackServer.track_get_rid_by_name(trainset_data.track_name)
         if not track.is_valid():
             continue
         var trainset_vehicles:Array[RID] = []
-        var trainset_vehicle_data:Array[VehicleData] = trainset_data.get_arranged_vehicles(root.trainset_override)
-        for data:VehicleData in trainset_vehicle_data:
-            var vehicle:RID = VehicleCatalogServer.vehicle_create(data, root.get_instance_id())
+        var trainset_member_data:Array[TrainsetMemberData] = trainset_data.get_arranged_members(root.trainset_override)
+        for data:TrainsetMemberData in trainset_member_data:
+            var vehicle:RID = VehicleCatalogServer.vehicle_create(data.vehicle, root.get_instance_id())
+            # the trainset's velocity along the vehicle's own front: a reversed one starts with it
+            # negated, or it drives against its neighbours (DynObj.cpp:1989, 2019 `iDirection ? fVel : -fVel`)
+            VehicleServer.vehicle_set_initial_velocity(vehicle,
+                    -trainset_data.velocity if data.direction == TrackServer.DIRECTION_REVERSED
+                    else trainset_data.velocity)
             root._vehicle_rids.append(vehicle)
             trainset_vehicles.append(vehicle)
         placed.append(trainset_data)
         tracks.append(track)
         vehicles.append(trainset_vehicles)
-        vehicle_data.append(trainset_vehicle_data)
+        member_data.append(trainset_member_data)
     if placed.size() < trainsets.size():
         print("[SceneryLoad] %d trainsets on tracks that are not built (roads) left out" % (trainsets.size() - placed.size()))
 
@@ -239,7 +244,7 @@ static func instantiate_trainsets(
             if not RoadVehicleServer.vehicle_is_attached(vehicle):
                 rail_members.append(member)
                 continue
-            var road_data:VehicleData = vehicle_data[index][member]
+            var road_data:TrainsetMemberData = member_data[index][member]
             var length:float = VehicleServer.vehicle_get_dimensions(vehicle).z
             # the road laid along the track, its front toward the track's end unless reversed
             RoadVehicleServer.vehicle_set_road(
@@ -256,9 +261,9 @@ static func instantiate_trainsets(
         RailVehicleServer.trainset_set_player_drivable(trainset, trainset_data.player_drivable)
         RailVehicleServer.trainset_set_track(trainset, tracks[index], trainset_data.offset)
         for member:int in rail_members:
-            var data:VehicleData = vehicle_data[index][member]
+            var data:TrainsetMemberData = member_data[index][member]
             RailVehicleServer.trainset_add_vehicle(
-                    trainset, trainset_vehicles[member], data.direction, data.gap, data.coupling)
+                    trainset, trainset_vehicles[member], data.direction, data.gap, data.coupling_mode)
         RailVehicleServer.trainset_place(trainset)
         # the person at the controls of a vehicle just built - the one its provider seated there
         # (VehicleData.driver_type); the player takes a vehicle over only once the scenery is

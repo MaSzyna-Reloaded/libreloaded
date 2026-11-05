@@ -244,24 +244,32 @@ func _walk_mode_input(event:InputEvent) -> void:
     elif event.is_action_pressed("manual_brake_decrease", true, true):
         _send_to_nearest_train("manual_brake_decrease")
     elif event.is_action_pressed("coupler_connect", false, true):
-        _send_to_nearest_train("coupler_connect", free_view.global_position)
+        _send_to_nearest_coupler("coupler_connect")
     elif event.is_action_pressed("coupler_disconnect", false, true):
-        _send_to_nearest_train("coupler_disconnect", free_view.global_position)
+        _send_to_nearest_coupler("coupler_disconnect")
     # the adapter of the coupler nearest the walker (OnCommand_nearestcarcoupleradapterattach/remove,
     # Train.cpp:7799-7834)
     elif event.is_action_pressed("coupler_adapter_attach", false, true):
-        _send_to_nearest_train("coupler_adapter_attach", free_view.global_position)
+        _send_to_nearest_coupler("coupler_adapter_attach")
     elif event.is_action_pressed("coupler_adapter_remove", false, true):
-        _send_to_nearest_train("coupler_adapter_remove", free_view.global_position)
+        _send_to_nearest_coupler("coupler_adapter_remove")
     else:
         return
     get_viewport().set_input_as_handled()
 
 
-func _send_to_nearest_train(command:String, p1:Variant = null) -> void:
+func _send_to_nearest_train(command:String) -> void:
     var vehicle:RID = _find_nearest_vehicle()
     if vehicle.is_valid():
-        VehicleServer.vehicle_send_command(vehicle, command, p1)
+        VehicleServer.vehicle_send_command(vehicle, command)
+
+
+## A command of the nearest rail vehicle's end nearer to the walker
+func _send_to_nearest_coupler(command:String) -> void:
+    var vehicle:RID = _find_nearest_vehicle()
+    if RailVehicleServer.vehicle_is_attached(vehicle):
+        VehicleServer.vehicle_send_command(
+                vehicle, command, RailVehicleServer.coupler_get_nearest(vehicle, free_view.global_position))
 
 
 ## TTrain::find_nearest_consist_vehicle() (Train.cpp:1023) scans up to 1500 m for the vehicle

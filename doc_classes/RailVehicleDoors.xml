@@ -237,7 +237,7 @@
 		<method name="operate_doors">
 			<return type="void" />
 			<param index="0" name="state" type="bool" />
-			<param index="1" name="side" type="int" enum="RailVehicleDoors.Side" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
 			<description>
 				Open or close doors on the specified side
 			</description>
@@ -245,7 +245,7 @@
 		<method name="operate_doors_locally">
 			<return type="void" />
 			<param index="0" name="state" type="bool" />
-			<param index="1" name="side" type="int" enum="RailVehicleDoors.Side" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
 			<description>
 				Open or close the doors on the specified side with the vehicle's own door handle, as a passenger or the guard works it - nothing is sent along the trainset ([code]OperateDoors(range_t::local)[/code]). Commands [code]doors_left_local[/code], [code]doors_right_local[/code].
 			</description>
@@ -253,7 +253,7 @@
 		<method name="permit_doors">
 			<return type="void" />
 			<param index="0" name="state" type="bool" />
-			<param index="1" name="side" type="int" enum="RailVehicleDoors.Side" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
 			<description>
 				Permission to operate doors specified as an argument
 			</description>
@@ -400,13 +400,13 @@
 		<signal name="doors_closed">
 			<param index="0" name="side" type="int" />
 			<description>
-				The doors on [param side] ([enum Side]) came fully closed.
+				The doors on [param side] ([enum RailVehicleController.Side]) came fully closed.
 			</description>
 		</signal>
 		<signal name="doors_opened">
 			<param index="0" name="side" type="int" />
 			<description>
-				The doors on [param side] ([enum Side]) came fully open.
+				The doors on [param side] ([enum RailVehicleController.Side]) came fully open.
 			</description>
 		</signal>
 	</signals>
@@ -428,12 +428,6 @@
 		</constant>
 		<constant name="PLATFORM_TYPE_ROTATE" value="1" enum="PlatformType">
 			Platform animation rotate
-		</constant>
-		<constant name="SIDE_RIGHT" value="0" enum="Side">
-			Indicates that doors are on the right side of the train
-		</constant>
-		<constant name="SIDE_LEFT" value="1" enum="Side">
-			Indicates that doors are on the left side of the train
 		</constant>
 		<constant name="CONTROLS_PASSENGER" value="0" enum="Controls">
 			Doors are manually closed/opened, ignoring any remote commands

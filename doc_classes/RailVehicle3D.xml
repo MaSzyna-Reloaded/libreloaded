@@ -83,8 +83,19 @@
 		<member name="start_track_offset" type="float" setter="set_start_track_offset" getter="get_start_track_offset" default="0.0">
 			How far along [member start_track_name] the vehicle is placed [m].
 		</member>
+		<member name="trainset_coupling_mode" type="int" setter="set_trainset_coupling_mode" getter="get_trainset_coupling_mode" enum="RailVehicleController.CouplingMode" default="0">
+			In a [code]TrainSet3D[/code]: how it couples to the next vehicle ([method RailVehicleServer.trainset_add_vehicle]); moved to another place in the trainset, the vehicle keeps it.
+		</member>
+		<member name="trainset_gap" type="float" setter="set_trainset_gap" getter="get_trainset_gap" default="0.0">
+			In a [code]TrainSet3D[/code]: how far it stands behind the vehicle before it [m] - the [code]offset[/code] of its [code]dynamic[/code]; none when it stands reversed; moved to another place in the trainset, the vehicle keeps it, as a [code].scn[/code] writes it with the vehicle.
+		</member>
 	</members>
 	<signals>
+		<signal name="trainset_placement_changed">
+			<description>
+				How it stands in its [code]TrainSet3D[/code] has changed - its [member start_direction], [member trainset_gap] or [member trainset_coupling_mode].
+			</description>
+		</signal>
 		<signal name="vehicle_changed">
 			<description>
 				The vehicle this node draws has changed - it has one now, or a different one.

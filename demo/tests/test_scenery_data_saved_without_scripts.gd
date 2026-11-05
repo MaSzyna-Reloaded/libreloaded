@@ -29,7 +29,9 @@ func _scenery() -> CompiledScenery:
     var vehicle:VehicleData = VehicleData.new()
     vehicle.vehicle_id = VEHICLE_ID
     vehicle.driver_type = VehicleData.DRIVER_HEAD
-    trainset.vehicles.append(vehicle)
+    var member:TrainsetMemberData = TrainsetMemberData.new()
+    member.vehicle = vehicle
+    trainset.members.append(member)
     compiled.trainsets.append(trainset)
     compiled.traction.append(TractionData.new())
     compiled.power_sources.append(PowerSourceData.new())
@@ -48,7 +50,7 @@ func test_saved_it_names_its_classes_and_no_script() -> void:
     assert_false(text.contains(".gd"), "no script's path")
     assert_false(text.contains("type=\"Script\""), "no script at all")
     for type:String in ["CompiledScenery", "TrackData", "TrackCurve", "ModelData", "SignalHeadKind", "TrainsetData",
-            "VehicleData", "TractionData", "PowerSourceData", "LinesData", "SoundData", "StationData", "SignalBoxData"]:
+            "TrainsetMemberData", "VehicleData", "TractionData", "PowerSourceData", "LinesData", "SoundData", "StationData", "SignalBoxData"]:
         assert_true(text.contains("type=\"%s\"" % type), "%s by its class name" % type)
 
 

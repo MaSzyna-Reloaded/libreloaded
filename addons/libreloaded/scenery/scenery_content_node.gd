@@ -44,11 +44,11 @@ var _editor_dirty:bool = false
 const SceneryEditor = preload("res://addons/libreloaded/editor/scenery_toolbar/scenery_editor.gd")
 
 @export var autoload:bool = true
-## The vehicles of one trainset as the player arranged them for this load (the scenery
+## The members of one trainset as the player arranged them for this load (the scenery
 ## selector), front first, each declared one with its place in the declared trainset -
-## TrainsetData.get_arranged_vehicles(). The scenery cache holds what the scenery declares; this
+## TrainsetData.get_arranged_members(). The scenery cache holds what the scenery declares; this
 ## only replaces it for this load. Empty: the trainsets as declared.
-@export var trainset_override:Array[VehicleData] = []
+@export var trainset_override:Array[TrainsetMemberData] = []
 
 ## Off by default: loaded content gets no owner and stays unselectable in the editor (matches
 ## the model nodes' own default). A plugin's editor tool switches it on to make the content

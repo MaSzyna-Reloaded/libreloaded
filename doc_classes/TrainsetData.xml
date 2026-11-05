@@ -9,11 +9,11 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_arranged_vehicles" qualifiers="const">
-			<return type="VehicleData[]" />
-			<param index="0" name="arranged" type="VehicleData[]" />
+		<method name="get_arranged_members" qualifiers="const">
+			<return type="TrainsetMemberData[]" />
+			<param index="0" name="arranged" type="TrainsetMemberData[]" />
 			<description>
-				Its vehicles as [param arranged] lists them (a scenery's trainset_override) when every declared vehicle there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared vehicle by its place ([member VehicleData.trainset_index]); a declared vehicle becomes the entry's vehicle, turned its way, its crew and load kept; an added one gets the velocity of the vehicle before it, nobody aboard, no load, no gap, an id of its own and no name. The couplings are the places'.
+				Its members as [param arranged] lists them (a scenery's trainset_override) when every declared member there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared member by its place ([member TrainsetMemberData.trainset_index]); a declared member becomes the entry's vehicle, turned its way, its crew, load and gap kept; an added one is a copy of the vehicle before it with nobody aboard, no load, no gap, an id of its own and no name. Each couples to the next by the entry's [member TrainsetMemberData.coupling_mode] - the one the arrangement shows and the player chose.
 			</description>
 		</method>
 		<method name="get_driver_vehicle" qualifiers="const">
@@ -33,6 +33,9 @@
 		<member name="description" type="String" setter="set_description" getter="get_description" default="&quot;&quot;">
 			What the scenario says the train is to do.
 		</member>
+		<member name="members" type="TrainsetMemberData[]" setter="set_members" getter="get_members" default="[]">
+			Its vehicles and how they stand, front first.
+		</member>
 		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
 			Its name - the resource's own ([member Resource.resource_name]); empty for a vehicle outside a trainset.
 		</member>
@@ -48,11 +51,8 @@
 		<member name="track_name" type="String" setter="set_track_name" getter="get_track_name" default="&quot;&quot;">
 			The track its front stands on.
 		</member>
-		<member name="vehicles" type="VehicleData[]" setter="set_vehicles" getter="get_vehicles" default="[]">
-			Its vehicles, front first.
-		</member>
 		<member name="velocity" type="float" setter="set_velocity" getter="get_velocity" default="0.0">
-			The velocity it starts with - its driver's first order.
+			The velocity it starts with [km/h], along the track - its driver's first order; a reversed vehicle starts with it negated.
 		</member>
 	</members>
 </class>

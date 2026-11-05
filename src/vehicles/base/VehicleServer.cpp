@@ -64,6 +64,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("vehicle_set_initial_velocity", "vehicle", "velocity"),
                 &VehicleServer::vehicle_set_initial_velocity);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_initial_velocity", "vehicle"), &VehicleServer::vehicle_get_initial_velocity);
         ClassDB::bind_method(D_METHOD("vehicle_set_id", "vehicle", "id"), &VehicleServer::vehicle_set_id);
         ClassDB::bind_method(D_METHOD("vehicle_get_id", "vehicle"), &VehicleServer::vehicle_get_id);
         ClassDB::bind_method(D_METHOD("vehicle_get_rid_by_id", "id"), &VehicleServer::vehicle_get_rid_by_id);
@@ -347,6 +349,12 @@ namespace godot {
     uint64_t VehicleServer::vehicle_get_controller_instance_id(const RID &p_vehicle) const {
         const VehicleController *controller = _get_controller(p_vehicle);
         return controller != nullptr ? controller->get_instance_id() : 0;
+    }
+
+    double VehicleServer::vehicle_get_initial_velocity(const RID &p_vehicle) const {
+        const Vehicle *vehicle = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(vehicle, 0.0);
+        return vehicle->initial_velocity;
     }
 
     void VehicleServer::vehicle_set_initial_velocity(const RID &p_vehicle, const double p_velocity) {
