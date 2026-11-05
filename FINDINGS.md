@@ -327,6 +327,9 @@ anything. Open work belongs in `TODO.md`.
   announced to nobody. *(10-05 cab change in RailVehicleServer)*
 
 ## Godot / GDExtension
+* A view of the world (a map) asks a server only for what is around the view, keeps it in world
+  space and draws it in one batch through the view's transform - never a node per item of the
+  world, never all of them walked per frame. *(11-05 the minimap that made a slideshow)*
 * A mesh drawn far from the world's origin keeps its vertices relative to its instance's origin:
   the double build passes only the instance's origin in double precision, and vertices in the
   world's coordinates shake by millimetres as the camera moves. *(10-30 the tracks that shook)*

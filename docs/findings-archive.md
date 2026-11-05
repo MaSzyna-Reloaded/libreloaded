@@ -4,6 +4,25 @@ The full entries behind the rules in `FINDINGS.md`: the symptom, what proved the
 and the rule. Headings keep their date and title, because comments in the code cite them
 (`see FINDINGS.md, 2026-09-23`). Open work belongs in `TODO.md`, not here.
 
+## 2026-11-05 - The minimap that made a slideshow
+
+* **Symptom:** the Mini Map window turned the game into a slideshow on Wrzosy (EP07-1024,
+  MaSzyna-Reloaded/reports#20).
+* **What showed it:** the GDScript `mini_map.gd`: `_sync_switch_handles()` walked
+  `TrackServer.track_get_rids()` - every track of the world - and kept a `Control` child for
+  every switch of the world, moved on every frame the camera moved (always, in a moving train);
+  `_draw()` sampled two Béziers of 17 points and drew a name for every track in view, in GDScript,
+  every frame; `VehicleServer.vehicle_moved` ran a GDScript handler per vehicle and sub-step,
+  hidden or not; every vehicle in view was marked and named.
+* **Fix:** `RailMiniMap`, a C++ `Control`: the tracks around the view asked for
+  (`tracks_find_in_aabb()`) only when the view leaves them, their lines sampled once in world
+  space and drawn in two `draw_multiline()` batches through the view's transform; the switch
+  handles drawn, a click found among the handles in view; the vehicles drawn every 0.1 s, only
+  those with a crew or a cabin; nothing processed while hidden.
+* **Rule:** a view of the world asks a server only for what is around the view, keeps it in world
+  space and draws it in one batch through the view's transform - never a node per item of the
+  world, never all of them walked per frame.
+
 ## 2026-10-24 - Servers looked up by name
 
 * **Symptom:** Wrzosy at 15 fps standing (profiling build, gamescope headless, 1920x1080), a

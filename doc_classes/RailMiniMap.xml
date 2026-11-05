@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RailMiniMap" inherits="Control" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A map of the rails around the camera, seen from above.
+	</brief_description>
+	<description>
+		Draws the tracks of [TrackServer] around the active [Camera3D], turned with it while [member follow_camera_rotation] is on: the active branch of each switch in [member switch_active_color], a handle at each switch that a click throws (its name and state as the tooltip), and the rail vehicles of [RailVehicleServer] with somebody aboard or a cabin to drive from, each marked and named. Other vehicles are not drawn. Track names are drawn from a zoom of 2 px/m, switch handles from 0.5 px/m.
+		The tracks' lines are taken once and drawn in one batch through the view's transform; only the tracks around the view are asked for, again when the view leaves them or the tracks change. Hidden, it neither draws nor processes. Being a [Control], it can stand in a HUD window or anywhere in a HUD ([code]addons/libreloaded/minimap/rail_mini_map.tscn[/code] adds the zoom buttons).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="zoom_in">
+			<return type="void" />
+			<description>
+				Zooms in by a step of 1.2.
+			</description>
+		</method>
+		<method name="zoom_out">
+			<return type="void" />
+			<description>
+				Zooms out by a step of 1.2.
+			</description>
+		</method>
+		<method name="zoom_reset">
+			<return type="void" />
+			<description>
+				Sets [member zoom] back to 1 px/m.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="background_color" type="Color" setter="set_background_color" getter="get_background_color" default="Color(0, 0, 0, 0.5)">
+			The colour the map is filled with under the tracks.
+		</member>
+		<member name="follow_camera_rotation" type="bool" setter="set_follow_camera_rotation" getter="get_follow_camera_rotation" default="true">
+			If [code]true[/code], the map turns with the camera's yaw; otherwise north stays up.
+		</member>
+		<member name="label_color" type="Color" setter="set_label_color" getter="get_label_color" default="Color(1, 1, 0, 1)">
+			The colour of the track names.
+		</member>
+		<member name="switch_active_color" type="Color" setter="set_switch_active_color" getter="get_switch_active_color" default="Color(1, 1, 0, 1)">
+			The colour of the branch a switch is set to, and of the switch handle under the mouse.
+		</member>
+		<member name="track_color" type="Color" setter="set_track_color" getter="get_track_color" default="Color(1, 1, 1, 1)">
+			The colour of the tracks.
+		</member>
+		<member name="vehicle_color" type="Color" setter="set_vehicle_color" getter="get_vehicle_color" default="Color(0, 1, 0, 1)">
+			The colour of the vehicles' markers and names.
+		</member>
+		<member name="zoom" type="float" setter="set_zoom" getter="get_zoom" default="1.0">
+			How many pixels a meter of the world takes on the map.
+		</member>
+	</members>
+</class>

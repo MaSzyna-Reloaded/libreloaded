@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://b1d2e3f4g5h6j"]
+
+[node name="RailMiniMap" type="RailMiniMap" unique_id=471890477]
+clip_contents = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ZoomButtons" type="HBoxContainer" parent="." unique_id=782607786]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -60.0
+offset_bottom = 31.0
+grow_horizontal = 0
+
+[node name="BtnZoomIn" type="Button" parent="ZoomButtons" unique_id=1354612765]
+layout_mode = 2
+focus_mode = 0
+text = "+"
+
+[node name="BtnZoomOut" type="Button" parent="ZoomButtons" unique_id=1555153075]
+layout_mode = 2
+focus_mode = 0
+text = "-"
+
+[node name="BtnReset" type="Button" parent="ZoomButtons" unique_id=861133088]
+layout_mode = 2
+focus_mode = 0
+text = "R"
+
+[connection signal="pressed" from="ZoomButtons/BtnZoomIn" to="." method="zoom_in"]
+[connection signal="pressed" from="ZoomButtons/BtnZoomOut" to="." method="zoom_out"]
+[connection signal="pressed" from="ZoomButtons/BtnReset" to="." method="zoom_reset"]
