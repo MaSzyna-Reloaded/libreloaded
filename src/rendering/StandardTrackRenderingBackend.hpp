@@ -11,21 +11,18 @@
 #include <godot_cpp/variant/typed_array.hpp>
 
 namespace godot {
-    /* The core's tracks: what a TrackData says, drawn with the renderer's own assets
-     * (TrackRenderingLook, LOOK_SETTING). A rail track is two rails on a bed of its kind - a ballast
-     * prism, a slab, or a street the rails are embedded in - over its formation, banked or cut as
-     * its formation_* say, with its sleepers (TrackData.sleeper_*) in MultiMesh chunks near the
-     * camera; a road its carriageway and shoulders. Each curve of a switch is drawn as a track of its
-     * own, on the common curve's sleepers; the blades are not drawn. */
+    /* The core's tracks: what a TrackData says, drawn with the look its owner gives it
+     * (TrackRenderingLook, track_set_look() - none, bare surfaces). A rail track is two rails on a
+     * bed of its kind - a ballast prism, a slab, or a street the rails are embedded in - over its
+     * formation, banked or cut as its formation_* say, with its sleepers (TrackData.sleeper_*) in
+     * MultiMesh chunks near the camera; a road its carriageway and shoulders. Each curve of a switch
+     * is drawn as a track of its own, on the common curve's sleepers; the blades are not drawn. */
     class StandardTrackRenderingBackend : public TrackRenderingBackend {
             GDCLASS(StandardTrackRenderingBackend, TrackRenderingBackend)
 
         public:
             /// Its name with TrackRenderingServer, the default backend's
             static constexpr const char *NAME = "standard";
-            /// The look the tracks are drawn with, by its path
-            static constexpr const char *LOOK_SETTING = "reloaded/tracks/look";
-            static constexpr const char *DEFAULT_LOOK = "res://addons/libreloaded/tracks/track_look.tres";
 
             /// A curve is drawn in sections this far apart [m], a straight one in sections of up to
             /// STRAIGHT_SEGMENT_LENGTH
@@ -78,6 +75,8 @@ namespace godot {
                     Ref<TrackData> description;
                     RID scenario;
                     bool visible = true;
+                    /// What it is drawn with (track_set_look()); none - bare surfaces
+                    Ref<TrackRenderingLook> look;
                     /// The RenderingServer instance while the track is built
                     RID instance;
                     Ref<ArrayMesh> mesh;
@@ -103,7 +102,6 @@ namespace godot {
             };
 
             RIDMap<Track> tracks;
-            Ref<TrackRenderingLook> look;
             /// The base sleeper of each kind, for a kind the look gives no mesh of
             HashMap<int, Ref<ArrayMesh>> base_sleepers;
 
@@ -126,11 +124,12 @@ namespace godot {
             static void
             _sweep(const Vector<Frame> &p_frames, const PackedVector2Array &p_points, const Ref<Material> &p_material,
                    Vector<Surface> &p_surfaces);
-            void _add_rail_track(
-                    const Vector<Frame> &p_frames, const TrackData &p_description, double p_bed_drop,
-                    Vector<Surface> &p_surfaces) const;
-            void
-            _add_road(const Vector<Frame> &p_frames, const TrackData &p_description, Vector<Surface> &p_surfaces) const;
+            static void _add_rail_track(
+                    const Vector<Frame> &p_frames, const TrackData &p_description,
+                    const Ref<TrackRenderingLook> &p_look, double p_bed_drop, Vector<Surface> &p_surfaces);
+            static void _add_road(
+                    const Vector<Frame> &p_frames, const TrackData &p_description,
+                    const Ref<TrackRenderingLook> &p_look, Vector<Surface> &p_surfaces);
 
         protected:
             static void _bind_methods();
@@ -144,6 +143,7 @@ namespace godot {
             void track_set_description(const RID &p_track_render, const Ref<TrackData> &p_description) override;
             void track_set_visible(const RID &p_track_render, bool p_visible) override;
             void track_set_scenario(const RID &p_track_render, const RID &p_scenario) override;
+            void track_set_look(const RID &p_track_render, const Ref<Resource> &p_look) override;
             void track_set_switch_blade_offsets(const RID &p_track_render, double p_offset1, double p_offset2) override;
             bool track_stream(const RID &p_track_render) override;
             void track_build(const RID &p_track_render) override;

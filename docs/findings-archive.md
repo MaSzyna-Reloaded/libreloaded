@@ -4999,6 +4999,24 @@ lighting or the trainset.
 * **Rule:** a value the original gives "along the vehicle" (velocity, the Mover's V) is signed by
   the vehicle's own direction on the track; a reversed vehicle takes it negated.
 
+## 2026-10-28 A strip of fog under the horizon
+
+* **Symptom:**
+  - At sunset with a fog of 100% reaching 5-25 km, a flat strip of the fog's colour stood between
+    the terrain and the sky, brighter towards the sun; the fog itself was barely seen anywhere else.
+* **What proved it:**
+  - Render probes of the pro sky (sunset, sun 3° up, fog 100% / 25 km): over a ground reaching
+    30 km from 4 m up only a thin line; from 150 m up over a world ending 3 km away a strip
+    between its edge and the horizon - and none with `fog_sky_horizon_curve` 0.
+  - The sky's horizon band (`SkyEnvironment.FOG_HORIZON_HEIGHT`, gnd-skydome's
+    `fog_sky_horizon_*`) took the fog in full everywhere below its height, under the horizon too
+    (the shader clamped the elevation to 0.001). A scenery ends a few kilometres away, so from a
+    hill the sky shows under the horizon - drawn in the fog's colour while the terrain at the
+    world's end, 3 km into a 25 km fog, takes about 1% of it.
+* **Fix:** the band is gone - libreloaded's constants and `get_fog_horizon_height()`, the game's
+  backend lines, gnd-skydome's properties and shader code.
+* **Rule:** a sky effect standing in for what geometry at a distance would take covers only the
+  sky where that geometry stands; the sky under the horizon is seen wherever the world ends first.
 
 ## 2026-10-30 The tracks that shook
 

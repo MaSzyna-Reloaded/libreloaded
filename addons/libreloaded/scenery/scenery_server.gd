@@ -285,7 +285,7 @@ static func _instantiate_infrastructure(
     var built_count:int = 0
     var track_rids:Array[RID] = []
     for track_data:TrackData in compiled.tracks:
-        var built:Dictionary = build_track(track_data, world_3d)
+        var built:Dictionary = build_track(track_data, world_3d, root.track_looks)
         root._track_rids.append(built["track_rid"])
         track_rids.append(built["track_rid"])
         root._track_render_rids.append(built["track_render_rid"])
@@ -396,16 +396,19 @@ static func run_on_worker(
 ## _update_track_rendering() (addons/libreloaded/tracks/track_normal_3d.gd,
 ## track_switch_3d.gd), minus the Node - see instantiate()'s doc comment for why. The rendering
 ## meshes are not built here: track_stream() leaves that to SceneryStreamingServer.
-static func build_track(track_data:TrackData, world_3d:World3D) -> Dictionary:
+static func build_track(track_data:TrackData, world_3d:World3D, looks:Dictionary) -> Dictionary:
     var track_rid:RID = TrackServer.track_create()
     var track_render_rid:RID = TrackRenderingServer.track_create(track_rid)
     TrackRenderingServer.track_set_scenario(track_render_rid, world_3d.scenario)
+    # before its description, which its backend reads the look by
+    TrackRenderingServer.track_set_looks(track_render_rid, looks)
 
     TrackServer.track_update_curves(track_rid, track_data.curve, track_data.diverging_curve)
     TrackServer.track_update(track_rid, track_data.kind, track_data.name, track_data.width)
     TrackServer.track_update_properties(track_rid, track_data.damage, track_data.friction, track_data.joint_spacing)
     TrackServer.track_set_velocity(track_rid, track_data.speed_limit)
     TrackServer.track_set_meta(track_rid, track_data.meta)
+    TrackServer.track_set_covered(track_rid, track_data.structure == TrackData.STRUCTURE_TUNNEL)
 
     TrackRenderingServer.track_set_description(track_render_rid, track_data)
     TrackRenderingServer.track_set_visible(track_render_rid, track_data.visible)

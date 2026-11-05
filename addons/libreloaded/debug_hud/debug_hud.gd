@@ -16,10 +16,12 @@ signal windows_visibility_changed(shown: bool)
     set(value):
         environment = value
         if is_node_ready():
-            %WeatherControls.attach_environment(environment)
+            _attach_environment()
 
 ## Menu order snapshot - HUDWindow.move_to_front() reorders the children.
 var _windows: Array[HUDWindow] = []
+## The menu fill_menu() filled: its entries' windows are their metadata
+var _menu: PopupMenu = null
 ## The menu entry of the developer console (Console), after the windows
 var _console_index: int = -1
 ## Whether the last windows_toggle() showed the windows
@@ -32,21 +34,64 @@ func _ready() -> void:
         var win: HUDWindow = child as HUDWindow
         win.visible = false
         _windows.append(win)
-    %WeatherControls.attach_environment(environment)
+    _attach_environment()
 
 
 func _exit_tree() -> void:
     PlayerServer.player_vehicle_changed.disconnect(_on_player_vehicle_changed)
 
 
-## The windows and the developer console as entries of `menu`, with their keys; the menu is
-## expected empty, its first entries' indices are this node's
+## A game's own window in place of one of these (its own weather window), by its name: in its place
+## among them, its menu entry and the toggles, with its toggle action unless it has its own; the one
+## replaced freed. A window with attach_environment() is handed the environment, as the weather
+## window is.
+func window_replace(window_name: StringName, window: HUDWindow) -> void:
+    var old: HUDWindow = get_node_or_null(NodePath(window_name)) as HUDWindow
+    if not old:
+        return
+    var index: int = _windows.find(old)
+    var child_index: int = old.get_index()
+    remove_child(old)
+    old.queue_free()
+    window.name = window_name
+    window.visible = old.visible
+    if window.toggle_action.is_empty():
+        window.toggle_action = old.toggle_action
+    add_child(window)
+    move_child(window, child_index)
+    _windows[index] = window
+    if _menu:
+        for entry: int in _menu.item_count:
+            if _menu.get_item_metadata(entry) == old:
+                _menu.set_item_metadata(entry, window)
+                _menu.set_item_text(entry, window.title)
+                if not window.toggle_action.is_empty():
+                    _menu.set_item_shortcut(entry, ActionShortcut.create(window.toggle_action))
+    _attach_environment()
+
+
+## The weather window's environment - this scene's own window's controls, or a game's window in its
+## place (window_replace())
+func _attach_environment() -> void:
+    var weather: Node = get_node_or_null(^"WeatherAndTime")
+    if weather and weather.has_method(&"attach_environment"):
+        weather.attach_environment(environment)
+    elif weather:
+        %WeatherControls.attach_environment(environment)
+
+
+## The windows and the developer console as entries of `menu`, with their keys: a window's entry
+## carries its window (its metadata), so entries others add before or after are theirs
 func fill_menu(menu: PopupMenu) -> void:
+    _menu = menu
+    # an entry a window, its window its metadata and its key its toggle action (the Tab of the mini
+    # map as the original's map panel, driveruilayer.cpp:136)
     for win: HUDWindow in _windows:
         menu.add_item(win.title)
-    menu.set_item_shortcut(_windows.find($WeatherAndTime), ActionShortcut.create(&"toggle_weather_controls"))
-    # Tab, as the original's map panel (driveruilayer.cpp:136)
-    menu.set_item_shortcut(_windows.find($MiniMap), ActionShortcut.create(&"minimap_toggle"))
+        var entry: int = menu.item_count - 1
+        menu.set_item_metadata(entry, win)
+        if not win.toggle_action.is_empty():
+            menu.set_item_shortcut(entry, ActionShortcut.create(win.toggle_action))
     menu.add_separator()
     menu.add_item("Developer console")
     _console_index = menu.item_count - 1
@@ -59,9 +104,11 @@ func menu_index_pressed(index: int) -> void:
     if index == _console_index:
         Console.toggle_console()
         return
-    if index >= _windows.size():
+    if not _menu or index < 0 or index >= _menu.item_count:
         return
-    var win: HUDWindow = _windows[index]
+    var win: HUDWindow = _menu.get_item_metadata(index) as HUDWindow
+    if not win or not _windows.has(win):
+        return
     win.visible = not win.visible
     _propagate_vehicle(win, PlayerServer.player_get_vehicle())
 

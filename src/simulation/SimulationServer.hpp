@@ -25,7 +25,7 @@ namespace godot {
                 WEATHER_SNOW,
             };
 
-            /* The season of the year, by the day of it (SEASON_*_LAST_DAY) */
+            /* The season of the year, as the weather has it at the place and the date (season_set()) */
             enum Season {
                 SEASON_WINTER,
                 SEASON_SPRING,
@@ -81,12 +81,15 @@ namespace godot {
             /* Global.fFriction: the scenery's rail friction multiplier (Globals.h:95) */
             double friction = DEFAULT_FRICTION;
             Weather weather = WEATHER_CLEAR;
+            /* The rails' grip a weather simulation works out of its weather; below 0 the weather's
+               own (simulation_get_weather_friction_factor()) */
+            double weather_friction_factor = WEATHER_FRICTION_OF_WEATHER;
             /* 0-1, how hard it rains or snows */
             double precipitation = 0.0;
             /* [m/s], and the horizontal unit vector it blows along */
             double wind_speed = 0.0;
             Vector3 wind_direction = Vector3(1.0, 0.0, 0.0);
-            /* Computed from the date, never set (_update_season()) */
+            /* The weather's, read-only to everyone else (season_set()) */
             Season season = SEASON_SUMMER;
             double air_temperature = DEFAULT_AIR_TEMPERATURE;
             /* The time of day and the date follow the system's clock instead of the simulation's */
@@ -108,7 +111,6 @@ namespace godot {
             /* The light level of the sun where and when it is, dimmed by the clouds; announced on a
              * change */
             void _update_light_level();
-            void _update_season();
             /// The day of the year of the date, 1 on the 1st of January
             int _get_day_of_year() const;
 
@@ -136,14 +138,8 @@ namespace godot {
             static const char *light_level_changed_signal;
             /// The weather, the precipitation or the wind changed
             static const char *weather_changed_signal;
-            /// The date reached another season
+            /// The weather reached another season (season_set())
             static const char *season_changed_signal;
-            /// The last day of the year of each season but the second winter - the year's day the
-            /// materials of the scenery change their season at
-            static constexpr int SEASON_WINTER_LAST_DAY = 65;
-            static constexpr int SEASON_SPRING_LAST_DAY = 158;
-            static constexpr int SEASON_SUMMER_LAST_DAY = 252;
-            static constexpr int SEASON_AUTUMN_LAST_DAY = 341;
             /// Sun altitude [deg] between which the light level ramps from night to full day. The
             /// original lights a scenery light set to "on when dark" below a light level of 0.325
             /// (AnimModel.cpp:598), which on this ramp falls at about 1.4 degrees below the
@@ -169,6 +165,8 @@ namespace godot {
             /* Global.FrictionWeatherFactor of rain and of snow (simulationenvironment.cpp:198-201) */
             static constexpr double RAIN_FRICTION_FACTOR = 0.85;
             static constexpr double SNOW_FRICTION_FACTOR = 0.75;
+            /* weather_friction_factor: none set, the weather's own */
+            static constexpr double WEATHER_FRICTION_OF_WEATHER = -1.0;
             static constexpr double DEFAULT_AIR_TEMPERATURE = 15.0;
 
             static SimulationServer *get_instance() {
@@ -247,11 +245,18 @@ namespace godot {
             void set_wind(double p_speed, const Vector3 &p_direction);
             double get_wind_speed() const;
             Vector3 get_wind_direction() const;
-            /// The season of the date
+            /// The season, as the weather that draws the environment works it out from the place and
+            /// the date (its season changed): the scenery's materials take their seasons by it
+            void season_set(Season p_season);
             Season get_season() const;
             /// The rails' friction under the weather: wet and snowy rails grip less
-            /// (Global.FrictionWeatherFactor, simulationenvironment.cpp:198-201)
+            /// (Global.FrictionWeatherFactor, simulationenvironment.cpp:198-201) - or as a weather
+            /// simulation set it (weather_friction_factor)
             double simulation_get_weather_friction_factor() const;
+            /// The rails' grip a weather simulation works out of its weather - a rain's onset on a
+            /// dirty rail, a drizzle, glaze ice, leaves; below 0 the weather's own
+            void set_weather_friction_factor(double p_factor);
+            double get_weather_friction_factor() const;
             void set_use_system_time(bool p_use);
             bool get_use_system_time() const;
             /// The time of day, the date, the location, the cloud cover and the temperature back to

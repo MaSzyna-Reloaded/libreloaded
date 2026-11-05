@@ -154,6 +154,30 @@ msgstr "visszapillantó tükrök"
 msgid "radio call 1"
 msgstr "hívójel 1"
 
+msgid "wiper 1 handle"
+msgstr "ablaktörlő fogantyú 1"
+
+msgid "wiper 2 handle"
+msgstr "ablaktörlő fogantyú 2"
+
+msgid "wiper 3 handle"
+msgstr "ablaktörlő fogantyú 3"
+
+msgid "wiper 4 handle"
+msgstr "ablaktörlő fogantyú 4"
+
+msgid "wiper 1 valve"
+msgstr "1. ablaktörlő szelep"
+
+msgid "wiper 2 valve"
+msgstr "2. ablaktörlő szelep"
+
+msgid "wiper 3 valve"
+msgstr "3. ablaktörlő szelep"
+
+msgid "wiper 4 valve"
+msgstr "4. ablaktörlő szelep"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "Állomások"

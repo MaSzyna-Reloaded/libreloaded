@@ -57,6 +57,20 @@
 				The exterior model as [ModelRenderingServer] draws it.
 			</description>
 		</method>
+		<method name="vehicle_get_snow" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				How much snow lies on the vehicle, 0-1, as [method vehicle_set_snow] last told.
+			</description>
+		</method>
+		<method name="vehicle_get_wiper_sweeps" qualifiers="const">
+			<return type="PackedVector4Array" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The wipers of the vehicle's exterior model, three vectors each in the model's frame: where its arm turns about and how long the arm is ([code]x, y, z; w[/code]), which way it points at rest and the most it turns away from there ([code]x, y, z; w[/code], radians, signed about the axis), and the axis it turns about ([code]x, y, z[/code]). Empty while its model is not built, or for a kind that knows of no wipers.
+			</description>
+		</method>
 		<method name="vehicle_get_transform" qualifiers="const">
 			<return type="Transform3D" />
 			<param index="0" name="vehicle" type="RID" />
@@ -117,6 +131,22 @@
 				The material the vehicle's head display is drawn with.
 			</description>
 		</method>
+		<method name="vehicle_set_snow">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="snow" type="float" />
+			<description>
+				How much snow lies on the vehicle, 0-1, told by whoever simulates the weather - nothing here gathers or melts it. It is drawn with the vehicle's snow material ([method vehicle_set_snow_material]) while the vehicle is drawn in detail.
+			</description>
+		</method>
+		<method name="vehicle_set_snow_material">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="material" type="ShaderMaterial" />
+			<description>
+				What the snow on the vehicle is drawn with, given by whoever builds it (its scenery's [code]vehicle_snow_material[/code]) once it is attached: the snow drawn is a copy of it. Without one no snow is drawn. The server loads none of its own.
+			</description>
+		</method>
 		<method name="vehicle_set_models">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
@@ -132,6 +162,15 @@
 			<param index="1" name="scenario" type="RID" />
 			<description>
 				The world the vehicle's scene node is in, an empty RID out of it: the models this server built for [param vehicle] are drawn there - the node's [constant Node3D.NOTIFICATION_ENTER_WORLD]/[constant Node3D.NOTIFICATION_EXIT_WORLD], as [VisualInstance3D]'s.
+			</description>
+		</method>
+		<method name="vehicle_set_shader_parameter">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="name" type="StringName" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				A per-instance uniform of the shaders of the vehicle's exterior and its attachments ([code]instance uniform[/code]), by whoever draws more on it - the vehicle's own value of a material its kind shares. Kept while its models are built again; [code]null[/code] takes it off.
 			</description>
 		</method>
 		<method name="vehicle_set_shown_cabin">

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="UserSettingsFileProvider" inherits="UserSettingsProvider" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Settings added to the game's own, from a file.
+	</brief_description>
+	<description>
+		The sections of a JSON file of the game's settings' format ([code]{"sections": [...]}[/code]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="path" type="String" setter="set_path" getter="get_path" default="&quot;&quot;">
+			The file's path.
+		</member>
+	</members>
+</class>

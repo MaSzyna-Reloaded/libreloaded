@@ -132,6 +132,8 @@ namespace godot {
             _hit(const Pickable &p_pickable, const Vector3 &p_from, const Vector3 &p_to, double &p_r_distance,
                  Vector3 &p_r_point);
             void _set_outline(const RID &p_control, bool p_outlined);
+            /// The outline of a part of a control, as wide in metres whatever the mesh's scale
+            Ref<Material> _outline_of(const MeshInstance3D &p_mesh, bool p_small) const;
             /// The control under the cursor, or failing that the one whose middle lies within
             /// PICK_TOLERANCE_PIXELS of it and is not hidden there
             RID _pick(const Vector2 &p_position, Vector3 &p_r_point) const;

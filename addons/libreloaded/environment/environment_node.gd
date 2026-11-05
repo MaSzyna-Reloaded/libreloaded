@@ -165,9 +165,18 @@ const MAX_SIMULATION_SPEED: float = 100.0
         precipitation = value
         _dirty_visuals = true
 
+## The ground starts under snow in winter, if the air is cold enough to keep it - the original's
+## sceneries (SceneryContentNode), whose winter textures are snowed in
+@export var winter_snow_cover: bool = false:
+    set(value):
+        winter_snow_cover = value
+        _dirty_visuals = true
+
 @export_range(-15.0, 45.0, 0.1, "suffix:°C") var temperature: float = 15.0:
     set(value):
         SimulationServer.air_temperature = value
+        # what falls - snow, sleet or rain - follows it
+        _dirty_visuals = true
     get:
         return SimulationServer.air_temperature
 

@@ -2,9 +2,7 @@
 
 #include "tracks/TrackServer.hpp"
 
-#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 #include <initializer_list>
@@ -34,13 +32,10 @@ namespace godot {
     }
 
     StandardTrackRenderingBackend::StandardTrackRenderingBackend() {
-        const String path = ProjectSettings::get_singleton()->get_setting(LOOK_SETTING, DEFAULT_LOOK);
         for (const TrackData::SleeperKind kind:
              {TrackData::SLEEPER_CONCRETE, TrackData::SLEEPER_WOOD, TrackData::SLEEPER_STEEL}) {
             base_sleepers[kind] = _build_base_sleeper(kind);
         }
-        look = ResourceLoader::get_singleton()->load(path);
-        ERR_FAIL_COND_MSG(look.is_null(), "StandardTrackRenderingBackend: no track look at " + path);
     }
 
     StandardTrackRenderingBackend::~StandardTrackRenderingBackend() {
@@ -96,6 +91,13 @@ namespace godot {
         }
     }
 
+    /* A TrackRenderingLook, drawn with as the track is built next (track_build()) */
+    void StandardTrackRenderingBackend::track_set_look(const RID &p_track_render, const Ref<Resource> &p_look) {
+        Track *track = tracks.getptr(p_track_render);
+        ERR_FAIL_NULL(track);
+        track->look = p_look;
+    }
+
     /// The blades are not drawn
     void StandardTrackRenderingBackend::track_set_switch_blade_offsets(
             const RID & /* p_track_render */, const double /* p_offset1 */, const double /* p_offset2 */) {}
@@ -144,11 +146,12 @@ namespace godot {
                 origin = frames[0].origin;
             }
             if (road) {
-                _add_road(frames, **description, surfaces);
+                _add_road(frames, **description, track->look, surfaces);
                 continue;
             }
             _add_rail_track(
-                    frames, **description, branch == TrackServer::TRACK_DIVERGING ? DIVERGING_BED_DROP : 0.0, surfaces);
+                    frames, **description, track->look,
+                    branch == TrackServer::TRACK_DIVERGING ? DIVERGING_BED_DROP : 0.0, surfaces);
             // a switch's sleepers are the common curve's, the diverging rails lie on them
             if (branch == TrackServer::TRACK_COMMON) {
                 _add_sleepers(*track, curve, track_curve, **description, origin);
@@ -452,11 +455,12 @@ namespace godot {
             return;
         }
         const TrackData::SleeperKind kind = p_description.get_sleeper_kind();
-        Ref<Mesh> mesh = look.is_valid() ? look->sleeper_get_mesh(kind) : Ref<Mesh>();
+        Ref<Mesh> mesh = p_track.look.is_valid() ? p_track.look->sleeper_get_mesh(kind) : Ref<Mesh>();
         if (mesh.is_null()) {
             mesh = base_sleepers[kind];
         }
-        const Ref<Material> material = look.is_valid() ? look->sleeper_get_material(kind) : Ref<Material>();
+        const Ref<Material> material =
+                p_track.look.is_valid() ? p_track.look->sleeper_get_material(kind) : Ref<Material>();
         const double spacing = p_description.get_sleeper_spacing();
         const int per_chunk = MAX(1, static_cast<int>(Math::floor(MAX(SLEEPER_CHUNK_LENGTH, spacing) / spacing)));
         RenderingServer *rendering = RenderingServer::get_singleton();
@@ -486,12 +490,12 @@ namespace godot {
     /// The two rails on the bed of the track's kind over its formation; p_bed_drop lowers the bed of
     /// a switch's diverging curve under the common one's
     void StandardTrackRenderingBackend::_add_rail_track(
-            const Vector<Frame> &p_frames, const TrackData &p_description, const double p_bed_drop,
-            Vector<Surface> &p_surfaces) const {
+            const Vector<Frame> &p_frames, const TrackData &p_description, const Ref<TrackRenderingLook> &p_look,
+            const double p_bed_drop, Vector<Surface> &p_surfaces) {
         const double rail_height = TrackServer::get_instance()->get_rail_height();
         const double half_gauge = 0.5 * p_description.get_width();
         const real_t rail_scale = static_cast<real_t>(rail_height / RAIL_PROFILE_HEIGHT);
-        const Ref<Material> rail_material = look.is_valid() ? look->get_rail_material() : Ref<Material>();
+        const Ref<Material> rail_material = p_look.is_valid() ? p_look->get_rail_material() : Ref<Material>();
         for (const double centre: {-half_gauge, half_gauge}) {
             PackedVector2Array rail;
             for (const auto &point: RAIL_PROFILE) {
@@ -512,7 +516,7 @@ namespace godot {
 
         // the bed: its foot is where the formation begins
         const TrackData::Bed bed = p_description.get_bed();
-        const Ref<Material> bed_material = look.is_valid() ? look->bed_get_material(bed) : Ref<Material>();
+        const Ref<Material> bed_material = p_look.is_valid() ? p_look->bed_get_material(bed) : Ref<Material>();
         // the rails' feet on the sleepers' tops, on the curve
         const double sleeper_top = -p_bed_drop;
         double foot_half_width = 0.0;
@@ -559,7 +563,7 @@ namespace godot {
         if (Math::is_zero_approx(slope_edge - foot_half_width)) {
             return;
         }
-        const Ref<Material> formation_material = look.is_valid() ? look->get_formation_material() : Ref<Material>();
+        const Ref<Material> formation_material = p_look.is_valid() ? p_look->get_formation_material() : Ref<Material>();
         for (const real_t side: {-1.0F, 1.0F}) {
             PackedVector2Array formation;
             // from the bed's foot outward, so the section's normals face up on either side
@@ -581,19 +585,21 @@ namespace godot {
 
     /// The carriageway of the road's surface, and its shoulders a little under it where it has them
     void StandardTrackRenderingBackend::_add_road(
-            const Vector<Frame> &p_frames, const TrackData &p_description, Vector<Surface> &p_surfaces) const {
+            const Vector<Frame> &p_frames, const TrackData &p_description, const Ref<TrackRenderingLook> &p_look,
+            Vector<Surface> &p_surfaces) {
         const real_t half_width = static_cast<real_t>(0.5 * p_description.get_width());
         PackedVector2Array carriageway;
         carriageway.push_back(Vector2(-half_width, 0.0F));
         carriageway.push_back(Vector2(half_width, 0.0F));
         _sweep(p_frames, carriageway,
-               look.is_valid() ? look->surface_get_material(p_description.get_surface()) : Ref<Material>(), p_surfaces);
+               p_look.is_valid() ? p_look->surface_get_material(p_description.get_surface()) : Ref<Material>(),
+               p_surfaces);
         if (!p_description.get_shoulder()) {
             return;
         }
         const real_t outer = half_width + static_cast<real_t>(SHOULDER_WIDTH);
         const real_t drop = -static_cast<real_t>(SHOULDER_DROP);
-        const Ref<Material> shoulder_material = look.is_valid() ? look->get_shoulder_material() : Ref<Material>();
+        const Ref<Material> shoulder_material = p_look.is_valid() ? p_look->get_shoulder_material() : Ref<Material>();
         PackedVector2Array left;
         left.push_back(Vector2(-outer, drop));
         left.push_back(Vector2(-half_width, 0.0F));

@@ -38,6 +38,13 @@ var type: TrackServer.TrackType = TrackServer.TRACK_UNKNOWN
         _dirty = true
 ## [km/h], -1 for none
 @export var speed_limit:float = -1.0
+## What it is drawn with, by the name of the backend drawing it
+## (TrackRenderingServer.track_set_looks()); none, bare surfaces
+@export var looks:Dictionary[StringName, Resource] = {}:
+    set(value):
+        looks = value
+        if _track_render_rid.is_valid():
+            TrackRenderingServer.track_set_looks(_track_render_rid, looks)
 ## What the track is - the renderer picks its look for it (TrackData)
 @export var structure:TrackData.Structure = TrackData.STRUCTURE_NONE:
     set(value):

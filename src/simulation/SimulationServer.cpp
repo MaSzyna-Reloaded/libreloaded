@@ -38,7 +38,6 @@ namespace godot {
 
     SimulationServer::SimulationServer() {
         singleton = this;
-        _update_season();
         _on_project_settings_changed();
         ProjectSettings::get_singleton()->connect(
                 "settings_changed", callable_mp(this, &SimulationServer::_on_project_settings_changed));
@@ -88,6 +87,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("set_wind", "speed", "direction"), &SimulationServer::set_wind);
         ClassDB::bind_method(D_METHOD("get_wind_speed"), &SimulationServer::get_wind_speed);
         ClassDB::bind_method(D_METHOD("get_wind_direction"), &SimulationServer::get_wind_direction);
+        ClassDB::bind_method(D_METHOD("season_set", "season"), &SimulationServer::season_set);
         ClassDB::bind_method(D_METHOD("get_season"), &SimulationServer::get_season);
         BIND_ENUM_CONSTANT(SEASON_WINTER);
         BIND_ENUM_CONSTANT(SEASON_SPRING);
@@ -102,6 +102,12 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("simulation_get_weather_friction_factor"),
                 &SimulationServer::simulation_get_weather_friction_factor);
+        ClassDB::bind_method(
+                D_METHOD("set_weather_friction_factor", "factor"), &SimulationServer::set_weather_friction_factor);
+        ClassDB::bind_method(D_METHOD("get_weather_friction_factor"), &SimulationServer::get_weather_friction_factor);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::FLOAT, "weather_friction_factor"), "set_weather_friction_factor",
+                "get_weather_friction_factor");
         BIND_ENUM_CONSTANT(WEATHER_CLEAR);
         BIND_ENUM_CONSTANT(WEATHER_CLOUDY);
         BIND_ENUM_CONSTANT(WEATHER_RAIN);
@@ -327,7 +333,6 @@ namespace godot {
         date_month = month;
         date_day = day;
         emit_signal(date_changed_signal);
-        _update_season();
         _update_light_level();
     }
 
@@ -387,6 +392,18 @@ namespace godot {
         return friction;
     }
 
+    void SimulationServer::set_weather_friction_factor(const double p_factor) {
+        if (weather_friction_factor == p_factor) {
+            return;
+        }
+        weather_friction_factor = p_factor;
+        emit_signal(weather_changed_signal);
+    }
+
+    double SimulationServer::get_weather_friction_factor() const {
+        return weather_friction_factor;
+    }
+
     void SimulationServer::set_weather(const Weather p_weather) {
         if (weather == p_weather) {
             return;
@@ -443,22 +460,11 @@ namespace godot {
                            Units::SECONDS_PER_DAY);
     }
 
-    void SimulationServer::_update_season() {
-        const int day = _get_day_of_year();
-        Season next = SEASON_WINTER;
-        if (day > SEASON_AUTUMN_LAST_DAY) {
-            next = SEASON_WINTER;
-        } else if (day > SEASON_SUMMER_LAST_DAY) {
-            next = SEASON_AUTUMN;
-        } else if (day > SEASON_SPRING_LAST_DAY) {
-            next = SEASON_SUMMER;
-        } else if (day > SEASON_WINTER_LAST_DAY) {
-            next = SEASON_SPRING;
-        }
-        if (next == season) {
+    void SimulationServer::season_set(const Season p_season) {
+        if (p_season == season) {
             return;
         }
-        season = next;
+        season = p_season;
         emit_signal(season_changed_signal);
     }
 
@@ -467,6 +473,9 @@ namespace godot {
     }
 
     double SimulationServer::simulation_get_weather_friction_factor() const {
+        if (weather_friction_factor >= 0.0) {
+            return weather_friction_factor;
+        }
         switch (weather) {
             case WEATHER_RAIN:
                 return RAIN_FRICTION_FACTOR;
@@ -505,6 +514,7 @@ namespace godot {
         longitude = DEFAULT_LONGITUDE;
         cloud_cover = DEFAULT_CLOUD_COVER;
         friction = DEFAULT_FRICTION;
+        weather_friction_factor = WEATHER_FRICTION_OF_WEATHER;
         set_weather(WEATHER_CLEAR);
         set_precipitation(0.0);
         set_wind(0.0, Vector3(1.0, 0.0, 0.0));

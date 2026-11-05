@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -34,6 +35,8 @@ namespace godot {
                     Ref<TrackData> description;
                     RID scenario;
                     bool visible = true;
+                    /// What it is drawn with, by the backend (track_set_looks())
+                    Dictionary looks;
                     /// The backend drawing it, by its name; empty until it has one
                     StringName backend;
                     /// SceneryStreamingServer's registration; invalid for a track built directly
@@ -92,6 +95,12 @@ namespace godot {
             void track_set_description(const RID &p_track_render, const Ref<TrackData> &p_description);
             void track_set_visible(const RID &p_track_render, bool p_visible);
             void track_set_scenario(const RID &p_track_render, const RID &p_scenario);
+            /// What the track is drawn with, by the name of the backend drawing it (a StringName, the
+            /// look a Resource of its kind: the standard one's TrackRenderingLook - its rails', bed's,
+            /// sleepers' materials), given by whoever makes it (a scenery's,
+            /// SceneryContentNode.track_looks); a backend with none draws bare surfaces. Nothing here
+            /// loads one of its own
+            void track_set_looks(const RID &p_track_render, const Dictionary &p_looks);
             /// Registers the track for streaming instead of building it: a scenery has thousands of tracks.
             /// It is built when the camera comes within TRACKS_DISTANCE_SETTING of it and cleared when it
             /// leaves - unless its backend streams it itself

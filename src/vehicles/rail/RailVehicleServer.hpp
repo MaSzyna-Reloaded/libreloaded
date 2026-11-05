@@ -731,6 +731,13 @@ namespace godot {
              * driver takes for a vehicle found near (scan_obstacles(), Driver.cpp:6672-6675);
              * infinite when either has no controller */
             double vehicle_get_coupler_distance(const RID &p_vehicle, const RID &p_other) const;
+            /* How warm the vehicle's engine is [deg C] (RailVehicleEngine::get_temperature()); the
+             * air's without one */
+            double vehicle_get_engine_temperature(const RID &p_vehicle) const;
+            /* How warm the vehicle's body is [deg C]: the air's, warmed by BODY_ENGINE_HEAT_SHARE of
+             * its engine's warmth above it - what melts the snow on it */
+            double vehicle_get_body_temperature(const RID &p_vehicle) const;
+            static constexpr double BODY_ENGINE_HEAT_SHARE = 0.3;
             /* The running shape the vehicle's physics was last handed (DynObj.cpp:3145-3167): the
              * curve radius from the yaw difference of its axles, and the mean cant of both axles
              * in radians */

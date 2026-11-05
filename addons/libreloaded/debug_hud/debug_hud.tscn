@@ -230,6 +230,7 @@ offset_right = 1912.0
 offset_bottom = 1072.0
 script = ExtResource("9_window")
 title = "Mini Map"
+toggle_action = &"minimap_toggle"
 metadata/_custom_type_script = "uid://bwbpde8e6vyk"
 
 [node name="MiniMapControl" parent="MiniMap" unique_id=234941782 instance=ExtResource("11_minimap")]
@@ -323,6 +324,7 @@ offset_right = 1244.0
 offset_bottom = 310.0
 script = ExtResource("9_window")
 title = "Weather and Time"
+toggle_action = &"toggle_weather_controls"
 
 [node name="WeatherControls" parent="WeatherAndTime" unique_id=1919120931 instance=ExtResource("5_weather_controls")]
 unique_name_in_owner = true

@@ -34,6 +34,10 @@ signal clear_progress(progress:float)
 signal cleared
 ## Emitted after every load with the first vehicle's vehicle_id ("" when the scenery has none)
 signal scenery_loaded(first_vehicle_id:String)
+## The scenery set the environment's time, date and weather as it declares them: "scenery" (its
+## name), "month", "day", and only what it declares of the weather - "temperature" (degrees C),
+## "cloudiness", "precipitation" (0 - 1), "fog_distance" (m) - for a weather of more to start from
+signal environment_declared(declarations:Dictionary)
 
 ## Milliseconds spent freeing content per frame while reloading
 const CLEAR_BUDGET_MSEC:int = 8
@@ -106,6 +110,13 @@ var _scenery_radio:SceneryVirtualRadio = null
 @export_multiline var description:String = ""
 ## The environment the loaded scenery sets its time, date and weather in
 @export_node_path("EnvironmentNode") var environment_node_path:NodePath
+## What the scenery's tracks are drawn with, by the name of the backend drawing them
+## (TrackRenderingServer.track_set_looks()) - the world's; none, bare surfaces
+@export var track_looks:Dictionary[StringName, Resource] = {}
+## What the snow on the scenery's vehicles is drawn with
+## (VehicleRenderingServer.vehicle_set_snow_material(), its vehicles' builder hands it on) - the
+## world's; none, no snow on them
+@export var vehicle_snow_material:ShaderMaterial = null
 @export_tool_button("Load") var load_action:Callable = self.load
 
 ## Original engine: clamp of scenario.weather.temperature (Globals.cpp:390)
@@ -472,10 +483,22 @@ func _apply_environment_declarations() -> void:
         environment_node.month = date["month"]
     if temperature_defined:
         environment_node.temperature = temperature
+    # the original's scenery: its winter textures are snowed in, and so is its ground
+    environment_node.winter_snow_cover = true
     _apply_fog()
     if overcast_defined:
         environment_node.cloudiness = clampf(overcast, 0.0, 1.0)
         environment_node.precipitation = _precipitation_from_overcast(overcast)
+    var declarations: Dictionary = {
+        "scenery": get_scenery_name(), "month": environment_node.month, "day": environment_node.day}
+    if temperature_defined:
+        declarations["temperature"] = environment_node.temperature
+    if overcast_defined:
+        declarations["cloudiness"] = environment_node.cloudiness
+        declarations["precipitation"] = environment_node.precipitation
+    if fog_end_defined:
+        declarations["fog_distance"] = environment_node.fog_distance
+    environment_declared.emit(declarations)
 
 
 ## The scenery's fog, with FOG_SCENERY_DISTANCE_FACTOR_SETTING as it is now - applied again when the

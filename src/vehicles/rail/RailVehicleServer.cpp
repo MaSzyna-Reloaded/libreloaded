@@ -265,6 +265,11 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_coupler_distance", "vehicle", "other"),
                 &RailVehicleServer::vehicle_get_coupler_distance);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_engine_temperature", "vehicle"),
+                &RailVehicleServer::vehicle_get_engine_temperature);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_body_temperature", "vehicle"), &RailVehicleServer::vehicle_get_body_temperature);
         ClassDB::bind_method(D_METHOD("vehicle_get_curve", "vehicle"), &RailVehicleServer::vehicle_get_curve);
 
         ADD_SIGNAL(MethodInfo(vehicle_emergency_signal_received_signal, PropertyInfo(Variant::RID, "vehicle")));
@@ -2206,6 +2211,25 @@ namespace godot {
         neighbour->set_end(found_end);
         neighbour->set_distance(found_distance);
         return neighbour;
+    }
+
+    double RailVehicleServer::vehicle_get_engine_temperature(const RID &p_vehicle) const {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        const Ref<RailVehicleEngine> engine =
+                controller != nullptr ? controller->get_component(VehicleComponentType::COMPONENT_ENGINE) : nullptr;
+        if (engine.is_valid()) {
+            return engine->get_temperature();
+        }
+        const SimulationServer *simulation = SimulationServer::get_instance();
+        return simulation != nullptr ? simulation->get_air_temperature() : SimulationServer::DEFAULT_AIR_TEMPERATURE;
+    }
+
+    double RailVehicleServer::vehicle_get_body_temperature(const RID &p_vehicle) const {
+        const SimulationServer *simulation = SimulationServer::get_instance();
+        const double air =
+                simulation != nullptr ? simulation->get_air_temperature() : SimulationServer::DEFAULT_AIR_TEMPERATURE;
+        return air + (MAX(0.0, vehicle_get_engine_temperature(p_vehicle) - air) * BODY_ENGINE_HEAT_SHARE);
     }
 
     double RailVehicleServer::vehicle_get_coupler_distance(const RID &p_vehicle, const RID &p_other) const {

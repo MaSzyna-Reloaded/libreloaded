@@ -796,3 +796,6 @@ anything. Open work belongs in `TODO.md`.
 * A backend integrated by the wrapper gets every input of the original call - the Mover went
   without the track for its whole life here (no grade, curve, derailment). *(10-12 the Mover never
   saw the track)*
+* A sky effect standing in for distant geometry covers only the sky where that geometry stands -
+  the sky under the horizon shows wherever the world ends first. *(10-28 a strip of fog under the
+  horizon)*

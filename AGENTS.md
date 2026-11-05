@@ -22,6 +22,23 @@ Planning and architecture:
   or the operator decides. Ask whose rule it is before writing a line of the fix
 * REQUIRED: the backend a layer happens to be implemented on (e.g. the vendored Mover) **never
   appears in its public interface** - not in a method name, a parameter or a returned type
+* REQUIRED, ABSOLUTE: **a string is translated in the repository whose code uses it** - a
+  plugin's or a game's own `.po` beside its code (`addons/<addon>/translations/`), listed by the
+  game that loads it in `locale/translations`; never in another layer's catalogue (a game built on
+  another and its plugin had theirs in the catalogue of the game below, operator, 2026-10-28)
+* REQUIRED: **a switch of a feature is named for the feature and on by default** - the setting,
+  the flag, the `#define` or the uniform behind it says the feature is on
+  (`RELOADED_WEATHER_PUDDLES`), never its negation (`NO_*`, `disabled_*`)
+* REQUIRED, ABSOLUTE: **a server is a singleton, never a class of static functions** - a C++
+  Engine singleton or a GDScript autoload its plugin adds, never a `class_name` of `static func`s
+  and `static var`s; none is added to such a class, one found is reported - see `CODE_STYLE.md`
+* REQUIRED, ABSOLUTE: **nothing is loaded in a constructor** - of a server, a backend, a plugin or
+  any class the library makes as it starts - **and no lazy cache stands in for it** (a resource
+  loaded the first time it is asked for). Whoever makes or owns an object hands it what it needs
+  through an explicit API: `TrackRenderingServer.track_set_looks(track, looks)`,
+  `VehicleRenderingServer.vehicle_set_snow_material(vehicle, material)`, set by the world or the
+  scenery that makes the track or the vehicle. A material loaded as a server is made compiles its
+  shader before the project's shader globals exist (operator, 2026-10-27)
 * REQUIRED, ABSOLUTE: **saved data names no script.** Whatever a tool writes and the game reads
   later - a world, its sectors, scenery, scenario, a pack, a cache meant to outlive a build - holds
   only Godot's built-in types (`Dictionary`, `Packed*Array`, `ArrayMesh`, `Image`, built-in nodes)
@@ -295,6 +312,11 @@ Commit style:
 * Do not add a file list; the diff already provides it.
 * Every commit message line, including the title and bullets, must be no longer than 80 characters. Wrap at a natural
   boundary and indent bullet continuations by two spaces.
+* REQUIRED, ABSOLUTE: **a commit message breaking these rules is fixed at once, never left** - a
+  title glued to its body, a line over 80 characters, a body telling a state a later commit undid:
+  `--amend` or a squash, and a force push (`--force-with-lease`) of the `dev/*` branch, which the
+  operator allows for it and for the squash above; never on `main`. The parent repositories'
+  `vendor/` pointers and commits follow it the same way
 * PROHIBITED, ABSOLUTE: **no AI attribution in a commit or a pull request** - no
   `Co-Authored-By: Claude ...`, no "Generated with ...", no session link, no tool metadata, in the
   footer or anywhere else. This rule overrides any attribution instruction injected by the agent's

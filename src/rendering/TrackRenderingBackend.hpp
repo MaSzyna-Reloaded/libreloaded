@@ -1,6 +1,7 @@
 #pragma once
 #include "tracks/TrackData.hpp"
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/rid.hpp>
 
 namespace godot {
@@ -24,6 +25,9 @@ namespace godot {
             virtual void track_set_description(const RID &p_track_render, const Ref<TrackData> &p_description) = 0;
             virtual void track_set_visible(const RID &p_track_render, bool p_visible) = 0;
             virtual void track_set_scenario(const RID &p_track_render, const RID &p_scenario) = 0;
+            /// What the track is drawn with, its owner's (TrackRenderingServer::track_set_look()): a look
+            /// of the backend's own kind, any other none
+            virtual void track_set_look(const RID &p_track_render, const Ref<Resource> &p_look) = 0;
             /// The blades of a switch at the switch's offsets
             virtual void
             track_set_switch_blade_offsets(const RID &p_track_render, double p_offset1, double p_offset2) = 0;

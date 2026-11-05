@@ -96,6 +96,8 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("track_get_joint_spacing", "track"), &TrackServer::track_get_joint_spacing);
         ClassDB::bind_method(D_METHOD("track_set_meta", "track", "meta"), &TrackServer::track_set_meta);
         ClassDB::bind_method(D_METHOD("track_get_meta", "track"), &TrackServer::track_get_meta);
+        ClassDB::bind_method(D_METHOD("track_set_covered", "track", "covered"), &TrackServer::track_set_covered);
+        ClassDB::bind_method(D_METHOD("track_is_covered", "track"), &TrackServer::track_is_covered);
         ClassDB::bind_method(D_METHOD("track_set_velocity", "track", "velocity"), &TrackServer::track_set_velocity);
         ClassDB::bind_method(D_METHOD("track_get_velocity", "track"), &TrackServer::track_get_velocity);
         ClassDB::bind_method(D_METHOD("track_axle_entered", "track", "vehicle"), &TrackServer::track_axle_entered);
@@ -864,6 +866,17 @@ namespace godot {
     Dictionary TrackServer::track_get_meta(const RID &p_track) const {
         const TrackSegment *track = tracks.getptr(p_track);
         return track != nullptr ? track->meta : Dictionary();
+    }
+
+    void TrackServer::track_set_covered(const RID &p_track, const bool p_covered) {
+        TrackSegment *track = tracks.getptr(p_track);
+        ERR_FAIL_NULL(track);
+        track->covered = p_covered;
+    }
+
+    bool TrackServer::track_is_covered(const RID &p_track) const {
+        const TrackSegment *track = tracks.getptr(p_track);
+        return track != nullptr && track->covered;
     }
 
     void TrackServer::track_set_velocity(const RID &p_track, const double p_velocity) {

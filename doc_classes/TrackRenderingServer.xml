@@ -100,6 +100,14 @@
 				What the track is: the backend its data names draws it. Given before the track is streamed or built.
 			</description>
 		</method>
+		<method name="track_set_looks">
+			<return type="void" />
+			<param index="0" name="track_render" type="RID" />
+			<param index="1" name="looks" type="Dictionary" />
+			<description>
+				What the track is drawn with, by the name of the backend drawing it: the look a resource of that backend's kind - the standard backend's [TrackRenderingLook], its rails', bed's and sleepers' materials. Given by whoever makes the track (a scenery's [code]track_looks[/code]) before its description; a backend with none draws bare surfaces. The server loads none of its own.
+			</description>
+		</method>
 		<method name="track_set_scenario">
 			<return type="void" />
 			<param index="0" name="track_render" type="RID" />

@@ -193,6 +193,8 @@ namespace godot {
                     double joint_spacing = -1.0;
                     /* What a plugin keeps of its own about the track (track_set_meta()) */
                     Dictionary meta;
+                    /* Under cover - a tunnel's: no rain nor snow reaches it (track_set_covered()) */
+                    bool covered = false;
                     /* Speed limit in km/h, negative for none (TTrack::fVelocity, Track.cpp:851-858) */
                     double velocity = -1.0;
                     /* Vehicles on it by their primary axle, as RailVehicleServer reports them
@@ -410,6 +412,10 @@ namespace godot {
             /* What a plugin keeps of its own about the track - the core reads none of it */
             void track_set_meta(const RID &p_track, const Dictionary &p_meta);
             Dictionary track_get_meta(const RID &p_track) const;
+            /* The track runs under cover - in a tunnel (TrackData.STRUCTURE_TUNNEL), by whoever builds
+             * it: no rain nor snow reaches what stands on it */
+            void track_set_covered(const RID &p_track, bool p_covered);
+            bool track_is_covered(const RID &p_track) const;
             /* Speed limit in km/h, negative for none (TTrack::VelocitySet()) */
             void track_set_velocity(const RID &p_track, double p_velocity);
             /* An axle of the vehicle came onto the track or left it - reported by RailVehicleServer

@@ -162,6 +162,10 @@ namespace godot {
                 }
                 rs->instance_geometry_set_material_overlay(
                         render_instance, p_instance.overlay.is_valid() ? p_instance.overlay->get_rid() : RID());
+                for (const Variant &name: p_instance.shader_parameters.keys()) {
+                    rs->instance_geometry_set_shader_parameter(
+                            render_instance, name, p_instance.shader_parameters[name]);
+                }
             }
             return;
         }
@@ -190,6 +194,9 @@ namespace godot {
             }
             mesh_instance->set_material_override(_get_mesh_material(p_instance, mesh));
             mesh_instance->set_material_overlay(p_instance.overlay);
+            for (const Variant &name: p_instance.shader_parameters.keys()) {
+                mesh_instance->set_instance_shader_parameter(name, p_instance.shader_parameters[name]);
+            }
         }
     }
 
@@ -479,6 +486,21 @@ namespace godot {
         ERR_FAIL_NULL(instance);
         instance->overlay = p_material;
         _apply(*instance);
+    }
+
+    void SceneModelRenderingBackend::instance_set_shader_parameter(
+            const RID &p_instance, const StringName &p_name, const Variant &p_value) {
+        InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL(instance);
+        // a null is set too: it takes the uniform off what is drawn
+        instance->shader_parameters[p_name] = p_value;
+        _apply(*instance);
+    }
+
+    Ref<Material> SceneModelRenderingBackend::instance_get_material_overlay(const RID &p_instance) const {
+        const InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL_V(instance, Ref<Material>());
+        return instance->overlay;
     }
 
     /// Against the triangles of its visible meshes, posed
