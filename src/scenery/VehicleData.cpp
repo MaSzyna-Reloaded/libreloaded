@@ -47,5 +47,6 @@ namespace godot {
         vehicle = p_other->vehicle;
         livery = p_other->livery;
         direction = p_other->direction;
+        set_name(p_other->get_name());
     }
 } // namespace godot

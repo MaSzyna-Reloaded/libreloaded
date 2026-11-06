@@ -13,7 +13,7 @@
 			<return type="VehicleData[]" />
 			<param index="0" name="arranged" type="VehicleData[]" />
 			<description>
-				Its vehicles as [param arranged] lists them (a scenery's trainset_override) when every declared vehicle there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared vehicle by its place ([member VehicleData.trainset_index]); a declared vehicle becomes the entry's vehicle, turned its way, its crew and load kept; an added one gets the velocity of the vehicle before it, nobody aboard, no load, no gap, an id of its own and no name. The couplings are the places'.
+				Its vehicles as [param arranged] lists them (a scenery's trainset_override) when every declared vehicle there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared vehicle by its place ([member VehicleData.trainset_index]); every vehicle becomes the entry's vehicle, turned its way and under its name; a declared one keeps its id, crew and load; an added one gets the velocity of the vehicle before it, nobody aboard, no load, no gap and an id of its own. The couplings are the places'.
 			</description>
 		</method>
 		<method name="get_driver_vehicle" qualifiers="const">
