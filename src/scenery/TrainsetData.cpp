@@ -74,7 +74,6 @@ namespace godot {
                 const Ref<VehicleData> before = result.is_empty() ? first_declared : Ref<VehicleData>(result.back());
                 vehicle = before->duplicate();
                 vehicle->set_vehicle_id(vformat("%s_%d", first_declared->get_vehicle_id(), index));
-                vehicle->set_name("");
                 vehicle->set_driver_type(VehicleData::DRIVER_NOBODY);
                 vehicle->set_load_name("");
                 vehicle->set_load_amount(0.0);

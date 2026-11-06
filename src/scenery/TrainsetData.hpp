@@ -49,13 +49,13 @@ namespace godot {
             /// declared vehicle there stands at its place in this trainset, its declared ones otherwise.
             /// An entry is paired with its declared vehicle by its place in the trainset
             /// (VehicleData.trainset_index), as the original couples a trainset by position
-            /// (simulationstateserializer.cpp:818-834) - an id may repeat. A declared vehicle becomes
-            /// the entry's vehicle, turned its way - its crew and load stay. An added one (no place)
-            /// gets the velocity of the vehicle before it (of the first declared one, when it comes
-            /// first), nobody aboard, no load, no gap, an id of its own and no name. The couplings are
-            /// the places': each vehicle couples to the next as the declared vehicle at its place did,
-            /// a vehicle moved from the end leaving no uncoupled joint behind it - past the declared
-            /// joints as the last of them, the last vehicle as the declared last one.
+            /// (simulationstateserializer.cpp:818-834) - an id may repeat. Every vehicle becomes the
+            /// entry's vehicle, turned its way and under its name; a declared one keeps its id, crew and
+            /// load. An added one (no place) gets the velocity of the vehicle before it (of the first
+            /// declared one, when it comes first), nobody aboard, no load, no gap and an id of its own.
+            /// The couplings are the places': each vehicle couples to the next as the declared vehicle
+            /// at its place did, a vehicle moved from the end leaving no uncoupled joint behind it -
+            /// past the declared joints as the last of them, the last vehicle as the declared last one.
             TypedArray<VehicleData> get_arranged_vehicles(const TypedArray<VehicleData> &p_arranged) const;
     };
 } // namespace godot

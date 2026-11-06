@@ -67,7 +67,8 @@ namespace godot {
             MAKE_GS_NR(double, load_amount);
             MAKE_GS_NR(int, trainset_index);
 
-            /// The entry becomes the vehicle p_other is, in its livery, turned the way p_other is
+            /// The entry becomes the vehicle p_other is, in its livery, turned the way p_other is and under
+            /// its name - the id stays, what finds the vehicle
             void take_vehicle_of(const Ref<VehicleData> &p_other);
     };
 } // namespace godot

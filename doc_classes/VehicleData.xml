@@ -13,7 +13,7 @@
 			<return type="void" />
 			<param index="0" name="other" type="VehicleData" />
 			<description>
-				The entry becomes the vehicle [param other] is, in its livery, turned the way [param other] is.
+				The entry becomes the vehicle [param other] is, in its livery, turned the way [param other] is and under its name - the id stays, what finds the vehicle.
 			</description>
 		</method>
 	</methods>
