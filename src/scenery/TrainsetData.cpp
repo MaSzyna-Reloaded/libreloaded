@@ -10,7 +10,7 @@ namespace godot {
                 D_METHOD("set_name", "name"), static_cast<void (TrainsetData::*)(const String &)>(&Resource::set_name));
         ClassDB::bind_method(D_METHOD("get_name"), static_cast<String (TrainsetData::*)() const>(&Resource::get_name));
         ADD_PROPERTY(
-                PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_name",
+                PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "set_name",
                 "get_name");
         BIND_PROPERTY(TrainsetData, Variant::STRING, timetable);
         BIND_PROPERTY(TrainsetData, Variant::FLOAT, velocity);
@@ -78,7 +78,6 @@ namespace godot {
                         result.is_empty() ? first_declared : Ref<TrainsetMemberData>(result.back());
                 const Ref<VehicleData> vehicle = before->get_vehicle()->duplicate();
                 vehicle->set_vehicle_id(vformat("%s_%d", first_declared->get_vehicle()->get_vehicle_id(), index));
-                vehicle->set_name("");
                 vehicle->set_driver_type(VehicleData::DRIVER_NOBODY);
                 vehicle->set_load_name("");
                 vehicle->set_load_amount(0.0);

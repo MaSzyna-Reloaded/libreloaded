@@ -49,11 +49,12 @@ namespace godot {
             /// Its members as p_arranged lists them (SceneryContentNode.trainset_override) when every
             /// declared member there stands at its place in this trainset, its declared ones otherwise.
             /// An entry is paired with its declared member by its place in the trainset
-            /// (TrainsetMemberData.trainset_index) - an id may repeat. A declared member becomes the
-            /// entry's vehicle, turned its way - its crew, load and gap stay. An added one (no place)
-            /// is a copy of the vehicle before it (of the first declared one, when it comes first) with
-            /// nobody aboard, no load, no gap, an id of its own and no name. Each couples to the next
-            /// by the entry's coupling mode - the one the arrangement shows and the player chose.
+            /// (TrainsetMemberData.trainset_index) - an id may repeat. Every member becomes the entry's
+            /// vehicle, turned its way and under its name - a declared one's crew, load and gap stay.
+            /// An added one (no place) is a copy of the vehicle before it (of the first declared one,
+            /// when it comes first) with nobody aboard, no load, no gap and an id of its own. Each
+            /// couples to the next by the entry's coupling mode - the one the arrangement shows and the
+            /// player chose.
             TypedArray<TrainsetMemberData> get_arranged_members(const TypedArray<TrainsetMemberData> &p_arranged) const;
     };
 } // namespace godot

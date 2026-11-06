@@ -327,6 +327,9 @@ anything. Open work belongs in `TODO.md`.
   announced to nobody. *(10-05 cab change in RailVehicleServer)*
 
 ## Godot / GDExtension
+* A `Resource` property bound without `PROPERTY_USAGE_STORAGE` (`PROPERTY_USAGE_EDITOR` alone)
+  looks and saves fine, but `duplicate()` silently drops it - every copy starts over at its
+  default. *(11-11 a renamed vehicle lost its name at the first copy)*
 * A view of the world (a map) asks a server only for what is around the view, keeps it in world
   space and draws it in one batch through the view's transform - never a node per item of the
   world, never all of them walked per frame. *(11-05 the minimap that made a slideshow)*
