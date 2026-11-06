@@ -15,6 +15,21 @@ var _dirty:bool = false
 var _clock:SimulationClock = SimulationClock.new()
 ## This control as CabinHUDMouseSystem knows it, once its mesh is found
 var _mouse_control:RID = RID()
+## What _set_mouse_control() was last given - its caption is made again from it
+## (update_mouse_hints())
+var _mouse_setup:Array = []
+## What the control shows now under its caption (_set_mouse_state()), shown again with a new caption
+var _mouse_state_shown:String = ""
+
+## The group of every control with a caption: a game calls update_mouse_hints() on it when the
+## names of the keys change (another binding, another device)
+const MOUSE_HINTS_GROUP:StringName = &"cabin_mouse_hints"
+## Names the keys of an action under a control's caption, `(action:String) -> PackedStringArray`:
+## a game that binds its input outside the InputMap (a pad's combinations), or shows the device in
+## use, sets its own. Unset, the InputMap's events as InputEventNames names them (input_map_hints())
+static var action_hints:Callable = Callable()
+## Between the names of a control's keys under its caption (CabinControlTooltip splits them by it)
+const HINTS_SEPARATOR:String = " / "
 
 signal vehicle_rid_changed
 ## Emitted while the previous vehicle is still the one connected, for disconnecting from it.
@@ -168,17 +183,37 @@ func _set_mouse_control(mesh:Node3D, actions:PackedStringArray, pressed:Callable
         drag:Callable = Callable()) -> void:
     if _mouse_control.is_valid():
         CabinHUDMouseSystem.control_free(_mouse_control)
+    _mouse_setup = [mesh, actions, pressed, released, increase, decrease, step_rotation,
+            step_position, drag]
+    add_to_group(MOUSE_HINTS_GROUP)
+    var names_of:Callable = action_hints if action_hints.is_valid() else input_map_hints
     var hints:PackedStringArray = []
     for action_name:String in actions:
-        if action_name and InputMap.has_action(action_name):
-            for event:InputEvent in InputMap.action_get_events(action_name):
-                hints.append(InputEventNames.event_name(event))
+        if action_name:
+            hints.append_array(names_of.call(action_name))
     var step_basis:Basis = Basis(Vector3.RIGHT, deg_to_rad(step_rotation.x)) \
             * Basis(Vector3.UP, deg_to_rad(step_rotation.y)) \
             * Basis(Vector3.FORWARD, deg_to_rad(step_rotation.z))
     _mouse_control = CabinHUDMouseSystem.control_create(mesh.get_instance_id(),
-            caption, " / ".join(hints), pressed, released, increase, decrease,
+            caption, HINTS_SEPARATOR.join(hints), pressed, released, increase, decrease,
             step_basis, step_position, drag, mouse_drag_signs)
+
+
+## The caption made again with the keys' names as they are now (action_hints) - after the player
+## bound another key, or took up another device
+func update_mouse_hints() -> void:
+    if _mouse_control.is_valid() and _mouse_setup and is_instance_valid(_mouse_setup[0]):
+        _set_mouse_control.callv(_mouse_setup)
+        _set_mouse_state(_mouse_state_shown)
+
+
+## The keys of `action_name` on the InputMap, as InputEventNames names them
+static func input_map_hints(action_name:String) -> PackedStringArray:
+    var hints:PackedStringArray = []
+    if InputMap.has_action(action_name):
+        for event:InputEvent in InputMap.action_get_events(action_name):
+            hints.append(InputEventNames.event_name(event))
+    return hints
 
 
 ## A two-state control's state under its caption - msgids the tooltip's Label translates, from the
@@ -189,6 +224,7 @@ const STATE_OFF:String = "off"
 
 ## What the control shows now, for the caption under the cursor (CabinHUDMouseSystem).
 func _set_mouse_state(state:String) -> void:
+    _mouse_state_shown = state
     if _mouse_control.is_valid():
         CabinHUDMouseSystem.control_set_state(_mouse_control, state)
 
