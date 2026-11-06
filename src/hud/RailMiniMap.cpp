@@ -162,6 +162,10 @@ namespace godot {
                     lines.reserve(found.size());
                     for (int index = 0; index < found.size(); ++index) {
                         const RID track = found[index];
+                        // a rail map: roads and rivers are neither drawn nor named
+                        if (tracks->track_get_group(track) != TrackServer::GROUP_RAIL) {
+                            continue;
+                        }
                         const TrackLines *kept = track_lines.getptr(track);
                         if (kept != nullptr) {
                             lines.insert(track, *kept);
@@ -195,8 +199,13 @@ namespace godot {
                 // the tracks in world space, through the view's transform; a width of -1 keeps the
                 // lines thin at any zoom
                 draw_set_transform_matrix(view_transform);
-                draw_multiline(track_segments, track_color);
-                draw_multiline(active_segments, switch_active_color);
+                // Godot refuses an empty batch with an error; append_segments() keeps the count even
+                if (!track_segments.is_empty()) {
+                    draw_multiline(track_segments, track_color);
+                }
+                if (!active_segments.is_empty()) {
+                    draw_multiline(active_segments, switch_active_color);
+                }
                 draw_set_transform_matrix(Transform2D());
 
                 const Ref<Font> font = get_theme_default_font();
