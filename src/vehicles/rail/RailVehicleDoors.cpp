@@ -63,8 +63,6 @@ namespace godot {
         BIND_ENUM_CONSTANT(PLATFORM_TYPE_SHIFT);
         BIND_ENUM_CONSTANT(PLATFORM_TYPE_ROTATE);
 
-        BIND_ENUM_CONSTANT(SIDE_RIGHT)
-        BIND_ENUM_CONSTANT(SIDE_LEFT)
 
         BIND_ENUM_CONSTANT(CONTROLS_PASSENGER)
         BIND_ENUM_CONSTANT(CONTROLS_AUTOMATIC)
@@ -124,14 +122,24 @@ namespace godot {
         register_command("doors_next_permit_preset", callable_mp(this, &RailVehicleDoors::next_permit_preset));
         register_command("doors_previous_permit_preset", callable_mp(this, &RailVehicleDoors::previous_permit_preset));
         register_command("doors_permit_step", callable_mp(this, &RailVehicleDoors::permit_step));
-        register_command("doors_left_permit", callable_mp(this, &RailVehicleDoors::permit_doors).bind(SIDE_LEFT));
-        register_command("doors_right_permit", callable_mp(this, &RailVehicleDoors::permit_doors).bind(SIDE_RIGHT));
-        register_command("doors_left", callable_mp(this, &RailVehicleDoors::operate_doors).bind(SIDE_LEFT));
-        register_command("doors_right", callable_mp(this, &RailVehicleDoors::operate_doors).bind(SIDE_RIGHT));
         register_command(
-                "doors_left_local", callable_mp(this, &RailVehicleDoors::operate_doors_locally).bind(SIDE_LEFT));
+                "doors_left_permit",
+                callable_mp(this, &RailVehicleDoors::permit_doors).bind(RailVehicleController::SIDE_LEFT));
         register_command(
-                "doors_right_local", callable_mp(this, &RailVehicleDoors::operate_doors_locally).bind(SIDE_RIGHT));
+                "doors_right_permit",
+                callable_mp(this, &RailVehicleDoors::permit_doors).bind(RailVehicleController::SIDE_RIGHT));
+        register_command(
+                "doors_left",
+                callable_mp(this, &RailVehicleDoors::operate_doors).bind(RailVehicleController::SIDE_LEFT));
+        register_command(
+                "doors_right",
+                callable_mp(this, &RailVehicleDoors::operate_doors).bind(RailVehicleController::SIDE_RIGHT));
+        register_command(
+                "doors_left_local",
+                callable_mp(this, &RailVehicleDoors::operate_doors_locally).bind(RailVehicleController::SIDE_LEFT));
+        register_command(
+                "doors_right_local",
+                callable_mp(this, &RailVehicleDoors::operate_doors_locally).bind(RailVehicleController::SIDE_RIGHT));
         register_command("doors_lock", callable_mp(this, &RailVehicleDoors::door_lock));
         register_command("doors_remote_control", callable_mp(this, &RailVehicleDoors::door_remote_control));
         register_command("doors_departure_signal", callable_mp(this, &RailVehicleDoors::signal_departure));

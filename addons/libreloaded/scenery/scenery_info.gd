@@ -19,5 +19,5 @@ var description:String = ""
 ## Absolute path of the scenery's image, empty when it has none
 var image_path:String = ""
 ## The trainsets it declares, as it declares them - their vehicles' ids, names and drivers
-## (TrainsetData.get_arranged_vehicles() pairs a trainset arranged otherwise with them)
+## (TrainsetData.get_arranged_members() pairs a trainset arranged otherwise with them)
 var trainsets:Array[TrainsetData] = []

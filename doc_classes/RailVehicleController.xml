@@ -99,9 +99,9 @@
 		</method>
 		<method name="coupler_adapter_attach">
 			<return type="bool" />
-			<param index="0" name="where" type="Variant" />
+			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
 			<description>
-				The adapter of the vehicle nearest beyond an end (its [member coupler_adapter_model], length and height) fitted to that end, as long as it stands within reach and leaves room for it (attach_coupler_adapter(), DynObj.cpp:1754-1789); [param where] as [method coupler_connect]'s. Command [code]coupler_adapter_attach[/code].
+				The adapter of the vehicle nearest beyond [param end] (its [member coupler_adapter_model], length and height) fitted to that end, as long as it stands within reach and leaves room for it (attach_coupler_adapter(), DynObj.cpp:1754-1789). Command [code]coupler_adapter_attach[/code].
 			</description>
 		</method>
 		<method name="coupler_adapter_fit">
@@ -113,23 +113,31 @@
 		</method>
 		<method name="coupler_adapter_remove">
 			<return type="bool" />
-			<param index="0" name="where" type="Variant" />
+			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
 			<description>
-				The adapter taken off an end, which is uncoupled first (remove_coupler_adapter(), DynObj.cpp:1791-1810). Command [code]coupler_adapter_remove[/code].
+				The adapter taken off [param end], which is uncoupled first (remove_coupler_adapter(), DynObj.cpp:1791-1810). Command [code]coupler_adapter_remove[/code].
 			</description>
 		</method>
 		<method name="coupler_connect">
 			<return type="void" />
-			<param index="0" name="where" type="Variant" />
+			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
 			<description>
-				Joins one more coupling to the neighbour at an end - the coupler first, then the hoses, the control line, the gangway and the heating, what both couplers allow. [param where] is the end ([enum CouplerEnd]), or a world position the nearer end is taken by.
+				Joins one more coupling to the neighbour at [param end] - the coupler first, then the hoses, the control line, the gangway and the heating, what both couplers allow. Command [code]coupler_connect[/code].
 			</description>
 		</method>
 		<method name="coupler_disconnect">
 			<return type="void" />
-			<param index="0" name="where" type="Variant" />
+			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
 			<description>
-				Uncouples an end, unless it is a permanent coupling or cannot be undone now ([code]DettachStatus()[/code]); [param where] as [method coupler_connect]'s.
+				Uncouples [param end], unless it is a permanent coupling or cannot be undone now ([code]DettachStatus()[/code]). Command [code]coupler_disconnect[/code].
+			</description>
+		</method>
+		<method name="coupling_mode_get_flags" qualifiers="static">
+			<return type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
+			<param index="0" name="mode" type="int" enum="RailVehicleController.CouplingMode" />
+			<param index="1" name="joinable" type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
+			<description>
+				The flags [param mode] couples two ends by, of [param joinable] - what the couplers of both allow ([method get_coupler_joinable_flags]): none whatever the mode when [param joinable] has no [constant COUPLING_FLAG_COUPLER]; otherwise none for [constant COUPLING_MODE_NONE], [constant COUPLING_FLAG_COUPLER] for [constant COUPLING_MODE_COUPLER], [constant COUPLING_FLAG_COUPLER] and, when [param joinable] has it, [constant COUPLING_FLAG_BRAKEHOSE] for [constant COUPLING_MODE_BRAKE]; all of [param joinable] for [constant COUPLING_MODE_FULL], and with [constant COUPLING_FLAG_PERMANENT] for [constant COUPLING_MODE_PERMANENT].
 			</description>
 		</method>
 		<method name="direction_decrease">
@@ -464,8 +472,14 @@
 		<constant name="COUPLER_END_REAR" value="1" enum="CouplerEnd">
 			The vehicle's rear end (end::rear).
 		</constant>
+		<constant name="SIDE_RIGHT" value="0" enum="Side">
+			The vehicle's right side, looking from its front.
+		</constant>
+		<constant name="SIDE_LEFT" value="1" enum="Side">
+			The vehicle's left side, looking from its front.
+		</constant>
 		<constant name="COUPLING_FLAG_NONE" value="0" enum="CouplingFlags" is_bitfield="true">
-			Nothing joined (the original's coupling::faux).
+			Nothing joined.
 		</constant>
 		<constant name="COUPLING_FLAG_COUPLER" value="1" enum="CouplingFlags" is_bitfield="true">
 			The coupler.
@@ -499,6 +513,21 @@
 		</constant>
 		<constant name="COUPLING_FLAG_POWER_3X400V" value="1024" enum="CouplingFlags" is_bitfield="true">
 			The 3x400 V line.
+		</constant>
+		<constant name="COUPLING_MODE_NONE" value="0" enum="CouplingMode">
+			Not coupled.
+		</constant>
+		<constant name="COUPLING_MODE_COUPLER" value="1" enum="CouplingMode">
+			The coupler alone.
+		</constant>
+		<constant name="COUPLING_MODE_BRAKE" value="2" enum="CouplingMode">
+			The coupler and the brake hose.
+		</constant>
+		<constant name="COUPLING_MODE_FULL" value="3" enum="CouplingMode">
+			Everything the couplers of both vehicles allow.
+		</constant>
+		<constant name="COUPLING_MODE_PERMANENT" value="4" enum="CouplingMode">
+			Everything the couplers of both vehicles allow, for good - inside one unit.
 		</constant>
 		<constant name="DERAIL_CAUSE_NONE" value="0" enum="DerailCause">
 			The vehicle stands on the rails.

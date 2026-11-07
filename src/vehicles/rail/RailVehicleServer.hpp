@@ -291,8 +291,8 @@ namespace godot {
                     TrackServer::Direction direction = TrackServer::DIRECTION_NORMAL;
                     /* How far it stands behind the one before it [m] - the `offset` of its `dynamic` */
                     double gap = 0.0;
-                    /* The coupling with the next vehicle - the `couplingdata` of its `dynamic` */
-                    BitField<RailVehicleController::CouplingFlags> coupling = 0;
+                    /* How it couples to the next vehicle - from the `couplingdata` of its `dynamic` */
+                    RailVehicleController::CouplingMode coupling_mode = RailVehicleController::COUPLING_MODE_NONE;
             };
             struct Trainset {
                     /* The scenery's name of it (`trainset <name>`); empty for one that has none */
@@ -353,7 +353,7 @@ namespace godot {
              * couplers, p_side being the side of p_vehicle - swapped for a vehicle standing the other
              * way round (TController's consist state, Driver.cpp:6093-6106) */
             template<typename Answers>
-            bool _trainset_any_doors(const RID &p_vehicle, RailVehicleDoors::Side p_side, Answers p_answers) const;
+            bool _trainset_any_doors(const RID &p_vehicle, RailVehicleController::Side p_side, Answers p_answers) const;
             /* The controller's rail events, relayed under the handle, so whoever follows a vehicle
              * never holds its controller - connected when the vehicle is attached or VehicleServer
              * gives it another controller, disconnected when it is replaced or detached */
@@ -583,18 +583,19 @@ namespace godot {
              * GetFirstDynamic() + Next(), DynObj.cpp:501) */
             /* The coupler adapter fitted to an end: its model ("" without one), its length added to the
              * end and its height over the rail [m] */
-            String
-            vehicle_get_coupler_adapter_model(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            String coupler_get_adapter_model(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
             /* Whether an end couples as an automatic coupler, its adapter's or its own */
-            bool vehicle_is_coupler_automatic(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            bool coupler_is_automatic(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            /* The end of the vehicle nearer to p_position (world), as the walk mode's commands pick it
+             * (ABuScanNearestObject, Train.cpp:6213) */
+            RailVehicleController::CouplerEnd
+            coupler_get_nearest(const RID &p_vehicle, const Vector3 &p_position) const;
             /* The couplings an end and the neighbour beyond it can join (RailVehicleController::
              * get_coupler_joinable_flags()) */
             BitField<RailVehicleController::CouplingFlags>
-            vehicle_get_coupler_joinable_flags(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
-            double
-            vehicle_get_coupler_adapter_length(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
-            double
-            vehicle_get_coupler_adapter_height(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            coupler_get_joinable_flags(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            double coupler_get_adapter_length(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            double coupler_get_adapter_height(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
             TypedArray<RID> vehicle_get_coupled(
                     const RID &p_vehicle, RailVehicleController::CouplerEnd p_end,
                     BitField<RailVehicleController::CouplingFlags> p_flags) const;
@@ -637,7 +638,7 @@ namespace godot {
              * it [m] (none when it stands reversed) and how it couples to the next one */
             void trainset_add_vehicle(
                     const RID &p_trainset, const RID &p_vehicle, TrackServer::Direction p_direction, double p_gap,
-                    BitField<RailVehicleController::CouplingFlags> p_coupling);
+                    RailVehicleController::CouplingMode p_coupling_mode);
             /* Its vehicles now, end to end */
             TypedArray<RID> trainset_get_vehicles(const RID &p_trainset) const;
             TypedArray<RID> trainset_list() const;
@@ -649,8 +650,9 @@ namespace godot {
             bool vehicle_is_standing(const RID &p_vehicle) const;
             /* Stands the vehicles on the track one after another, each as long as it is, and couples
              * them (deserialize_dynamic(), simulationstateserializer.cpp:1062-1076, and endtrainset,
-             * simulationstateserializer.cpp:818-837) - at once, or as soon as every vehicle of it
-             * has its simulation */
+             * simulationstateserializer.cpp:818-837), each pair by its coupling mode of what both
+             * couplers allow (RailVehicleController::coupling_mode_get_flags()) - at once, or as soon
+             * as every vehicle of it has its simulation */
             void trainset_place(const RID &p_trainset);
             /* The whole trainset coupled to the vehicle moved p_distance [m] towards the vehicle's
              * front, every vehicle whichever way round it stands (TDynamicObject::move_set(),
@@ -659,12 +661,12 @@ namespace godot {
             /* A doorway (its door or its step) of the trainset coupled to the vehicle not closed on
              * p_side of the vehicle; doors closing by themselves do not count (IsAnyDoorOpen,
              * Driver.cpp:6097) */
-            bool trainset_get_doorway_open(const RID &p_vehicle, RailVehicleDoors::Side p_side) const;
+            bool trainset_get_doorway_open(const RID &p_vehicle, RailVehicleController::Side p_side) const;
             /* The same for a door alone, its step whatever (IsAnyDoorOnlyOpen, Driver.cpp:6101) */
-            bool trainset_get_door_open(const RID &p_vehicle, RailVehicleDoors::Side p_side) const;
+            bool trainset_get_door_open(const RID &p_vehicle, RailVehicleController::Side p_side) const;
             /* A door permit given on p_side of the vehicle, of the trainset's vehicles needing one
              * (IsAnyDoorPermitActive, Driver.cpp:6104) */
-            bool trainset_get_door_permit(const RID &p_vehicle, RailVehicleDoors::Side p_side) const;
+            bool trainset_get_door_permit(const RID &p_vehicle, RailVehicleController::Side p_side) const;
             /* Determines the type of the trainset coupled to the vehicle from its cars, for every
              * vehicle of it, by the cars' brake delays (AutoRewident(), Driver.cpp:2154-2165): one
              * with R or without G carries passengers, one with G and without R goods */
@@ -730,7 +732,7 @@ namespace godot {
              * they stand (TMoverParameters::CouplerDist(), Mover.cpp:543) - what the original's
              * driver takes for a vehicle found near (scan_obstacles(), Driver.cpp:6672-6675);
              * infinite when either has no controller */
-            double vehicle_get_coupler_distance(const RID &p_vehicle, const RID &p_other) const;
+            double coupler_get_distance(const RID &p_vehicle, const RID &p_other) const;
             /* The running shape the vehicle's physics was last handed (DynObj.cpp:3145-3167): the
              * curve radius from the yaw difference of its axles, and the mean cant of both axles
              * in radians */

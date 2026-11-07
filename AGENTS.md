@@ -11,7 +11,7 @@ Planning and architecture:
   layer that the rule forbids - a camera holding the player's vehicle, a lower layer calling an
   upper one, two layers each calling the other - stop, name the breach (which layer, which field or
   call, which rule) and ask. No shim, no copy, no "temporary" reach-through, no quiet redesign in
-  the middle of the work - see `.claude/skills/maszyna-architecture/SKILL.md`
+  the middle of the work - see `.claude/skills/architecture/SKILL.md`
 * REQUIRED, ABSOLUTE: **never a shortcut past a boundary to make something build or pass.** A
   compiler or a test refusing a reach into another layer - a private member, a missing API, a type
   that is not this layer's - is the boundary working. It is never answered by widening access
@@ -34,6 +34,8 @@ Code generation:
 * Keep code clean and do minimal code changes
 * Follow DRY and KISS principles
 * use english comments (if needed)
+* C++: **a header declares, its `.cpp` defines** - no function body in a `.hpp`, but a template
+  and the `MAKE_*` accessors - see `CODE_STYLE.md`
 * a vehicle is held by its `VehicleServer` RID and commanded with
   `VehicleServer.vehicle_send_command(vehicle_rid, ...)`; `RailVehicleServer` knows the same RID
   for what is rail (track, couplers, rail component kinds). Its id (`vehicle_id`, the scenery

@@ -1,30 +1,18 @@
 ---
-name: maszyna-architecture
-description: Decide where a piece of state, behaviour or API belongs in this wrapper's layers, and check that a change does not breach a boundary. Use before adding a class, a field, a signal, a state key or a server method; before moving logic between C++ and GDScript; when something needs a value that lives in another layer; when a node, a system and a server all look like plausible homes for the same thing; and when reviewing a diff for separation of concerns. Answers "which layer owns this", "may this layer know about that one", and "is this the same mistake we already made".
+name: architecture
+description: Decide where a piece of state, behaviour or API belongs in Reloaded Core's layers, and check that a change does not breach a boundary. Use before adding a class, a field, a signal, a state key or a server method; before moving logic between C++ and GDScript; when something needs a value that lives in another layer; when a node, a system and a server all look like plausible homes for the same thing; when a plugin's backend needs something of the core; and when reviewing a diff for separation of concerns. Answers "which layer owns this", "may this layer know about that one", and "is this the same mistake we already made".
 ---
 
-# MaSzyna Reloaded - layers, boundaries and how they are enforced
+# Reloaded Core - layers, boundaries and how they are enforced
 
-This wrapper is a stack of layers, and the whole architecture rework (#184) exists to make each
-one replaceable on its own. Most defects recorded in `FINDINGS.md` are a layer that reached into
-another: a feature parked on a node vanished when a second instancer appeared without nodes; a
-sound trigger's counters lived on the vehicle; a getter advanced a filter, so the value depended
-on how often it was read.
+The core is a stack of layers, each replaceable on its own. Most defects recorded in
+`FINDINGS.md` are a layer that reached into another: a feature parked on a node vanished when a
+second instancer appeared without nodes; a sound trigger's counters lived on the vehicle; a getter
+advanced a filter, so the value depended on how often it was read.
 
 **The question that settles every argument about placement:** *if this layer were replaced
 wholesale, would this field go with it?* If yes, it belongs there. If it would have to be kept
 for somebody else, it belongs to that somebody.
-
-## The port is data-driven
-
-**The port is data-driven - ABSOLUTE.** Every name, prefix, count, flag and default the original
-reads from data (FIZ, MMD, SCN/SCM/INC, CHK, lang, models) is read from that data in the wrapper, the
-way the original reads it, with the original's default when absent. Only what the original itself
-hardcodes, or a quirk documented in `MASZYNA_ORIGINAL_QUIRKS.md`, may be hardcoded - with the
-original's line cited. "Confirmed identical across the vehicles checked" is never a reason: the
-pantograph arm names hardcoded on 2026-09-16 after checking three vehicles (`ramiedolne1_pant0`, read
-by the original from `animpant*prefix:`) left 104 vehicles unanimated (36WE, EN57, ET22, 4E...), the
-wheel prefix 109, and searching cab 2 from `cab1definition:` broke 133 cabs.
 
 ## The map
 
@@ -32,13 +20,12 @@ Read top to bottom: each layer may use the ones below it and must know nothing o
 
 | Layer | Who | Owns | Must never |
 |---|---|---|---|
-| Backend | `../libmaszyna/src/maszyna/maszyna-mover/` (vendored `TMoverParameters`) | physical quantities, the original's own model | be edited. It is vendored; a divergence is ported around it, never into it |
-| Backend adapters | `MaszynaMover*` classes (`MaszynaMoverRailVehicleController`, `MaszynaMoverRailVehicle<Domain>`, `MaszynaMoverComponent`) | the only `TMoverParameters *` in the process | appear in any name, parameter or return type above this row |
+| Backend | a plugin's `VehicleImplementationServer`, registered with `VehicleServer` (`implementation_register()`) under the name a controller gives, and its implementations of the component interfaces | physical quantities, its own model of the vehicle, how its vehicles are stepped together | appear in any name, parameter or return type of the core; the core never knows which plugin simulates a vehicle |
 | Vehicle model | `VehicleController` (an `Object`, any vehicle) and `RailVehicleController` (a railway one: cabs, couplers, controllers, relays), `VehicleComponent` / `RailVehicleComponent` + `RailVehicle<Domain>` interfaces | a vehicle's state, configuration and the operations that change them | name the backend; be a `Node`; hold anything only a drawing, sound or UI layer needs |
-| Servers | `RailVehicleServer`, `TrackServer`, `TractionServer`, `MaszynaE3DRenderingServer`, `SceneryStreamingServer`, `PythonScreenServer`, `SignallingServer`, and the GDScript servers (`TrackRenderingServer`, `TractionRenderingServer`, `MaszynaSceneryChunkRenderingServer`, `ScenerySoundServer`) | handles (`RID`), the placement and the composition of what they own, their own worker threads | hand out raw pointers, or hold state a single node could own; reach a vehicle's controller to execute vehicle logic (see "Servers forward to components") |
-| Systems | `CabinSystem` (a cab per vehicle RID and cab), `TrainSoundSystem`, `MaterialManager`, `MaszynaSceneryProvider` | cross-cutting bookkeeping keyed by handle, and the vocabulary the data uses | duplicate state the model already has; drive per-frame work that a server could do natively |
-| Nodes | `RailVehicle3D`, `VehiclePhysicsNode`, `Cabin3D`, `RailVehicleStepper`, cab widgets, `SignalHeadNode`/`SignallingSystemNode` (proxies holding a server RID) | what is drawn and what is in the scene tree | contain simulation; own a handle the server already owns; reach a vehicle by walking the tree |
-| Importers | `../libmaszyna/src/maszyna/parsers/`, `../libmaszyna/src/maszyna/e3d/`, `../libmaszyna/addons/libmaszyna/fiz/`, `.../legacy/mmd/`, `.../legacy/scenery/` | turning FIZ, MMD, E3D and `.scn` into model objects | build scene trees as their output, or keep parse results in nodes; save a scripted `Resource` or `Node` into what they write - saved data holds built-in types and C++ classes only, saved by their names (`CODE_STYLE.md`, "Saved data names no script") |
+| Servers | `VehicleServer`, `RailVehicleServer`, `TrackServer`, `TractionServer`, `SignallingServer`, `SceneryStreamingServer`, `ModelRenderingServer`, `TrackRenderingServer`, `PlayerServer`, `DriverServer`, `StationServer`, and the GDScript servers (`SceneryServer`, `VehicleCatalogServer`, `TractionRenderingServer`, `ScenerySoundServer`) | handles (`RID`), the placement and the composition of what they own, their own worker threads | hand out raw pointers, or hold state a single node could own; reach a vehicle's controller to execute vehicle logic (see "Servers forward to components") |
+| Systems | `CabinSystem` (a cab per vehicle RID and cab), `CabinHUDMouseSystem`, `TranscriptSystem` | cross-cutting bookkeeping keyed by handle | duplicate state the model already has; drive per-frame work that a server could do natively |
+| Nodes | `RailVehicle3D`, `VehiclePhysicsNode`, `Cabin3D`, cab widgets (`BaseCabinTool3D`), `SignalHeadNode`/`SignallingSystemNode` (proxies holding a server RID) | what is drawn and what is in the scene tree | contain simulation; own a handle the server already owns; reach a vehicle by walking the tree |
+| Importers | a plugin's or a tool's readers of its source data | turning that data into the core's data classes (`CompiledScenery`, `VehicleData`, `TrainsetData`, `WorldData`) | build scene trees as their output, or keep parse results in nodes; save a scripted `Resource` or `Node` into what they write - saved data holds built-in types and C++ classes only, saved by their names (`CODE_STYLE.md`, "Saved data names no script") |
 
 ### Servers forward to components
 
@@ -49,19 +36,18 @@ and moving a vehicle (`vehicle_move()`). Whether a server has to wrap everything
 not settled - ask the operator before wrapping more. A vehicle server **forwards its execution to
 the vehicle's component** for that domain - the base classes
 (`RailVehicleBuffCoupl`, `RailVehicle<Domain>`) exist for this. The component's backend
-implementation executes it on the physics backend: the server finds the vehicle's rail buffer and
-coupling component, on the Mover's physics that is `MaszynaMoverRailVehicleBuffCoupl`, and the coupling
-happens there. A server never reaches the vehicle's controller to execute such logic.
+implementation executes it: the server finds the vehicle's rail buffer and coupling component,
+and the backend's implementation of it does the coupling. A server never reaches the vehicle's
+controller to execute such logic.
 
-Logic outside the vehicle - the AI driver, the player, scripts - **executes through the servers**.
+Logic outside the vehicle - a driver, the player, scripts - **executes through the servers**.
 The components' API is fixed too, but it serves reading state on hot paths and the backend's
 implementation of the forwarding, not executing logic from outside.
 
 Debt on record (2026-10-09, `TODO.md`): `RailVehicleServer`'s coupling (`vehicle_couple()`,
 `uncouple`, `is_coupled_by`, `is_coupler_automatic`, adapters,
-`vehicle_get_coupler_joinable_flags()`) still goes through `RailVehicleController`/
-`MaszynaMoverRailVehicleController`, and the AI couples by the `coupler_connect` command; nothing new is
-added that way.
+`vehicle_get_coupler_joinable_flags()`) still goes through `RailVehicleController`, and a driver
+couples by the `coupler_connect` command; nothing new is added that way.
 
 Autoloads are listed in `demo/project.godot`; C++ singletons are registered in
 `src/register_types.cpp`. A singleton is reached by its typed `get_instance()` and the result is
@@ -69,19 +55,20 @@ null-checked - never by node path, never by `call("name")`.
 
 ## The core's data is the interface; plugins give backends
 
-The game (`maszyna-reloaded`) and the scenery importer speak **only the core's data and servers**:
-`VehicleData`, `VehicleLivery`, `VehicleInfo`, `TrainsetData`, `CompiledScenery` and the rest of
-the core's data classes, through `VehicleCatalogServer`, `SceneryServer` and the other core
-servers. The plugins (libmaszyna) **supply backends** - providers
-(`MaszynaVehicleCatalogProvider`, `MaszynaSceneryProvider`), implementations attached to the core's
-servers - and their own custom classes, which stay behind those backends (operator, 2026-10-20).
+A game and a scenery importer speak **only the core's data and servers**: `VehicleData`,
+`VehicleLivery`, `VehicleInfo`, `TrainsetData`, `CompiledScenery` and the rest of the core's data
+classes, through `VehicleCatalogServer`, `SceneryServer` and the other core servers. A plugin
+**supplies backends** - providers (`VehicleCatalogProvider`, `SceneryProvider`), implementations
+attached to the core's servers (`VehicleImplementationServer`, `DriverImplementation`,
+`SignallingImplementation`) - and its own custom classes, which stay behind those backends
+(operator, 2026-10-20).
 
 * A plugin takes the core's data as it is. It never converts it into a subclass of its own to
-  make it fit (`VehicleData` copied into `MaszynaVehicleData` by property list left every world
+  make it fit (a `VehicleData` copied into a plugin's subclass by property list left every world
   vehicle empty) and never hands its subclass back for the caller to cast
-  (`vehicle_get_data(rid) as MaszynaVehicleData` gave the trainsets dock null).
+  (`VehicleCatalogServer.vehicle_get_data(rid)` cast to a plugin's class gave the caller null).
 * What a vehicle is, is `VehicleData.vehicle` + `livery` of its `vehicle_provider`; how a provider
-  spells that in its own files (`data_path`, `file_name`, `skin`) is the provider's business.
+  spells that in its own files is the provider's business.
 * Code outside a plugin that needs something of a vehicle - its side view, its liveries, its
   description, its appearance - asks the catalogue (`VehicleCatalogServer.vehicle_get_*`,
   `livery_list`). A question the catalogue cannot answer is a new method of the core's API that
@@ -114,16 +101,13 @@ Examples of what must raise the alarm:
 
 ## The five boundaries that carry the design
 
-**1. The backend never appears above its adapter.** No `Vehicle*.hpp` interface mentions
-`TMoverParameters`, and only `MaszynaMover*` files hold one. Every one of the `MaszynaMoverRailVehicle<Domain>`
-implementations has a `RailVehicle<Domain>` interface of the same name, and none of those interfaces
-names the backend. A component reaches the backend through `MaszynaMoverComponent`: the vehicle hands
-every component its implementation (`VehicleComponent::attach_implementation()`), and a Mover
-component takes its vehicle's Mover from `MaszynaMoverVehicleServer`, which owns the Movers, in its
-own `_implementation_changed()` - no `dynamic_cast`, one lifetime (from the simulation's start to
-`release()`).
-
-    grep -l TMoverParameters $(find src -name 'Vehicle*.hpp')   # must print nothing
+**1. The backend never appears in the core.** No core header names a plugin's class or a
+backend's type. A component reaches its backend only as `VehicleServer` was given it: the
+vehicle hands every component its `VehicleImplementationServer`
+(`VehicleComponent::attach_implementation()`), and an implementation's component takes what it
+needs from it in its own `_implementation_changed()` - no `dynamic_cast`, one lifetime (from the
+simulation's start to its release). How the backend steps its vehicles together - in which
+phases, with what sub-steps - is its own business (`VehicleImplementationServer::stepping_advance()`).
 
 **2. A public API takes handles, not pointers.** `VehicleServer` exposes `vehicle_create`,
 `controller_create`/`controller_configure`, `vehicle_bind_controller`, `vehicle_dump_state`, and
@@ -138,18 +122,20 @@ handle instead - the controller's moves and commands are relayed by `VehicleServ
 as a typed getter of the component that owns it, and configuration as that component's (or the
 controller's) properties - a reader takes the component once (`vehicle_component_get()`) and calls
 it. The same values are also published by name through `_fill_state_dictionary` /
-`_fill_config_dictionary` (`VehicleComponent.hpp:90,104`), composed by the server into a dump that
+`_fill_config_dictionary` (`VehicleComponent.hpp:108,122`), composed by the server into a dump that
 is rebuilt after every step or command (the config dump on every call). The dump is for readers
 driven by a name out of the data - the cab (CabinSystem, no second cache in front of the server's),
-MMD sound triggers, the console, tests - and **never for a hot path**: a sound, a driver, a camera
+sound triggers, the console, tests - and **never for a hot path**: a sound, a driver, a camera
 reading it per frame composes hundreds of keys for one value (2026-09-30, sound system at x8).
 Change detection,
 filters and flag consumption belong in the tick, never in a fetch or a getter - the four
 violations of this cost a day each (`FINDINGS.md`, 2026-09-22).
 
 **4. Ordering is an event, never a retry.** The simulation steps before anything reads it
-(`RailVehicleStepper`, `process_priority` = -100), and a value that is not there yet is an
-ordering defect: react to `simulation_configured`, do not raise a "try again next frame" flag.
+(`SimulationServer` ticks on the SceneTree's `process_frame`, before any node's `_process`, and
+`VehicleServer` steps the vehicles on its `simulation_advanced`), and a value that is not there
+yet is an ordering defect: react to `simulation_configured`, do not raise a "try again next frame"
+flag.
 
 **5. A vehicle is its handle, never its id or name.** Everything that holds a vehicle holds its
 `RailVehicleServer` RID and commands it with `vehicle_send_command(vehicle_rid, ...)`; a vehicle
@@ -158,16 +144,16 @@ name in lower case) may be empty or repeated, and it lives only in the server's 
 `vehicle_get_rid_by_id` leaves `""` and `"none"` unmapped and gives a repeated id to the later
 vehicle, as the original `basic_table::insert` does (`Names.h:27-40`). Only what knows a vehicle by
 its id alone - a scenario, an event, the console - goes through it. Its name (`vehicle_get_name()`,
-as the `.scn` writes it) is only shown to the player; nothing is found or compared by it. A registry keyed by that name elsewhere is how the second
-of two same-named vehicles lost its commands and its cab (TrainSystem, removed 2026-09-26).
+as the scenery writes it) is only shown to the player; nothing is found or compared by it. A
+registry keyed by that name elsewhere is how the second of two same-named vehicles lost its
+commands and its cab (TrainSystem, removed 2026-09-26).
 
 ## Where a new thing goes
 
 * **A value the simulation produces** - a component's own field, published through its
-  `_fill_state_dictionary`. Before reusing a config getter for it, grep the backend for an
-  assignment to that field: a value the simulation writes is state, a value only the wrapper
-  writes is configuration, and confusing the two is how a battery reported a voltage that never
-  moved.
+  `_fill_state_dictionary`. Before reusing a config getter for it, find who writes that field: a
+  value the simulation writes is state, a value only the core writes is configuration, and
+  confusing the two is how a battery reported a voltage that never moved.
 * **A value only one consumer needs** - that consumer's layer. Sound bookkeeping lives in the
   sound system; what a gauge shows lives in the cab; a counter a trigger compares against is not
   the vehicle's business.
@@ -183,57 +169,40 @@ of two same-named vehicles lost its commands and its cab (TrainSystem, removed 2
 * **Something an instancer must honour** - the server, not the node that happens to create the
   instance. The moment a second instancer appeared without nodes, every feature parked on a node
   silently stopped existing.
-* **A new component** - a `RailVehicle<Domain>` interface plus a `MaszynaMoverRailVehicle<Domain>` implementation, added
-  with `add_component()` and reached with `get_component(VehicleComponentType::TYPE)`.
+* **A new component** - a `RailVehicle<Domain>` interface in the core, its implementation in the
+  backend's plugin, added with `add_component()` and reached with
+  `get_component(VehicleComponentType::TYPE)`.
 * **Behaviour that differs between variants of one server object** - an implementation, not a subclass
   of the object: an interface class of `GDVIRTUAL`s whose C++ virtuals forward to the script
-  (`SignallingImplementation`), implemented in C++ (`MaszynaSignallingImplementation`) or GDScript,
-  attached after `*_create()` (`system_attach_implementation`). Every callback carries the owner's RID,
-  since a `Resource` is shared; the implementation changes state only through the server's API. The
-  original's behaviour is one such implementation (`Maszyna*`), never the base.
+  (`SignallingImplementation`), implemented in C++ or GDScript, attached after `*_create()`
+  (`system_attach_implementation`). Every callback carries the owner's RID, since a `Resource` is
+  shared; the implementation changes state only through the server's API. A plugin's behaviour
+  is one such implementation, never the base.
 * **Something that lives as long as another server's handle** - follow the owner's freed signal
-  (`MaszynaE3DRenderingServer.instance_freed` frees the instance's signal head), not a validity check.
+  (`ModelRenderingServer.instance_freed` drops `SceneryHUDMouseServer`'s pickables on that
+  instance), not a validity check.
 * **Configuration of a handle** - the server's struct under the RID (`SignalHeadData`), set by
   `<thing>_set_<field>` and announced by `<thing>_config_changed`. What the data already knows
-  is derived by the server, never typed in by the user (a signal head's light count comes from its
-  model when `MaszynaE3DRenderingServer` emits `instance_built`). Shared data describing a *kind* of
+  is derived by the server, never typed in by the user (a signal head's light count,
+  `signal_head_set_light_count()`, comes from its model). Shared data describing a *kind* of
   thing is a `Resource` handed to the server (`signal_head_set_kind(rid, SignalHeadKind)`), not
-  fields copied onto each handle. Where the original has no such description, the importer
-  derives it from the data (`MaszynaSignalHeadKindFactory` makes a kind of the `lights`
-  events aimed at a model, and equal kinds become one resource) - the original's encoding is
-  read once there and never reaches the server.
+  fields copied onto each handle. Where the source data has no such description, the importer
+  derives it from the data, and equal kinds become one resource - the source's encoding is read
+  once there and never reaches the server.
 * **A node over a handle** - its properties are proxies: getters read the server, setters call
   it, the server's change signals are relayed filtered to the node's RID and refresh the property
   list (`SignalHeadNode`). The node keeps only what the scene sets before the handle exists
   (`kind`, the initial `aspect`) and hands it over once. A node-typed export in C++ is an
-  `ObjectID`, not a `Node *` - the node it names may be freed first. A GDScript accessor on a
-  native subclass needs a name the native class does not have (`get_model_instance`, not
-  `get_instance`, on a `VisualInstance3D`).
+  `ObjectID`, not a `Node *` - the node it names may be freed first. An accessor on a native
+  subclass needs a name the native class does not have (`ReloadedModel3D.get_model_instance()`,
+  not `get_instance()`, on a `VisualInstance3D`).
 * **Recurring work** - C++ on `process_frame`, then a `Timer`, then `_process` with an
   accumulator. Never a bare per-frame `_process`, never a loop in one, and never wiring
   (`connect`, `get_node`, a path) inside one.
 
-## Breaches that exist today
-
-These are known and being removed. **They are not precedent** - do not copy their shape, and do
-not cite them as "how this codebase does it". Counts measured 2026-09-27; re-measure before
-relying on one.
-
-* There are no update phases: the step order is a hand-written sequence in
-  `MaszynaMoverVehicleServer::stepping_advance()`, and `UpdatePhase` exists nowhere.
-* The dump carries two key conventions - nine `prefix/key` namespaces against a majority of flat
-  `component_key` names. 53 `state_property` values in the MMD catalog contain `/`, so this is a
-  data contract, not a rename.
-* The game and the importer still reach libmaszyna's vehicle classes past the catalogue
-  (measured 2026-10-20): the game's scenery selector (`vehicle_browser_window.gd`
-  `MaszynaVehiclesBank`, `vehicle_viewer.gd` / `selector_vehicle.gd` `MaszynaVehicleData`,
-  `MaszynaRailVehicle3DInstancer`), the importer's `trainsets.gd` / `sklady.gd`
-  (`MaszynaRailVehicle3D`, `MaszynaVehicleSystem`, `MaszynaVehicleData`, libmaszyna's `.scn`
-  importers).
-
 ## Before committing a change to any of this
 
-1. `grep -l TMoverParameters $(find src -name 'Vehicle*.hpp')` - the backend has not leaked.
+1. Read every name the diff adds to a core file: no plugin's class, no backend's type.
 2. `grep -n '\*' <server>.hpp` - no pointer crossed a public boundary.
 3. Read every `get_*` the diff adds: it returns and does nothing else.
 4. Read every `_process` the diff touches: no loop, no lookup, no wiring, nothing while idle.
@@ -243,6 +212,8 @@ relying on one.
    commanded by; only `vehicle_get_rid_by_id` turns an id into a vehicle.
 7. `grep -rn 'emit\.call_deferred\|call_deferred(.emit_signal' <changed files>` - nothing; a
    signal is emitted where its event happens, never deferred (`CODE_STYLE.md`).
+8. Read every `.hpp` the diff touches: declarations only - a function body goes to its `.cpp`
+   (a template and the `MAKE_*` accessors excepted, `CODE_STYLE.md`).
 
 **And verify against the code, never against a document.** `TODO.md`'s stage list was written when
 the first part of each stage landed and went stale; this file will too. Every count and line

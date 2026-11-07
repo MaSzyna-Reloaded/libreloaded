@@ -733,9 +733,9 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 ## Drivers (#297)
 
 * **High-level vehicle operations through the servers, executed by components**
-  (`maszyna-architecture`, "Servers forward to components", 2026-10-09): `RailVehicleServer`
+  (`architecture`, "Servers forward to components", 2026-10-09): `RailVehicleServer`
   couples (`vehicle_couple()`, `uncouple`, `is_coupled_by`, `is_coupler_automatic`, adapters,
-  `vehicle_get_coupler_joinable_flags()`) through `RailVehicleController`/
+  `coupler_get_joinable_flags()`) through `RailVehicleController`/
   `MaszynaMoverRailVehicleController`; the coupling logic moves to the server, executed by the
   `RailVehicleBuffCoupl` component (`MaszynaMoverRailVehicleBuffCoupl` on the Mover), the per-end
   `AllowedFlag` (`BuffCoupl1/2`) and `control_type` with it. The same for walking through the cabins,

@@ -18,11 +18,11 @@
 		</method>
 	</methods>
 	<members>
-		<member name="allowed_flag" type="int" setter="set_allowed_flag" getter="get_allowed_flag" default="0">
-			Bitmask defining the allowed connections (mechanical, pneumatic, electric, etc.). See [enum AllowedFlagBits].
+		<member name="allowed_flag" type="int" setter="set_allowed_flag" getter="get_allowed_flag" enum="RailVehicleController.CouplingFlags" is_bitfield="true" default="0">
+			What the coupler can join.
 		</member>
-		<member name="automatic_flag" type="int" setter="set_automatic_flag" getter="get_automatic_flag" default="0">
-			Bitmask defining which connections are established automatically during coupling.
+		<member name="automatic_flag" type="int" setter="set_automatic_flag" getter="get_automatic_flag" enum="RailVehicleController.CouplingFlags" is_bitfield="true" default="0">
+			What the coupler joins by itself when it couples.
 		</member>
 		<member name="buffer_location" type="int" setter="set_buffer_location" getter="get_buffer_location" enum="RailVehicleBuffCoupl.BufferLocation" default="0">
 			Which end this buffers and coupler section describes - the front, the rear or both.
@@ -51,11 +51,11 @@
 		<member name="coupler_type" type="int" setter="set_coupler_type" getter="get_coupler_type" enum="RailVehicleBuffCoupl.CouplerType" default="0">
 			The type of coupler mechanism (e.g., Automatic, Screw, Chain).
 		</member>
-		<member name="power_coupling" type="int" setter="set_power_coupling" getter="get_power_coupling" default="128">
-			Bitmask defining which power lines can be coupled.
+		<member name="power_coupling" type="int" setter="set_power_coupling" getter="get_power_coupling" enum="RailVehicleController.CouplingFlags" is_bitfield="true" default="128">
+			The coupling the power lines pass by.
 		</member>
-		<member name="power_flag" type="int" setter="set_power_flag" getter="get_power_flag" default="768">
-			Bitmask indicating the current power capabilities available at the coupler.
+		<member name="power_flag" type="int" setter="set_power_flag" getter="get_power_flag" enum="RailVehicleController.CouplingFlags" is_bitfield="true" default="768">
+			The power lines the coupler passes ([constant RailVehicleController.COUPLING_FLAG_POWER_24V], [constant RailVehicleController.COUPLING_FLAG_POWER_110V], [constant RailVehicleController.COUPLING_FLAG_POWER_3X400V]).
 		</member>
 	</members>
 	<constants>

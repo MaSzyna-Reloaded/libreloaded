@@ -5,9 +5,12 @@ class_name TrainSet3D
 ## A trainset assembled by hand - a node over RailVehicleServer's trainset (get_rid()), as a trainset
 ## of a loaded scenery is one built by its scenery provider without a node. Its RailVehicle3D
 ## children are the trainset's vehicles, in order: the server stands them on the trainset's track
-## one after another from its front, each as long as it is, and couples each with the next as
-## "endtrainset" does. Reordered, they stand anew. A vehicle of a trainset has no start track of
-## its own.
+## one after another from its front, each as long as it is, turned its way (start_direction) and
+## trainset_gap behind the one before, and couples each with the next by its
+## trainset_coupling_mode as "endtrainset" does. Reordered or changed, they stand anew; a reordered
+## vehicle takes its gap and its coupling mode with it - they are the vehicle's, as a `.scn` writes the
+## offset and the couplingdata with each `dynamic`, and as TrainsetData.get_arranged_members() moves a
+## declared vehicle's gap with it. A vehicle of a trainset has no start track of its own.
 
 ## Where the trainset's front stands - the track and the distance along it [m]
 @export var start_track_name:String = "":
@@ -20,24 +23,6 @@ class_name TrainSet3D
     set(x):
         if not x == start_track_offset:
             start_track_offset = x
-            _dirty = true
-            set_process(true)
-## How far each vehicle stands behind the one before it [m], by child - the `offset` of its
-## `dynamic`; a reversed vehicle stands right behind (simulationstateserializer.cpp:1066)
-@export var vehicle_gaps:Array[float] = []:
-    set(x):
-        if not x == vehicle_gaps:
-            vehicle_gaps = x
-            _dirty = true
-            set_process(true)
-## Coupling between child vehicle i and i + 1 (the scenery "couplingdata" of vehicle i), a mask of
-## RailVehicleController.CouplingFlags (coupling::, MOVER.h:162)
-@export_flags("Coupler:1", "BrakeHose:2", "Control:4", "HighVoltage:8", "Gangway:16", "MainHose:32",
-        "Heating:64", "Permanent:128", "Power24V:256", "Power110V:512", "Power3x400V:1024")
-var couplings:Array[int] = []:
-    set(x):
-        if not x == couplings:
-            couplings = x
             _dirty = true
             set_process(true)
 ## The trainset's timetable (a file in the scenery's directory, `none` for none) and the velocity
@@ -88,6 +73,7 @@ func _on_child_entered_tree(node:Node) -> void:
     if not vehicle:
         return
     vehicle.vehicle_changed.connect(_on_child_order_changed)
+    vehicle.trainset_placement_changed.connect(_on_child_order_changed)
     if not start_track_name and vehicle.start_track_name:
         start_track_name = vehicle.start_track_name
         start_track_offset = vehicle.start_track_offset
@@ -101,6 +87,7 @@ func _on_child_exiting_tree(node:Node) -> void:
     var vehicle:RailVehicle3D = node as RailVehicle3D
     if vehicle:
         vehicle.vehicle_changed.disconnect(_on_child_order_changed)
+        vehicle.trainset_placement_changed.disconnect(_on_child_order_changed)
 
 
 func _on_child_order_changed() -> void:
@@ -122,7 +109,6 @@ func _process(_delta:float) -> void:
     _track = TrackServer.track_get_rid_by_name(start_track_name)
     RailVehicleServer.trainset_set_track(_trainset, _track, start_track_offset)
     RailVehicleServer.trainset_clear(_trainset)
-    var index:int = 0
     for child:Node in get_children():
         var vehicle:RailVehicle3D = child as RailVehicle3D
         if not vehicle:
@@ -131,8 +117,6 @@ func _process(_delta:float) -> void:
         if not vehicle.get_rid().is_valid():
             return
         RailVehicleServer.trainset_add_vehicle(
-                _trainset, vehicle.get_rid(), vehicle.start_direction,
-                vehicle_gaps[index] if index < vehicle_gaps.size() else 0.0,
-                couplings[index] if index < couplings.size() else 0)
-        index += 1
+                _trainset, vehicle.get_rid(), vehicle.start_direction, vehicle.trainset_gap,
+                vehicle.trainset_coupling_mode)
     RailVehicleServer.trainset_place(_trainset)

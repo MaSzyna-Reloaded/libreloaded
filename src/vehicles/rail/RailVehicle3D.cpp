@@ -11,6 +11,7 @@
 
 namespace godot {
     const char *RailVehicle3D::vehicle_changed_signal = "vehicle_changed";
+    const char *RailVehicle3D::trainset_placement_changed_signal = "trainset_placement_changed";
 
     void RailVehicle3D::_bind_methods() {
 #define BIND_RAIL_NODE_PATH(name, valid_types)                                                                         \
@@ -51,6 +52,18 @@ namespace godot {
                         Variant::INT, "start_direction", PROPERTY_HINT_ENUM, "Normal,Reversed",
                         PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "TrackServer.Direction"),
                 "set_start_direction", "get_start_direction");
+        ClassDB::bind_method(D_METHOD("set_trainset_gap", "value"), &RailVehicle3D::set_trainset_gap);
+        ClassDB::bind_method(D_METHOD("get_trainset_gap"), &RailVehicle3D::get_trainset_gap);
+        ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "trainset_gap"), "set_trainset_gap", "get_trainset_gap");
+        ClassDB::bind_method(
+                D_METHOD("set_trainset_coupling_mode", "value"), &RailVehicle3D::set_trainset_coupling_mode);
+        ClassDB::bind_method(D_METHOD("get_trainset_coupling_mode"), &RailVehicle3D::get_trainset_coupling_mode);
+        ADD_PROPERTY(
+                PropertyInfo(
+                        Variant::INT, "trainset_coupling_mode", PROPERTY_HINT_ENUM,
+                        RailVehicleController::coupling_mode_hint(),
+                        PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "RailVehicleController.CouplingMode"),
+                "set_trainset_coupling_mode", "get_trainset_coupling_mode");
         ClassDB::bind_method(D_METHOD("set_head_display_material", "value"), &RailVehicle3D::set_head_display_material);
         ClassDB::bind_method(D_METHOD("get_head_display_material"), &RailVehicle3D::get_head_display_material);
         ADD_PROPERTY(
@@ -67,6 +80,8 @@ namespace godot {
         /* The vehicle this node draws has changed - it has one now, or a different one. Whoever
          * needs the vehicle reacts to this instead of looking for it again later. */
         ADD_SIGNAL(MethodInfo(vehicle_changed_signal));
+        /* How it stands in its TrainSet3D has changed - its direction, gap or coupling mode */
+        ADD_SIGNAL(MethodInfo(trainset_placement_changed_signal));
     }
 
     /* The node's own work happens as it enters and leaves the tree, never per frame: a subclass
@@ -357,10 +372,29 @@ namespace godot {
         start_direction = p_value;
         start_track_pending = !start_track_name.is_empty();
         _place_on_start_track();
+        emit_signal(trainset_placement_changed_signal);
     }
 
     TrackServer::Direction RailVehicle3D::get_start_direction() const {
         return start_direction;
+    }
+
+    void RailVehicle3D::set_trainset_gap(const double p_value) {
+        trainset_gap = p_value;
+        emit_signal(trainset_placement_changed_signal);
+    }
+
+    double RailVehicle3D::get_trainset_gap() const {
+        return trainset_gap;
+    }
+
+    void RailVehicle3D::set_trainset_coupling_mode(const RailVehicleController::CouplingMode p_value) {
+        trainset_coupling_mode = p_value;
+        emit_signal(trainset_placement_changed_signal);
+    }
+
+    RailVehicleController::CouplingMode RailVehicle3D::get_trainset_coupling_mode() const {
+        return trainset_coupling_mode;
     }
 
     void RailVehicle3D::set_head_display_material(const Ref<Material> &p_value) {

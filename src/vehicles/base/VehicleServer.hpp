@@ -188,6 +188,7 @@ namespace godot {
             /* What the scenery placed the vehicle with - the velocity it starts with. Handed to its
              * controller when it is bound. */
             void vehicle_set_initial_velocity(const RID &p_vehicle, double p_velocity);
+            double vehicle_get_initial_velocity(const RID &p_vehicle) const;
             /* The vehicle's id, and the way back from one. An id is what a `.scn`, an event or the
              * console has; everything that holds the vehicle uses its handle and never comes
              * through here (TrackServer::track_get_rid_by_name() is the same shape, for the same

@@ -98,8 +98,9 @@ namespace godot {
                 COUPLER_END_REAR = 1,
             };
 
-            /* What joins two coupled vehicles, as the original names it; the flags combine into a
-             * coupling (enum coupling, MOVER.h:162). Permanent marks the couplings inside one unit. */
+            /* What joins two coupled vehicles; the flags combine into a coupling. Permanent marks the
+             * couplings inside one unit. The interface's own bits: a backend maps them onto its own
+             * (the names follow the original's enum coupling, MOVER.h:162). */
             enum CouplingFlags {
                 COUPLING_FLAG_NONE = 0x0,
                 COUPLING_FLAG_COUPLER = 0x1,
@@ -115,8 +116,37 @@ namespace godot {
                 COUPLING_FLAG_POWER_3X400V = 0x400,
             };
 
+            /* How a trainset's vehicle couples to the next one; which flags that takes depends on
+             * what the couplers of both allow (coupling_mode_get_flags()) */
+            enum CouplingMode {
+                /* Not coupled */
+                COUPLING_MODE_NONE,
+                /* The coupler alone */
+                COUPLING_MODE_COUPLER,
+                /* The coupler and the brake hose */
+                COUPLING_MODE_BRAKE,
+                /* Everything both couplers allow */
+                COUPLING_MODE_FULL,
+                /* Everything both couplers allow, for good - inside one unit */
+                COUPLING_MODE_PERMANENT,
+            };
+
+            /* The sides of a vehicle, looking from its front */
+            enum Side {
+                SIDE_RIGHT,
+                SIDE_LEFT,
+            };
+
             /* The other end of the same vehicle - what a walk along a trainset leaves a vehicle by */
             static CouplerEnd opposite_end(CouplerEnd p_end);
+            /* The flags p_mode couples two ends by, of p_joinable - what both of their couplers allow
+             * (get_coupler_joinable_flags()) */
+            static BitField<CouplingFlags>
+            coupling_mode_get_flags(CouplingMode p_mode, BitField<CouplingFlags> p_joinable);
+            /* The inspector's hint of a CouplingFlags property (PROPERTY_HINT_FLAGS) */
+            static String coupling_flags_hint();
+            /* The inspector's hint of a CouplingMode property (PROPERTY_HINT_ENUM) */
+            static String coupling_mode_hint();
 
             enum TrainPowerSource {
                 POWER_SOURCE_NOT_DEFINED,
@@ -222,12 +252,16 @@ namespace godot {
             virtual bool is_coupled(CouplerEnd p_end) const = 0;
             /* Whether this end is joined by every one of p_flags (TestFlag(Couplers[end].CouplingFlag, ...)) */
             virtual bool is_coupled_by(CouplerEnd p_end, BitField<CouplingFlags> p_flags) const = 0;
-            virtual void coupler_connect(const Variant &p_where) = 0;
-            virtual void coupler_disconnect(const Variant &p_where) = 0;
+            /* Which of the two vehicles coupled at an end draws the coupler itself */
+            virtual bool is_coupling_owner(CouplerEnd p_end) const = 0;
+            /* One more coupling of an end with the vehicle beyond it, and an end uncoupled
+             * (TDynamicObject::couple(), uncouple(), DynObj.cpp:1509, 1614) */
+            virtual void coupler_connect(CouplerEnd p_end) = 0;
+            virtual void coupler_disconnect(CouplerEnd p_end) = 0;
             /* The adapter of the neighbour beyond an end (its coupleradapter:, or the original's own
              * when it has none) fitted to that end, with room left for it (attach_coupler_adapter(),
-             * DynObj.cpp:1754-1789) - p_where as coupler_connect()'s */
-            virtual bool coupler_adapter_attach(const Variant &p_where) = 0;
+             * DynObj.cpp:1754-1789) */
+            virtual bool coupler_adapter_attach(CouplerEnd p_end) = 0;
             /* The adapter of the vehicle coupled at an end fitted to it, whatever the room - a
              * trainset the scenery couples (AttachNext(), DynObj.cpp:2740-2758) */
             virtual bool coupler_adapter_fit(CouplerEnd p_end) = 0;
@@ -238,7 +272,7 @@ namespace godot {
              * control line only between equal control types; none without a neighbour */
             virtual BitField<CouplingFlags> get_coupler_joinable_flags(CouplerEnd p_end) const = 0;
             /* The adapter taken off an end, uncoupling it first (DynObj.cpp:1791-1810) */
-            virtual bool coupler_adapter_remove(const Variant &p_where) = 0;
+            virtual bool coupler_adapter_remove(CouplerEnd p_end) = 0;
             /* The model of the adapter fitted to an end, "" without one */
             String get_coupler_adapter_fitted_model(CouplerEnd p_end) const;
             /* The fitted adapter's length added to the end and its height over the rail [m] */
@@ -308,6 +342,8 @@ namespace godot {
 VARIANT_ENUM_CAST(RailVehicleController::TrainPowerSource);
 VARIANT_ENUM_CAST(RailVehicleController::TrainPowerType);
 VARIANT_ENUM_CAST(RailVehicleController::CouplerEnd);
+VARIANT_ENUM_CAST(RailVehicleController::Side);
 VARIANT_BITFIELD_CAST(RailVehicleController::CouplingFlags);
+VARIANT_ENUM_CAST(RailVehicleController::CouplingMode);
 VARIANT_ENUM_CAST(RailVehicleController::DerailCause);
 VARIANT_ENUM_CAST(RailVehicleController::StartMode);

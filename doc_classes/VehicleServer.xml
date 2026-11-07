@@ -296,6 +296,13 @@
 				Returns the vehicle's id - its scenery name in lower case, as the original reads it. An event, the console or a script finds the vehicle by it ([method vehicle_get_rid_by_id]); it is not shown to the player ([method vehicle_get_name]).
 			</description>
 		</method>
+		<method name="vehicle_get_initial_velocity" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The velocity [param vehicle] starts with ([method vehicle_set_initial_velocity]).
+			</description>
+		</method>
 		<method name="vehicle_get_name" qualifiers="const">
 			<return type="String" />
 			<param index="0" name="vehicle" type="RID" />

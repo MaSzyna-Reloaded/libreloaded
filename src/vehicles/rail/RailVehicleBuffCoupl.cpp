@@ -21,17 +21,16 @@ namespace godot {
         // Coupler capability flags and control
         BIND_PROPERTY_W_HINT(
                 RailVehicleBuffCoupl, Variant::INT, allowed_flag, PROPERTY_HINT_FLAGS,
-                "Mechanical,Brake pipe,Multiple control,High voltage,Passage,Air 8 bar,Heating,Fixed coupling lock,24V "
-                "electric cable,110V electric cable,3+400V electric cable");
+                RailVehicleController::coupling_flags_hint());
         BIND_PROPERTY_W_HINT(
                 RailVehicleBuffCoupl, Variant::INT, automatic_flag, PROPERTY_HINT_FLAGS,
-                "Mechanical,Brake pipe,Multiple control,High voltage,Passage,Air 8 bar,Heating,Fixed coupling lock,24V "
-                "electric cable,110V electric cable,3+400V electric cable");
-        BIND_PROPERTY_W_HINT(RailVehicleBuffCoupl, Variant::INT, power_flag, PROPERTY_HINT_FLAGS, "24V,110V,3x400V");
+                RailVehicleController::coupling_flags_hint());
+        BIND_PROPERTY_W_HINT(
+                RailVehicleBuffCoupl, Variant::INT, power_flag, PROPERTY_HINT_FLAGS,
+                RailVehicleController::coupling_flags_hint());
         BIND_PROPERTY_W_HINT(
                 RailVehicleBuffCoupl, Variant::INT, power_coupling, PROPERTY_HINT_FLAGS,
-                "Mechanical,Brake pipe,Multiple control,High voltage,Passage,Air 8 bar,Heating,Fixed coupling lock,24V "
-                "electric cable,110V electric cable,3+400V electric cable");
+                RailVehicleController::coupling_flags_hint());
         BIND_PROPERTY(RailVehicleBuffCoupl, Variant::STRING, control_type);
         BIND_PROPERTY_W_HINT(
                 RailVehicleBuffCoupl, Variant::INT, buffer_location, PROPERTY_HINT_ENUM, "Front,Back,Both");

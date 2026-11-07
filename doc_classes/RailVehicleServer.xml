@@ -17,6 +17,62 @@
 				What [param cabin] is in its rail vehicle: the front cab, the rear one or the machine room; [constant RailVehicleCabinKind.RAIL_VEHICLE_CABIN_NONE] for a cabin this server did not add.
 			</description>
 		</method>
+		<method name="coupler_get_adapter_height" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				The height over the rail of the adapter fitted to an end of [param vehicle] [m].
+			</description>
+		</method>
+		<method name="coupler_get_adapter_length" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				The length the adapter fitted to an end of [param vehicle] adds to it [m].
+			</description>
+		</method>
+		<method name="coupler_get_adapter_model" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				The model of the adapter fitted to an end of [param vehicle], empty without one.
+			</description>
+		</method>
+		<method name="coupler_get_distance" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="other" type="RID" />
+			<description>
+				The distance in metres between the couplers of [param vehicle] and [param other], measured directly from where the two stand (TMoverParameters::CouplerDist(), Mover.cpp:543) - what the original's driver takes for a vehicle [method vehicle_find_vehicle] found near (scan_obstacles(), Driver.cpp:6672-6675). Infinite when either has no controller.
+			</description>
+		</method>
+		<method name="coupler_get_joinable_flags" qualifiers="const">
+			<return type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				The couplings an end of [param vehicle] and the neighbour beyond it can join (see [method RailVehicleController.get_coupler_joinable_flags]).
+			</description>
+		</method>
+		<method name="coupler_get_nearest" qualifiers="const">
+			<return type="int" enum="RailVehicleController.CouplerEnd" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="position" type="Vector3" />
+			<description>
+				The end of [param vehicle] nearer to [param position] (world), as the walk mode's commands pick it (ABuScanNearestObject, Train.cpp:6213).
+			</description>
+		</method>
+		<method name="coupler_is_automatic" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				Whether an end of [param vehicle] couples as an automatic coupler, its adapter's or its own.
+			</description>
+		</method>
 		<method name="load_add">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
@@ -105,7 +161,7 @@
 			<param index="1" name="vehicle" type="RID" />
 			<param index="2" name="direction" type="int" enum="TrackServer.Direction" />
 			<param index="3" name="gap" type="float" />
-			<param index="4" name="coupling" type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
+			<param index="4" name="coupling_mode" type="int" enum="RailVehicleController.CouplingMode" />
 			<description>
 				The next vehicle of the trainset: which way it stands, how far behind the one before it [m] (none when it stands reversed) and how it couples to the next one.
 			</description>
@@ -147,7 +203,7 @@
 		<method name="trainset_get_door_open" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="side" type="int" enum="RailVehicleDoors.Side" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
 			<description>
 				Whether a door alone (its step whatever) of the trainset coupled to [param vehicle] is not closed on [param side] of [param vehicle]; a vehicle standing the other way round has its sides swapped, doors closing by themselves do not count.
 			</description>
@@ -155,7 +211,7 @@
 		<method name="trainset_get_door_permit" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="side" type="int" enum="RailVehicleDoors.Side" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
 			<description>
 				Whether a door permit is given on [param side] of [param vehicle], among the trainset's vehicles that need one.
 			</description>
@@ -163,7 +219,7 @@
 		<method name="trainset_get_doorway_open" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="side" type="int" enum="RailVehicleDoors.Side" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
 			<description>
 				Whether a doorway (its door or its step) of the trainset coupled to [param vehicle] is not closed on [param side] of [param vehicle]; a vehicle standing the other way round has its sides swapped, doors closing by themselves do not count.
 			</description>
@@ -221,7 +277,7 @@
 			<return type="void" />
 			<param index="0" name="trainset" type="RID" />
 			<description>
-				Stands the vehicles on the track one after another, each as long as it is, and couples them - at once, or as soon as every vehicle of it has its simulation.
+				Stands the vehicles on the track one after another, each as long as it is, and couples them - at once, or as soon as every vehicle of it has its simulation. Each pair couples by the flags its coupling mode takes of what the couplers of both allow ([method RailVehicleController.coupling_mode_get_flags], [method coupler_get_joinable_flags]).
 			</description>
 		</method>
 		<method name="trainset_set_description">
@@ -367,46 +423,6 @@
 				The vehicles joined to [param vehicle] by every one of [param flags], in order: from the last of them beyond [param end] back through this one to the last on the other side ([code]TDynamicObject::GetFirstDynamic()[/code] + [code]Next()[/code], [code]DynObj.cpp:501[/code]).
 			</description>
 		</method>
-		<method name="vehicle_get_coupler_adapter_height" qualifiers="const">
-			<return type="float" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The height over the rail of the adapter fitted to an end of [param vehicle] [m].
-			</description>
-		</method>
-		<method name="vehicle_get_coupler_adapter_length" qualifiers="const">
-			<return type="float" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The length the adapter fitted to an end of [param vehicle] adds to it [m].
-			</description>
-		</method>
-		<method name="vehicle_get_coupler_adapter_model" qualifiers="const">
-			<return type="String" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The model of the adapter fitted to an end of [param vehicle], empty without one.
-			</description>
-		</method>
-		<method name="vehicle_get_coupler_distance" qualifiers="const">
-			<return type="float" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="other" type="RID" />
-			<description>
-				The distance in metres between the couplers of [param vehicle] and [param other], measured directly from where the two stand (TMoverParameters::CouplerDist(), Mover.cpp:543) - what the original's driver takes for a vehicle [method vehicle_find_vehicle] found near (scan_obstacles(), Driver.cpp:6672-6675). Infinite when either has no controller.
-			</description>
-		</method>
-		<method name="vehicle_get_coupler_joinable_flags" qualifiers="const">
-			<return type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The couplings an end of [param vehicle] and the neighbour beyond it can join (see [method RailVehicleController.get_coupler_joinable_flags]).
-			</description>
-		</method>
 		<method name="vehicle_get_curve" qualifiers="const">
 			<return type="Dictionary" />
 			<param index="0" name="vehicle" type="RID" />
@@ -505,14 +521,6 @@
 			<param index="0" name="vehicle" type="RID" />
 			<description>
 				Whether [param vehicle] is a rail vehicle ([method vehicle_attach]).
-			</description>
-		</method>
-		<method name="vehicle_is_coupler_automatic" qualifiers="const">
-			<return type="bool" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				Whether an end of [param vehicle] couples as an automatic coupler, its adapter's or its own.
 			</description>
 		</method>
 		<method name="vehicle_is_standing" qualifiers="const">

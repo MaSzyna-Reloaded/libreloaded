@@ -9,9 +9,9 @@ namespace godot {
 
 
         public:
-            /// A side's doors came fully open (side: Side)
+            /// A side's doors came fully open (side: RailVehicleController.Side)
             static const char *doors_opened_signal;
-            /// A side's doors came fully closed (side: Side)
+            /// A side's doors came fully closed (side: RailVehicleController.Side)
             static const char *doors_closed_signal;
 
             int get_component_type() const override {
@@ -69,7 +69,6 @@ namespace godot {
                 PERMIT_LIGHT_FLASHING_ON_PERMISSION,
                 PERMIT_LIGHT_FLASHING_ALWAYS
             };
-            enum Side { SIDE_RIGHT, SIDE_LEFT };
             enum Voltage {
                 VOLTAGE_AUTO,
                 VOLTAGE_0,
@@ -93,11 +92,11 @@ namespace godot {
             };
             virtual void permit_step(bool p_state) = 0;
             /* The side comes last, so a command binds it and takes the state (doors_left_permit) */
-            virtual void permit_doors(bool p_state, Side p_side) = 0;
-            virtual void operate_doors(bool p_state, Side p_side) = 0;
+            virtual void permit_doors(bool p_state, RailVehicleController::Side p_side) = 0;
+            virtual void operate_doors(bool p_state, RailVehicleController::Side p_side) = 0;
             /* The door handle of the vehicle itself, as a passenger or the guard works it - nothing
              * is sent along the trainset (OperateDoors(range_t::local), Driver.cpp:4340-4341) */
-            virtual void operate_doors_locally(bool p_state, Side p_side) = 0;
+            virtual void operate_doors_locally(bool p_state, RailVehicleController::Side p_side) = 0;
             virtual void door_lock(bool p_state) = 0;
             virtual void door_remote_control(bool p_state) = 0;
             /* The departure signal given or taken back, along the trainset (signal_departure) */
@@ -140,7 +139,7 @@ namespace godot {
             bool permit_required = false;
             PermitLight permit_light_blinking = PermitLight::PERMIT_LIGHT_CONTINUOUS;
             PlatformType platform_type = PlatformType::PLATFORM_TYPE_ROTATE;
-            Side side = Side::SIDE_LEFT;
+            RailVehicleController::Side side = RailVehicleController::SIDE_LEFT;
 
         public:
             MAKE_GS_NR(Type, type);
@@ -170,13 +169,12 @@ namespace godot {
             MAKE_GS(bool, permit_required);
             MAKE_GS_NR(PermitLight, permit_light_blinking);
             MAKE_GS_NR(PlatformType, platform_type);
-            MAKE_GS_NR(Side, side);
+            MAKE_GS_NR(RailVehicleController::Side, side);
     };
 } // namespace godot
 
 VARIANT_ENUM_CAST(RailVehicleDoors::PermitLight)
 VARIANT_ENUM_CAST(RailVehicleDoors::PlatformType)
-VARIANT_ENUM_CAST(RailVehicleDoors::Side)
 VARIANT_ENUM_CAST(RailVehicleDoors::Controls)
 VARIANT_ENUM_CAST(RailVehicleDoors::Voltage)
 VARIANT_ENUM_CAST(RailVehicleDoors::Type)

@@ -1,5 +1,6 @@
 #pragma once
 #include "macros.hpp"
+#include "scenery/TrainsetMemberData.hpp"
 #include "scenery/VehicleData.hpp"
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -20,8 +21,8 @@ namespace godot {
              * empty for a vehicle outside a trainset */
             String timetable;
             double velocity = 0.0;
-            /* Its vehicles, front first */
-            TypedArray<VehicleData> vehicles;
+            /* Its vehicles and how they stand, front first */
+            TypedArray<TrainsetMemberData> members;
             /* What the scenario says the train is to do, and whether it offers the trainset to the
              * player (RailVehicleServer.trainset_set_description(), trainset_set_player_drivable()) */
             String description;
@@ -35,7 +36,7 @@ namespace godot {
             MAKE_GS_NR(double, offset);
             MAKE_GS(String, timetable);
             MAKE_GS_NR(double, velocity);
-            MAKE_GS_NR(TypedArray<VehicleData>, vehicles);
+            MAKE_GS_NR(TypedArray<TrainsetMemberData>, members);
             MAKE_GS(String, description);
             MAKE_GS_NR(bool, player_drivable);
 
@@ -45,17 +46,14 @@ namespace godot {
             /// The vehicle the player starts in: the one with a driver in its front cab, else in its
             /// rear one, else the first; null for a trainset without vehicles
             Ref<VehicleData> get_driver_vehicle() const;
-            /// Its vehicles as p_arranged lists them (SceneryContentNode.trainset_override) when every
-            /// declared vehicle there stands at its place in this trainset, its declared ones otherwise.
-            /// An entry is paired with its declared vehicle by its place in the trainset
-            /// (VehicleData.trainset_index), as the original couples a trainset by position
-            /// (simulationstateserializer.cpp:818-834) - an id may repeat. A declared vehicle becomes
-            /// the entry's vehicle, turned its way - its crew and load stay. An added one (no place)
-            /// gets the velocity of the vehicle before it (of the first declared one, when it comes
-            /// first), nobody aboard, no load, no gap, an id of its own and no name. The couplings are
-            /// the places': each vehicle couples to the next as the declared vehicle at its place did,
-            /// a vehicle moved from the end leaving no uncoupled joint behind it - past the declared
-            /// joints as the last of them, the last vehicle as the declared last one.
-            TypedArray<VehicleData> get_arranged_vehicles(const TypedArray<VehicleData> &p_arranged) const;
+            /// Its members as p_arranged lists them (SceneryContentNode.trainset_override) when every
+            /// declared member there stands at its place in this trainset, its declared ones otherwise.
+            /// An entry is paired with its declared member by its place in the trainset
+            /// (TrainsetMemberData.trainset_index) - an id may repeat. A declared member becomes the
+            /// entry's vehicle, turned its way - its crew, load and gap stay. An added one (no place)
+            /// is a copy of the vehicle before it (of the first declared one, when it comes first) with
+            /// nobody aboard, no load, no gap, an id of its own and no name. Each couples to the next
+            /// by the entry's coupling mode - the one the arrangement shows and the player chose.
+            TypedArray<TrainsetMemberData> get_arranged_members(const TypedArray<TrainsetMemberData> &p_arranged) const;
     };
 } // namespace godot

@@ -13,6 +13,52 @@ namespace godot {
         return p_end == COUPLER_END_FRONT ? COUPLER_END_REAR : COUPLER_END_FRONT;
     }
 
+    BitField<RailVehicleController::CouplingFlags> RailVehicleController::coupling_mode_get_flags(
+            const CouplingMode p_mode, const BitField<CouplingFlags> p_joinable) {
+        const int64_t joinable = static_cast<int64_t>(p_joinable);
+        // nothing joins two vehicles their couplers cannot hold together
+        if ((joinable & COUPLING_FLAG_COUPLER) == 0) {
+            return COUPLING_FLAG_NONE;
+        }
+        switch (p_mode) {
+            case COUPLING_MODE_NONE:
+                return COUPLING_FLAG_NONE;
+            case COUPLING_MODE_COUPLER:
+                return COUPLING_FLAG_COUPLER;
+            case COUPLING_MODE_BRAKE:
+                return joinable & (COUPLING_FLAG_COUPLER | COUPLING_FLAG_BRAKEHOSE);
+            case COUPLING_MODE_FULL:
+                return joinable;
+            case COUPLING_MODE_PERMANENT:
+                return joinable | COUPLING_FLAG_PERMANENT;
+        }
+        return COUPLING_FLAG_NONE;
+    }
+
+    String RailVehicleController::coupling_flags_hint() {
+        return enum_hint(
+                {{"Coupler", COUPLING_FLAG_COUPLER},
+                 {"Brake hose", COUPLING_FLAG_BRAKEHOSE},
+                 {"Control", COUPLING_FLAG_CONTROL},
+                 {"High voltage", COUPLING_FLAG_HIGHVOLTAGE},
+                 {"Gangway", COUPLING_FLAG_GANGWAY},
+                 {"Main hose", COUPLING_FLAG_MAINHOSE},
+                 {"Heating", COUPLING_FLAG_HEATING},
+                 {"Permanent", COUPLING_FLAG_PERMANENT},
+                 {"24 V", COUPLING_FLAG_POWER_24V},
+                 {"110 V", COUPLING_FLAG_POWER_110V},
+                 {"3x400 V", COUPLING_FLAG_POWER_3X400V}});
+    }
+
+    String RailVehicleController::coupling_mode_hint() {
+        return enum_hint(
+                {{"None", COUPLING_MODE_NONE},
+                 {"Coupler", COUPLING_MODE_COUPLER},
+                 {"Brake", COUPLING_MODE_BRAKE},
+                 {"Full", COUPLING_MODE_FULL},
+                 {"Permanent", COUPLING_MODE_PERMANENT}});
+    }
+
     Ref<VehicleComponent> RailVehicleController::get_rail_component(const RailVehicleComponentType::Type p_type) const {
         return _get_component_of_type(p_type);
     }
@@ -71,21 +117,22 @@ namespace godot {
                 D_METHOD("couple", "other", "end", "other_end", "coupling"), &RailVehicleController::couple);
         ClassDB::bind_static_method(
                 "RailVehicleController", D_METHOD("opposite_end", "end"), &RailVehicleController::opposite_end);
+        ClassDB::bind_static_method(
+                "RailVehicleController", D_METHOD("coupling_mode_get_flags", "mode", "joinable"),
+                &RailVehicleController::coupling_mode_get_flags);
         ClassDB::bind_method(D_METHOD("uncouple", "end"), &RailVehicleController::uncouple);
         ClassDB::bind_method(D_METHOD("is_coupled", "end"), &RailVehicleController::is_coupled);
         ClassDB::bind_method(D_METHOD("is_coupled_by", "end", "flags"), &RailVehicleController::is_coupled_by);
         ClassDB::bind_method(D_METHOD("get_coupled_controller", "end"), &RailVehicleController::get_coupled_controller);
         ClassDB::bind_method(D_METHOD("get_coupled_end", "end"), &RailVehicleController::get_coupled_end);
-        ClassDB::bind_method(D_METHOD("coupler_connect", "where"), &RailVehicleController::coupler_connect);
-        ClassDB::bind_method(D_METHOD("coupler_disconnect", "where"), &RailVehicleController::coupler_disconnect);
-        ClassDB::bind_method(
-                D_METHOD("coupler_adapter_attach", "where"), &RailVehicleController::coupler_adapter_attach);
+        ClassDB::bind_method(D_METHOD("coupler_connect", "end"), &RailVehicleController::coupler_connect);
+        ClassDB::bind_method(D_METHOD("coupler_disconnect", "end"), &RailVehicleController::coupler_disconnect);
+        ClassDB::bind_method(D_METHOD("coupler_adapter_attach", "end"), &RailVehicleController::coupler_adapter_attach);
         ClassDB::bind_method(D_METHOD("coupler_adapter_fit", "end"), &RailVehicleController::coupler_adapter_fit);
         ClassDB::bind_method(D_METHOD("is_coupler_automatic", "end"), &RailVehicleController::is_coupler_automatic);
         ClassDB::bind_method(
                 D_METHOD("get_coupler_joinable_flags", "end"), &RailVehicleController::get_coupler_joinable_flags);
-        ClassDB::bind_method(
-                D_METHOD("coupler_adapter_remove", "where"), &RailVehicleController::coupler_adapter_remove);
+        ClassDB::bind_method(D_METHOD("coupler_adapter_remove", "end"), &RailVehicleController::coupler_adapter_remove);
         ClassDB::bind_method(
                 D_METHOD("get_coupler_adapter_fitted_model", "end"),
                 &RailVehicleController::get_coupler_adapter_fitted_model);
@@ -116,8 +163,7 @@ namespace godot {
                 PropertyInfo(Variant::FLOAT, "coupler_adapter_height"), "set_coupler_adapter_height",
                 "get_coupler_adapter_height");
         BIND_PROPERTY_W_HINT(
-                RailVehicleController, Variant::INT, unit_coupling, PROPERTY_HINT_FLAGS,
-                "Coupler,Brake hose,Control,High voltage,Gangway,Main hose,Heating,Permanent,24 V,110 V,3x400 V");
+                RailVehicleController, Variant::INT, unit_coupling, PROPERTY_HINT_FLAGS, coupling_flags_hint());
         BIND_PROPERTY(RailVehicleController, Variant::STRING, type_name);
         BIND_PROPERTY(RailVehicleController, Variant::STRING, load_name);
         BIND_PROPERTY(RailVehicleController, Variant::FLOAT, load_amount);
@@ -159,6 +205,9 @@ namespace godot {
         BIND_ENUM_CONSTANT(COUPLER_END_FRONT);
         BIND_ENUM_CONSTANT(COUPLER_END_REAR);
 
+        BIND_ENUM_CONSTANT(SIDE_RIGHT);
+        BIND_ENUM_CONSTANT(SIDE_LEFT);
+
         BIND_BITFIELD_FLAG(COUPLING_FLAG_NONE);
         BIND_BITFIELD_FLAG(COUPLING_FLAG_COUPLER);
         BIND_BITFIELD_FLAG(COUPLING_FLAG_BRAKEHOSE);
@@ -171,6 +220,12 @@ namespace godot {
         BIND_BITFIELD_FLAG(COUPLING_FLAG_POWER_24V);
         BIND_BITFIELD_FLAG(COUPLING_FLAG_POWER_110V);
         BIND_BITFIELD_FLAG(COUPLING_FLAG_POWER_3X400V);
+
+        BIND_ENUM_CONSTANT(COUPLING_MODE_NONE);
+        BIND_ENUM_CONSTANT(COUPLING_MODE_COUPLER);
+        BIND_ENUM_CONSTANT(COUPLING_MODE_BRAKE);
+        BIND_ENUM_CONSTANT(COUPLING_MODE_FULL);
+        BIND_ENUM_CONSTANT(COUPLING_MODE_PERMANENT);
 
 
         BIND_ENUM_CONSTANT(DERAIL_CAUSE_NONE);
