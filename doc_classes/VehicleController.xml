@@ -125,18 +125,6 @@
 				The velocity along the vehicle's front [m/s], negative backwards ([code]V[/code]) - straight from the backend.
 			</description>
 		</method>
-		<method name="get_world_position" qualifiers="const">
-			<return type="Vector3" />
-			<description>
-				Where the vehicle is in the world, as the server that places it handed it down.
-			</description>
-		</method>
-		<method name="get_world_transform" qualifiers="const">
-			<return type="Transform3D" />
-			<description>
-				The vehicle's place in the world, as the server that places it handed it down.
-			</description>
-		</method>
 		<method name="initialize">
 			<return type="void" />
 			<description>

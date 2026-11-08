@@ -215,10 +215,6 @@ namespace godot {
                     bool location_stale = true;
                     /* Moved since vehicle_placement_changed last said so */
                     bool placement_unreported = true;
-                    /* The body's transform, composed where the placement changes (_place_body()).
-                     * A parked vehicle is asked for it every frame by everything that draws it or
-                     * listens from it, and composing it samples the track twice. */
-                    Transform3D body_transform;
                     /* The vehicle's radio component whose signals are relayed, and its radio in
                      * RadioServer */
                     ObjectID radio_component_id;
@@ -347,19 +343,13 @@ namespace godot {
             void _on_cabin_person_entered(const RID &p_cabin, const RID &p_person, VehiclePersonRole::Role p_role);
             void _on_cabin_person_left(const RID &p_cabin, const RID &p_person);
             void _on_cabin_person_role_changed(const RID &p_cabin, const RID &p_person, VehiclePersonRole::Role p_role);
-            void _on_cabin_person_moved(const RID &p_person, const RID &p_cabin, const RID &p_previous);
+            void _on_cabin_person_moved(const RID &p_cabin, const RID &p_person, const RID &p_previous);
             void _on_vehicle_cabin_detached(const RID &p_vehicle, const RID &p_cabin);
             /* The driver's cabin decided again after the occupancy changed: kept, handed to the
              * controller and announced when it is another one */
             void _update_driver_cabin(const RID &p_vehicle);
             void _hand_driver_cabin_kind(const RID &p_vehicle);
             RID _find_driver(const RID &p_vehicle) const;
-            RID _vehicle_add_cabin(const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind);
-            RID _vehicle_get_cabin(const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind) const;
-            Error _person_enter_cabin(
-                    const RID &p_person, const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind,
-                    VehiclePersonRole::Role p_role);
-            Error _person_move_to_cabin(const RID &p_person, RailVehicleCabinKind::Kind p_kind);
             /* The first cabin of p_vehicle in p_kinds' order, RID() with none */
             RID
             _vehicle_find_cabin(const RID &p_vehicle, std::initializer_list<RailVehicleCabinKind::Kind> p_kinds) const;
@@ -387,11 +377,13 @@ namespace godot {
              * (TDynamicObject::Move(), DynObj.cpp:2645-2670), reporting every track an axle
              * crosses */
             void _move_vehicle(const RID &p_vehicle, double p_distance);
+            /* One vehicle moved p_distance towards its rear outside its simulation, and announced */
+            void _move_vehicle_alone(const RID &p_vehicle, double p_distance);
             /* An axle's crossings to TrackServer and, for the primary axle, to the track signals */
             void _report_crossings(const RID &p_vehicle, Axle p_axle, const LocalVector<TrackCrossing> &p_crossings);
             /* Where the vehicle's body is, for the axles as they now are: into the placement and
              * to its controller */
-            void _place_body(VehiclePlacement &p_placement);
+            void _place_body(const RID &p_vehicle, VehiclePlacement &p_placement);
             /* Where an axle stands on its track (no rail height) and the track's forward there,
              * sampled as the axle's transform is built from them; false without the track */
             bool _axle_track_frame(const AxleFollower &p_axle, Vector3 &p_r_point, Vector3 &p_r_forward) const;
@@ -399,7 +391,7 @@ namespace godot {
              * its basis), without building that basis - what the step needs of an axle */
             void _axle_origin_heading(const AxleFollower &p_axle, Vector3 &p_r_origin, Vector3 &p_r_heading) const;
             /* An axle's whole transform, the cant and the reversal turned in - made when a bogie is
-             * read (vehicle_get_bogie_transform()), not on every step: the original turns its
+             * read (bogie_get_transform()), not on every step: the original turns its
              * bogie models by the axles (DynObj.cpp:1508-1519) */
             Transform3D _axle_transform(const AxleFollower &p_axle) const;
             /* The track's cant under the axle [deg], signed for the way the axle stands on it */
@@ -450,17 +442,17 @@ namespace godot {
             /* The vehicle answers to the driver of another cabin now (vehicle: RID, cabin: RID,
              * RID() when nobody drives it) - vehicle_get_driver_cabin() */
             static const char *vehicle_driver_cabin_changed_signal;
-            static const char *vehicle_coupler_attached_signal;
-            static const char *vehicle_coupler_detached_signal;
+            static const char *coupler_attached_signal;
+            static const char *coupler_detached_signal;
             /* A coupler adapter fitted to / taken off an end of the vehicle (its controller's) */
-            static const char *vehicle_coupler_adapter_attached_signal;
-            static const char *vehicle_coupler_adapter_removed_signal;
+            static const char *coupler_adapter_attached_signal;
+            static const char *coupler_adapter_removed_signal;
             /* A Radio-Stop reached the vehicle and braked it (TDynamicObject::RadioStop,
              * DynObj.cpp:7229) */
             static const char *vehicle_emergency_signal_received_signal;
             /* A raised pantograph of the vehicle lost its line voltage (vehicle, pantograph: 0 or 1,
              * cause: PantographContactLoss) - on the change, as the warnings report it */
-            static const char *vehicle_pantograph_contact_lost_signal;
+            static const char *pantograph_contact_lost_signal;
 
             RailVehicleServer();
 
@@ -475,7 +467,7 @@ namespace godot {
              * `loadcount` of a `dynamic`). Handed to its controller when it is bound. */
             void vehicle_set_type_name(const RID &p_vehicle, const String &p_type_name);
             String vehicle_get_type_name(const RID &p_vehicle) const;
-            void vehicle_set_load(const RID &p_vehicle, const String &p_load_name, double p_load_amount);
+            void load_set(const RID &p_vehicle, const String &p_load_name, double p_load_amount);
             /* So much more to get on the vehicle at the platform's side, in its own frame; an empty
              * vehicle takes p_load_name, or the first load it accepts (RailVehicleLoad::load_add()).
              * The vehicle's `load_add` command (amount, side) comes here. */
@@ -494,13 +486,10 @@ namespace godot {
             /* The rail vehicle's cabins, by what they are: the front cab (the MMD's
              * cab1definition:), the rear one (cab2definition:) and the machine room
              * (cab0definition:) - VehicleServer cabins this server knows the kind of. One of each
-             * kind; RID() for a kind the vehicle lacks. */
-            RID vehicle_add_front_cabin(const RID &p_vehicle);
-            RID vehicle_add_rear_cabin(const RID &p_vehicle);
-            RID vehicle_add_machine_room(const RID &p_vehicle);
-            RID vehicle_get_front_cabin(const RID &p_vehicle) const;
-            RID vehicle_get_rear_cabin(const RID &p_vehicle) const;
-            RID vehicle_get_machine_room(const RID &p_vehicle) const;
+             * kind; RID() for a kind the vehicle lacks. Who sits in one is VehicleServer's
+             * (cabin_person_enter(), cabin_person_move(), cabin_list_persons()). */
+            RID vehicle_add_cabin(const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind);
+            RID vehicle_get_cabin(const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind) const;
             RailVehicleCabinKind::Kind cabin_get_kind(const RID &p_cabin) const;
             /* The cabin whose driver the vehicle answers to - the original's occupied cab
              * (CabOccupied); RID() when nobody drives it. With more drivers than one the vehicle
@@ -511,15 +500,6 @@ namespace godot {
              * standing the way its reverser points, else the front one - the other end when it
              * lacks that one, then the machine room; RID() for a vehicle without cabins */
             RID vehicle_get_leading_cabin(const RID &p_vehicle);
-            /* VehicleServer's occupancy in the railway's words - cabin_person_enter(),
-             * cabin_person_move(), cabin_has_person_role() and cabin_list_persons() of the cabin of
-             * that kind; ERR_DOES_NOT_EXIST for a kind the vehicle lacks */
-            Error person_enter_front_cabin(const RID &p_person, const RID &p_vehicle, VehiclePersonRole::Role p_role);
-            Error person_enter_rear_cabin(const RID &p_person, const RID &p_vehicle, VehiclePersonRole::Role p_role);
-            Error person_enter_machine_room(const RID &p_person, const RID &p_vehicle, VehiclePersonRole::Role p_role);
-            Error person_move_to_front_cabin(const RID &p_person);
-            Error person_move_to_rear_cabin(const RID &p_person);
-            Error person_move_to_machine_room(const RID &p_person);
             /* The person over to the next cabin that way: of its vehicle, else - from the end of
              * it - through the gangways to the nearest cabin of the trainset (TTrain::CabChange()
              * and OnCommand_cabchangeforward/backward, Train.cpp:8291-8352, 10324-10351). The
@@ -528,15 +508,6 @@ namespace godot {
              * (TTrain::MoveToVehicle(), Train.cpp:10879). ERR_UNAVAILABLE where there is no cabin
              * that way. */
             Error person_change_cabin(const RID &p_person, CabinChange p_direction);
-            bool vehicle_front_cabin_has_person_role(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
-            bool vehicle_rear_cabin_has_person_role(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
-            bool vehicle_machine_room_has_person_role(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
-            TypedArray<VehiclePerson>
-            vehicle_front_cabin_list_persons(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
-            TypedArray<VehiclePerson>
-            vehicle_rear_cabin_list_persons(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
-            TypedArray<VehiclePerson>
-            vehicle_machine_room_list_persons(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
             /* The rail vehicles whose position falls in p_rect (x, z) */
             TypedArray<RID> vehicle_get_rids_in_rect(const Rect2 &p_rect) const;
             /* The railway component of a kind, as VehicleServer::vehicle_component_get() answers
@@ -545,7 +516,7 @@ namespace godot {
             vehicle_component_get(const RID &p_vehicle, RailVehicleComponentType::Type p_type) const;
             /* Couples p_end of the vehicle to p_other_end of p_other by p_coupling
              * (TMoverParameters::Attach(), Mover.cpp:548) */
-            void vehicle_couple(
+            void coupler_attach(
                     const RID &p_vehicle, RailVehicleController::CouplerEnd p_end, const RID &p_other,
                     RailVehicleController::CouplerEnd p_other_end,
                     BitField<RailVehicleController::CouplingFlags> p_coupling);
@@ -583,6 +554,10 @@ namespace godot {
             void vehicle_set_track(
                     const RID &p_vehicle, const RID &p_track, double p_track_offset,
                     TrackServer::Direction p_track_direction);
+            /* The vehicle moved p_distance [m] towards its front, at once and outside its simulation,
+             * with every vehicle coupled to it, whichever way round each stands
+             * (TDynamicObject::move_set(), DynObj.cpp:4302) - what the original's vehicle window
+             * offers a standing train (vehicleparams.cpp:295-303) */
             void vehicle_move(const RID &p_vehicle, double p_distance);
             /* A trainset: vehicles coupled one to the next. A placed vehicle is always in one -
              * alone in its own when coupled to none. Uncoupled, a trainset becomes two; coupled, two
@@ -625,10 +600,6 @@ namespace godot {
              * couplers allow (RailVehicleController::coupling_mode_get_flags()) - at once, or as soon
              * as every vehicle of it has its simulation */
             void trainset_place(const RID &p_trainset);
-            /* The whole trainset coupled to the vehicle moved p_distance [m] towards the vehicle's
-             * front, every vehicle whichever way round it stands (TDynamicObject::move_set(),
-             * DynObj.cpp:4302) */
-            void trainset_move(const RID &p_vehicle, double p_distance);
             /* A doorway (its door or its step) of the trainset coupled to the vehicle not closed on
              * p_side of the vehicle; doors closing by themselves do not count (IsAnyDoorOpen,
              * Driver.cpp:6097) */
@@ -667,13 +638,12 @@ namespace godot {
             /* The vehicle moved since its placement was last announced: announce it, so nothing
              * draws it a frame late */
             void vehicle_report_placement(const RID &p_vehicle);
-            Transform3D vehicle_get_transform(const RID &p_vehicle) const;
             /* Where the vehicle's pantograph of that index (RailVehiclePantographs) stands in its own
              * space; zero for one it lacks or one without geometry */
-            Vector3 vehicle_get_pantograph_position(const RID &p_vehicle, int p_index) const;
+            Vector3 pantograph_get_position(const RID &p_vehicle, int p_index) const;
             /* Where a bogie sits on the track: at the vehicle's axle on that side - the front bogie
              * at the front axle; both at the centre of a vehicle whose spacings are unknown yet */
-            Transform3D vehicle_get_bogie_transform(const RID &p_vehicle, RailVehicleWheels::Bogie p_bogie) const;
+            Transform3D bogie_get_transform(const RID &p_vehicle, RailVehicleWheels::Bogie p_bogie) const;
             /* The track the vehicle is on and where along it, measured towards its front - its
              * primary axle's (RaTrackGet(), RaTranslationGet(), DynObj.h:756-766) */
             Dictionary vehicle_get_track_position(const RID &p_vehicle) const;

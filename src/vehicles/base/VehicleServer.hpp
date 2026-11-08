@@ -63,6 +63,9 @@ namespace godot {
                     /* Whoever builds the vehicle has finished it (vehicle_set_built()) - with its
                      * simulation, or without it when its data could not be read */
                     bool built = false;
+                    /* Where it is in the world - set only by the server that places it
+                     * (vehicle_set_transform()), handed down to the controller it is bound to */
+                    Transform3D transform;
                     /* The last dump handed out, and the controller's state serial it was built
                      * at. A cab is dozens of widgets asking the same vehicle in one frame, and
                      * only a step or a command moves the values between them. */
@@ -142,7 +145,7 @@ namespace godot {
             /* Somebody took another role in the cabin (cabin: RID, person: RID, role) */
             static const char *cabin_person_role_changed_signal;
             /* Somebody went over to another cabin - of the vehicle or, through a gangway, of another
-             * one - in the role it had (person: RID, cabin: RID, previous: RID) */
+             * one - in the role it had (cabin: RID, person: RID, previous: RID) */
             static const char *cabin_person_moved_signal;
 
             VehicleServer();
@@ -231,9 +234,9 @@ namespace godot {
             Error cabin_person_change_role(const RID &p_cabin, const RID &p_person, VehiclePersonRole::Role p_role);
             /* Over to another cabin, of the same vehicle or another, in the role the person has;
              * ERR_UNAVAILABLE for a driver where one already drives */
-            Error cabin_person_move(const RID &p_person, const RID &p_cabin);
-            /* Who sits in the cabin, or in any cabin of the vehicle, in p_role -
-             * VEHICLE_PERSON_ROLE_ANY for everybody */
+            Error cabin_person_move(const RID &p_cabin, const RID &p_person);
+            /* Who sits in the cabin in p_role - VEHICLE_PERSON_ROLE_ANY for everybody; the
+             * vehicle_* pair answers the same of all the vehicle's cabins */
             TypedArray<VehiclePerson> cabin_list_persons(const RID &p_cabin, VehiclePersonRole::Role p_role) const;
             bool cabin_has_person_role(const RID &p_cabin, VehiclePersonRole::Role p_role) const;
             TypedArray<VehiclePerson> vehicle_list_persons(const RID &p_vehicle, VehiclePersonRole::Role p_role) const;
@@ -261,10 +264,15 @@ namespace godot {
              * business. Everything else is read from the component that owns it. */
             double vehicle_get_velocity(const RID &p_vehicle) const;
             double vehicle_get_speed(const RID &p_vehicle) const;
-            /* Where the vehicle is in the world, as whichever server places it set it */
+            /* Where the vehicle is in the world, as whichever server places it set it - with its
+             * simulation or before it has one */
             Vector3 vehicle_get_position(const RID &p_vehicle) const;
             /* ...and how it stands there - a rail vehicle and a road one alike */
             Transform3D vehicle_get_transform(const RID &p_vehicle) const;
+            /* The vehicle's place in the world - C++ only, called by the server that places it
+             * (RailVehicleServer, RoadVehicleServer) where the placement changes; handed down to
+             * its controller (VehicleController::set_world_transform()) */
+            void vehicle_set_transform(const RID &p_vehicle, const Transform3D &p_transform);
             /* The component of a kind, as a typed object - the shape
              * PhysicsServer3D::body_get_direct_state() has: a live view on the vehicle, valid
              * while the vehicle is. A per-frame reader takes it once and reads its properties. */

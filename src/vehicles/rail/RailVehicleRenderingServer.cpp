@@ -34,15 +34,17 @@ namespace godot {
         singleton = nullptr;
     }
 
-    /* The vehicle stands on a track: the body's transform is RailVehicleServer's answer and nothing
-     * else - it composes it from the bogies */
+    /* The vehicle stands on a track: the body's transform is where RailVehicleServer placed it,
+     * composed from the bogies, and nothing else */
     bool RailVehicleRenderingServer::_vehicle_get_placement(const RID &p_vehicle, Transform3D &p_r_transform) const {
         const RailVehicleServer *server = RailVehicleServer::get_instance();
         if (server == nullptr ||
             !RID(server->vehicle_get_track_position(p_vehicle).get("track_rid", RID())).is_valid()) {
             return false;
         }
-        p_r_transform = server->vehicle_get_transform(p_vehicle);
+        const VehicleServer *vehicle_server = VehicleServer::get_instance();
+        ERR_FAIL_NULL_V(vehicle_server, false);
+        p_r_transform = vehicle_server->vehicle_get_transform(p_vehicle);
         return true;
     }
 
@@ -70,8 +72,8 @@ namespace godot {
             return;
         }
         const Transform3D bogie_transforms[] = {
-                server->vehicle_get_bogie_transform(p_vehicle, RailVehicleWheels::BOGIE_FRONT),
-                server->vehicle_get_bogie_transform(p_vehicle, RailVehicleWheels::BOGIE_REAR)};
+                server->bogie_get_transform(p_vehicle, RailVehicleWheels::BOGIE_FRONT),
+                server->bogie_get_transform(p_vehicle, RailVehicleWheels::BOGIE_REAR)};
         Vector3 body_forward = bogie_transforms[0].origin - bogie_transforms[1].origin;
         if (!body_forward.is_zero_approx()) {
             body_forward.normalize();

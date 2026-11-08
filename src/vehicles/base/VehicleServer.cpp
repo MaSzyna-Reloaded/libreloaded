@@ -91,7 +91,7 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("cabin_person_change_role", "cabin", "person", "role"),
                 &VehicleServer::cabin_person_change_role);
-        ClassDB::bind_method(D_METHOD("cabin_person_move", "person", "cabin"), &VehicleServer::cabin_person_move);
+        ClassDB::bind_method(D_METHOD("cabin_person_move", "cabin", "person"), &VehicleServer::cabin_person_move);
         ClassDB::bind_method(D_METHOD("cabin_list_persons", "cabin", "role"), &VehicleServer::cabin_list_persons);
         ClassDB::bind_method(D_METHOD("cabin_has_person_role", "cabin", "role"), &VehicleServer::cabin_has_person_role);
         ClassDB::bind_method(D_METHOD("vehicle_list_persons", "vehicle", "role"), &VehicleServer::vehicle_list_persons);
@@ -152,7 +152,7 @@ namespace godot {
                         Variant::INT, "role", PROPERTY_HINT_ENUM, "", PROPERTY_USAGE_CLASS_IS_ENUM,
                         "VehiclePersonRole.Role")));
         ADD_SIGNAL(MethodInfo(
-                cabin_person_moved_signal, PropertyInfo(Variant::RID, "person"), PropertyInfo(Variant::RID, "cabin"),
+                cabin_person_moved_signal, PropertyInfo(Variant::RID, "cabin"), PropertyInfo(Variant::RID, "person"),
                 PropertyInfo(Variant::RID, "previous")));
     }
 
@@ -330,6 +330,7 @@ namespace godot {
         controller->set_vehicle_rid(p_vehicle);
         controller->set_vehicle_id(vehicle->id);
         controller->set_initial_velocity(vehicle->initial_velocity);
+        controller->set_world_transform(vehicle->transform);
         vehicle->implementation = controller->get_implementation();
         if (!vehicle->implementation.is_empty()) {
             SteppedGroup &group = stepped_groups[vehicle->implementation];
@@ -550,13 +551,21 @@ namespace godot {
     }
 
     Vector3 VehicleServer::vehicle_get_position(const RID &p_vehicle) const {
-        const VehicleController *controller = _get_controller(p_vehicle);
-        return controller != nullptr ? controller->get_world_position() : Vector3();
+        return vehicle_get_transform(p_vehicle).origin;
     }
 
     Transform3D VehicleServer::vehicle_get_transform(const RID &p_vehicle) const {
-        const VehicleController *controller = _get_controller(p_vehicle);
-        return controller != nullptr ? controller->get_world_transform() : Transform3D();
+        const Vehicle *vehicle = vehicles.getptr(p_vehicle);
+        return vehicle != nullptr ? vehicle->transform : Transform3D();
+    }
+
+    void VehicleServer::vehicle_set_transform(const RID &p_vehicle, const Transform3D &p_transform) {
+        Vehicle *vehicle = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(vehicle);
+        vehicle->transform = p_transform;
+        if (VehicleController *controller = _get_controller(p_vehicle); controller != nullptr) {
+            controller->set_world_transform(p_transform);
+        }
     }
 
     double VehicleServer::vehicle_get_speed(const RID &p_vehicle) const {
@@ -729,7 +738,7 @@ namespace godot {
         return OK;
     }
 
-    Error VehicleServer::cabin_person_move(const RID &p_person, const RID &p_cabin) {
+    Error VehicleServer::cabin_person_move(const RID &p_cabin, const RID &p_person) {
         const RID *seat = person_cabins.getptr(p_person);
         Cabin *target = cabins.getptr(p_cabin);
         if (seat == nullptr || target == nullptr) {
@@ -747,7 +756,7 @@ namespace godot {
         source->persons.erase(p_person);
         target->persons.insert(p_person, role);
         person_cabins[p_person] = p_cabin;
-        emit_signal(cabin_person_moved_signal, p_person, p_cabin, previous);
+        emit_signal(cabin_person_moved_signal, p_cabin, p_person, previous);
         return OK;
     }
 

@@ -64,7 +64,12 @@ Code generation:
   call** - a server, the cab, the player, the AI, a script or a test sends
   `vehicle_send_command()`; only the command renews the state dump and announces itself
   (`command_received`). Reads (typed getters) and state the owner hands down stay calls - see
-  `CODE_STYLE.md`
+  `CODE_STYLE.md`. A command is a request to the vehicle's behaviour (its controller and
+  components); standing or moving a vehicle past its behaviour (`vehicle_set_track()`,
+  `vehicle_move()`, `coupler_attach()` as a trainset is placed) is `RailVehicleServer`'s own
+  operation, called directly - the UI included. A command whose logic is a server's reaches
+  that server as `load_add` does: the server registers the handler on the vehicle and calls
+  the controller, never the other way round (operator, 2026-11-08)
 * REQUIRED, ABSOLUTE: **whoever introduces something generic moves everything onto it - no
   leftovers, no second road to the same goal.** A generic component, operation or class (a
   `UIDialog`, a server method, a shared scene) is not done when it works in the one place it was
@@ -287,10 +292,6 @@ Before every commit:
   - the file Godot writes next to it on the first run. `git status --short` shows no `??` `.uid`
   beside a staged file; the pre-commit hook (`make install-git-hooks` once per clone,
   `scripts/check-staged-uids`) refuses the commit otherwise
-* REQUIRED: **the staged diff is checked against `REQUIRED_CLEANING_BEFORE_MERGE_TO_UPSTREAM.md`**
-  - an item the commit resolves is ticked in the index and its entry deleted in the same commit;
-  an item whose code the commit touches gets its line numbers corrected; the commit adds no new
-  instance of an open item's pattern
 
 Commit style:
 

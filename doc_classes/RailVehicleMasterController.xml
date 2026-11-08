@@ -22,12 +22,6 @@
 				The active cab ([code]CabActive[/code]): 1 the front, -1 the rear, 0 none.
 			</description>
 		</method>
-		<method name="get_cabin_controleable" qualifiers="const">
-			<return type="bool" />
-			<description>
-				Whether the active cab is the one in command ([code]IsCabMaster()[/code]).
-			</description>
-		</method>
 		<method name="get_distance_counter" qualifiers="const">
 			<return type="float" />
 			<description>
@@ -86,6 +80,12 @@
 			<return type="float" />
 			<description>
 				The Hasler speed recorder's needle with its once-a-second jitter.
+			</description>
+		</method>
+		<method name="is_cabin_master" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Whether the active cab is the one in command ([code]IsCabMaster()[/code]).
 			</description>
 		</method>
 	</methods>

@@ -101,8 +101,8 @@ split, this is where each part lives.
 - **Vehicles juddering or "kicking"** → a visual transform read at a different
   rate than it is written. `VehicleRenderingServer::_process_frame()`
   (`src/vehicles/base/VehicleRenderingServer.cpp`) poses the vehicles drawn in
-  detail every rendered frame, a rail vehicle from
-  `RailVehicleServer.vehicle_get_transform()`; if the simulation runs on a
+  detail every rendered frame, from `VehicleServer.vehicle_get_transform()`, where
+  `RailVehicleServer` placed it; if the simulation runs on a
   different clock, every other frame repeats a position. Godot's built-in
   physics interpolation does **not** help here, because the transform is set on
   `process_frame`, not in `_physics_process`.

@@ -101,15 +101,15 @@ func _refresh() -> void:
         half_width = 0.5 * sliding_width
     _rows["Slider"].text = tr("%.3f m half width + %.3f m horn") % [half_width, HORN_WIDTH]
 
-    var carrier_transform:Transform3D = RailVehicleServer.vehicle_get_transform(carrier)
+    var carrier_transform:Transform3D = VehicleServer.vehicle_get_transform(carrier)
     _report_pantograph(
             carrier_transform, 1,
-            RailVehicleServer.vehicle_get_pantograph_position(carrier, 0), half_width,
+            RailVehicleServer.pantograph_get_position(carrier, 0), half_width,
             _power_source.get_collector_pantograph_first_active(),
             _power_source.get_collector_pantograph_first_voltage())
     _report_pantograph(
             carrier_transform, 2,
-            RailVehicleServer.vehicle_get_pantograph_position(carrier, 1), half_width,
+            RailVehicleServer.pantograph_get_position(carrier, 1), half_width,
             _power_source.get_collector_pantograph_second_active(),
             _power_source.get_collector_pantograph_second_voltage())
 

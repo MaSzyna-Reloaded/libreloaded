@@ -65,17 +65,23 @@ namespace godot {
     /// it has none
     static int cabin_front_cabin(lua_State *p_state) {
         const RID vehicle = LuaHandle::check(p_state, 1, ScriptHandleKind::VEHICLE);
-        return push_cabin(p_state, LuaModules::server<RailVehicleServer>(p_state)->vehicle_get_front_cabin(vehicle));
+        return push_cabin(
+                p_state, LuaModules::server<RailVehicleServer>(p_state)->vehicle_get_cabin(
+                                 vehicle, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_FRONT));
     }
 
     static int cabin_rear_cabin(lua_State *p_state) {
         const RID vehicle = LuaHandle::check(p_state, 1, ScriptHandleKind::VEHICLE);
-        return push_cabin(p_state, LuaModules::server<RailVehicleServer>(p_state)->vehicle_get_rear_cabin(vehicle));
+        return push_cabin(
+                p_state, LuaModules::server<RailVehicleServer>(p_state)->vehicle_get_cabin(
+                                 vehicle, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_REAR));
     }
 
     static int cabin_machine_room(lua_State *p_state) {
         const RID vehicle = LuaHandle::check(p_state, 1, ScriptHandleKind::VEHICLE);
-        return push_cabin(p_state, LuaModules::server<RailVehicleServer>(p_state)->vehicle_get_machine_room(vehicle));
+        return push_cabin(
+                p_state, LuaModules::server<RailVehicleServer>(p_state)->vehicle_get_cabin(
+                                 vehicle, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_MACHINE));
     }
 
     /// on_control_changed(v, fn) - fn(cabin, control_id, value) whenever a control of the

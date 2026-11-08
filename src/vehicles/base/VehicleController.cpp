@@ -54,8 +54,6 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_state_serial"), &VehicleController::get_state_serial);
         ClassDB::bind_method(D_METHOD("find_generic_components", "tag"), &VehicleController::find_generic_components);
         ClassDB::bind_method(D_METHOD("is_physics_active"), &VehicleController::is_physics_active);
-        ClassDB::bind_method(D_METHOD("get_world_transform"), &VehicleController::get_world_transform);
-        ClassDB::bind_method(D_METHOD("get_world_position"), &VehicleController::get_world_position);
         ClassDB::bind_method(
                 D_METHOD("emit_position_changed_if_needed"), &VehicleController::emit_position_changed_if_needed);
         ClassDB::bind_method(D_METHOD("set_vehicle_rid", "vehicle"), &VehicleController::set_vehicle_rid);

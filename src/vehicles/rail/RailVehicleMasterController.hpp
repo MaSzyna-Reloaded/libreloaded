@@ -69,7 +69,7 @@ namespace godot {
             virtual int get_main_no_power_position() const = 0;
             /* The active cab (CabActive) and whether it is the one in command (IsCabMaster()) */
             virtual int get_cabin() const = 0;
-            virtual bool get_cabin_controleable() const = 0;
+            virtual bool is_cabin_master() const = 0;
             /* The Hasler speed recorder: the speed it records [km/h], where its needle stands, and
              * the speed its clock ticks at - 0 while it is silent */
             virtual double get_tachometer_speed() const = 0;

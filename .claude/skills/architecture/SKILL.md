@@ -31,7 +31,7 @@ Read top to bottom: each layer may use the ones below it and must know nothing o
 
 The components' API (a coupling component, say) is a layer below the server. A server offers the
 **high-level API** for the high-level operations: walking through the cabins
-(`person_change_cabin()`), coupling (`vehicle_couple()`), managing trainsets (`trainset_place()`)
+(`person_change_cabin()`), coupling (`coupler_attach()`), managing trainsets (`trainset_place()`)
 and moving a vehicle (`vehicle_move()`). Whether a server has to wrap everything beyond these is
 not settled - ask the operator before wrapping more. A vehicle server **forwards its execution to
 the vehicle's component** for that domain - the base classes
@@ -44,7 +44,7 @@ Logic outside the vehicle - a driver, the player, scripts - **executes through t
 The components' API is fixed too, but it serves reading state on hot paths and the backend's
 implementation of the forwarding, not executing logic from outside.
 
-Debt on record (2026-10-09, `TODO.md`): `RailVehicleServer`'s coupling (`vehicle_couple()`,
+Debt on record (2026-10-09, `TODO.md`): `RailVehicleServer`'s coupling (`coupler_attach()`,
 `uncouple`, `is_coupled_by`, `is_coupler_automatic`, adapters,
 `vehicle_get_coupler_joinable_flags()`) still goes through `RailVehicleController`, and a driver
 couples by the `coupler_connect` command; nothing new is added that way.
@@ -111,8 +111,8 @@ simulation's start to its release). How the backend steps its vehicles together 
 phases, with what sub-steps - is its own business (`VehicleImplementationServer::stepping_advance()`).
 
 **2. A public API takes handles, not pointers.** `VehicleServer` exposes `vehicle_create`,
-`controller_create`/`controller_configure`, `vehicle_bind_controller`, `vehicle_dump_state`, and
-`RailVehicleServer` `vehicle_attach`, `vehicle_set_track`, `vehicle_get_transform` - `RID` in,
+`controller_create`/`controller_configure`, `vehicle_bind_controller`, `vehicle_dump_state`,
+`vehicle_get_transform`, and `RailVehicleServer` `vehicle_attach`, `vehicle_set_track` - `RID` in,
 `Variant` out. Their controller pointers are private helpers, which is the rule working: pointers
 stay inside one class. What a consumer would have wanted the controller for comes out under the
 handle instead - the controller's moves and commands are relayed by `VehicleServer`

@@ -442,8 +442,6 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 * No test for `MaszynaE3DRailVehicleRenderingServer`'s low-poly cab lights, nor for the lamps drawn from the
   lighting (`_update_lights()`).
 * `RailVehicleAppearance`/`MaszynaRailVehicleAppearance` - candidates for a better name.
-* `RailVehicleServer.trainset_move(vehicle, distance)` takes a vehicle RID - rename (e.g.
-  `vehicle_move_coupled`).
 * A vehicle without a start track does not move by its own velocity (the KA car in `demo_3d`).
   Decide whether `RailVehicleServer` should move off-track vehicles.
 * `RailVehicleLighting::LightEnd` duplicates `RailVehicleController::CouplerEnd`.

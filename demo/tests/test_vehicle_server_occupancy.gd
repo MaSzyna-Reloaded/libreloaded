@@ -182,15 +182,15 @@ func test_a_person_moves_within_its_vehicle_with_its_role() -> void:
     assert_eq(VehicleServer.cabin_person_enter(cabin, person, DRIVER), OK)
     watch_signals(VehicleServer)
 
-    assert_eq(VehicleServer.cabin_person_move(person, other_cabin), OK)
+    assert_eq(VehicleServer.cabin_person_move(other_cabin, person), OK)
 
-    assert_signal_emitted_with_parameters(VehicleServer, "cabin_person_moved", [person, other_cabin, cabin])
+    assert_signal_emitted_with_parameters(VehicleServer, "cabin_person_moved", [other_cabin, person, cabin])
     assert_signal_not_emitted(VehicleServer, "cabin_person_left", "a move is not leaving")
     assert_signal_not_emitted(VehicleServer, "cabin_person_entered", "nor entering")
     assert_eq(VehicleServer.person_get_cabin(person), other_cabin)
     assert_eq(VehicleServer.person_get_role(person), DRIVER, "the role goes along")
     assert_false(VehicleServer.cabin_has_person_role(cabin, ANY), "the cabin left is empty")
-    assert_eq(VehicleServer.cabin_person_move(person, other_cabin), OK, "where it sits already")
+    assert_eq(VehicleServer.cabin_person_move(other_cabin, person), OK, "where it sits already")
     assert_signal_emit_count(VehicleServer, "cabin_person_moved", 1, "is no move")
 
 
@@ -205,9 +205,9 @@ func test_a_driver_does_not_move_into_another_drivers_cabin() -> void:
     assert_eq(VehicleServer.cabin_person_enter(other_cabin, other_driver, DRIVER), OK)
     assert_eq(VehicleServer.cabin_person_enter(cabin, observer, OBSERVER), OK)
 
-    assert_eq(VehicleServer.cabin_person_move(driver, other_cabin), ERR_UNAVAILABLE)
+    assert_eq(VehicleServer.cabin_person_move(other_cabin, driver), ERR_UNAVAILABLE)
     assert_eq(VehicleServer.person_get_cabin(driver), cabin)
-    assert_eq(VehicleServer.cabin_person_move(observer, other_cabin), OK, "one riding along goes over")
+    assert_eq(VehicleServer.cabin_person_move(other_cabin, observer), OK, "one riding along goes over")
 
 
 ## A gangway leads into the next vehicle (RailVehicleServer.person_change_cabin())
@@ -218,9 +218,9 @@ func test_a_person_moves_to_another_vehicle_but_not_from_the_ground() -> void:
     var on_foot:RID = _create_person()
     assert_eq(VehicleServer.cabin_person_enter(cabin, person, OBSERVER), OK)
 
-    assert_eq(VehicleServer.cabin_person_move(person, other_vehicles_cabin), OK)
+    assert_eq(VehicleServer.cabin_person_move(other_vehicles_cabin, person), OK)
     assert_eq(VehicleServer.person_get_cabin(person), other_vehicles_cabin)
-    assert_eq(VehicleServer.cabin_person_move(on_foot, cabin), ERR_INVALID_PARAMETER, "entering is not a move")
+    assert_eq(VehicleServer.cabin_person_move(cabin, on_foot), ERR_INVALID_PARAMETER, "entering is not a move")
     assert_eq(VehicleServer.person_get_cabin(on_foot), RID())
 
 

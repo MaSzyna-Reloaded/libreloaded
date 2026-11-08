@@ -75,8 +75,8 @@
 		</method>
 		<method name="cabin_person_move">
 			<return type="int" enum="Error" />
-			<param index="0" name="person" type="RID" />
-			<param index="1" name="cabin" type="RID" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="person" type="RID" />
 			<description>
 				The person over to another cabin, of the same vehicle or another one (a gangway), in the role it has. [constant ERR_UNAVAILABLE] for a driver going where one already drives.
 			</description>
@@ -314,7 +314,7 @@
 			<return type="Vector3" />
 			<param index="0" name="vehicle" type="RID" />
 			<description>
-				Where the vehicle is in the world, as whichever server places it set it.
+				Where the vehicle is in the world, as whichever server places it set it - with its simulation or before it has one.
 			</description>
 		</method>
 		<method name="vehicle_get_rid_by_id" qualifiers="const">
@@ -448,8 +448,8 @@
 			</description>
 		</signal>
 		<signal name="cabin_person_moved">
-			<param index="0" name="person" type="RID" />
-			<param index="1" name="cabin" type="RID" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="person" type="RID" />
 			<param index="2" name="previous" type="RID" />
 			<description>
 				[param person] went over from the cabin [param previous] to [param cabin] - of the same vehicle or, through a gangway, of another one - in the role it had.

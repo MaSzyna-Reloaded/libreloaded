@@ -21,7 +21,7 @@ namespace godot {
         ERR_FAIL_NULL(server);
         server->vehicle_attach(p_vehicle);
         server->vehicle_set_type_name(p_vehicle, type_name);
-        server->vehicle_set_load(p_vehicle, load_name, load_amount);
+        server->load_set(p_vehicle, load_name, load_amount);
     }
 
     void RailVehiclePhysicsNode::set_type_name(const String &p_type_name) {
@@ -40,7 +40,7 @@ namespace godot {
         load_name = p_load_name;
         if (RailVehicleServer *server = RailVehicleServer::get_instance();
             server != nullptr && server->vehicle_is_attached(get_vehicle_rid())) {
-            server->vehicle_set_load(get_vehicle_rid(), load_name, load_amount);
+            server->load_set(get_vehicle_rid(), load_name, load_amount);
         }
     }
 
@@ -52,7 +52,7 @@ namespace godot {
         load_amount = p_load_amount;
         if (RailVehicleServer *server = RailVehicleServer::get_instance();
             server != nullptr && server->vehicle_is_attached(get_vehicle_rid())) {
-            server->vehicle_set_load(get_vehicle_rid(), load_name, load_amount);
+            server->load_set(get_vehicle_rid(), load_name, load_amount);
         }
     }
 
