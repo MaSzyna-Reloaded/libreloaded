@@ -3,9 +3,10 @@ extends Node
 class_name VehicleCatalogProvider
 
 ## A source of rolling stock (VehicleCatalogServer.provider_register()): it lists its vehicles and
-## their liveries, shows a vehicle from its side, says what a vehicle is and what it looks like in
-## the core's terms, and builds a vehicle of what a VehicleData says. A plugin's provider derives from
-## this one and is made and registered by the plugin's ReloadedRuntimePlugin.
+## their liveries, shows a vehicle from its side and as a model to look at, says what a vehicle is
+## and what it looks like in the core's terms, and builds a vehicle of what a VehicleData says. A
+## plugin's provider derives from this one and is made and registered by the plugin's
+## ReloadedRuntimePlugin.
 
 ## The provider's vehicles of [param category]
 func vehicle_list(_category:VehicleInfo.VehicleCategory) -> Array[VehicleInfo]:
@@ -40,6 +41,12 @@ func vehicle_get_description(_vehicle:VehicleData) -> VehicleController:
 ## What [param vehicle] looks like in its livery - its models and their skins: the core's
 ## VehicleAppearance of it; null for none
 func vehicle_get_appearance(_vehicle:VehicleData) -> VehicleAppearance:
+    return null
+
+
+## [param vehicle]'s exterior in its livery, to look at - what a turntable shows: its models under one
+## node, nothing simulated, the caller's to add to its scene and to free; null for none
+func vehicle_create_preview(_vehicle:VehicleData) -> Node3D:
     return null
 
 

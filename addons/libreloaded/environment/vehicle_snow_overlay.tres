@@ -1,0 +1,7 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://cvk8w6tudm7p3"]
+
+[ext_resource type="Shader" uid="uid://kw2503rcw288" path="res://addons/libreloaded/environment/vehicle_snow_overlay.gdshader" id="1_snow"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_snow")
