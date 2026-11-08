@@ -21,12 +21,12 @@ signal vehicle_command_received(vehicle_rid:RID, command:String, p1:Variant, p2:
 ## after the vehicle has its simulation, and may already be driven
 signal vehicle_cabin_scene_changed(vehicle_rid:RID)
 ## The interior of a vehicle's cab was built and is shown now - in the tree and drawn
-## (cabin_show(), vehicle_get_cabin()); once per interior, showing another cab of the vehicle
-## rebuilds the same one. Only the player's cab is ever shown, so what hangs on it (a rain
-## exclusion volume) exists once - never emit this for a cab scene merely set
+## (cabin_show(), which hands the same `cabin` to whoever shows it); once per interior, showing
+## another cab of the vehicle rebuilds the same one. Only the player's cab is ever shown, so what
+## hangs on it (a rain exclusion volume) exists once - never emit this for a cab scene merely set
 ## (vehicle_set_cabin_scene()): one volume per vehicle of a scenery was a quarter of the frame
 ## (docs/findings-archive.md, 2026-10-03 hundreds of vehicles)
-signal vehicle_cabin_built(vehicle_rid:RID)
+signal vehicle_cabin_built(vehicle_rid:RID, cabin:Cabin3D)
 ## The light of a cabin shines at another level (cabin_set_light_level())
 signal cabin_light_level_changed(cabin:RID, level:float)
 ## The instrument light of a cabin came on or went out (cabin_set_instrument_light_enabled())
@@ -196,7 +196,7 @@ func cabin_show(cabin_rid:RID, parent:Node) -> Cabin3D:
     # what the cab shows is worked out before its elements read it - they read it when they are
     # built and follow its changes from then on
     _run_vehicle_display_processes(vehicle_rid)
-    var shown:Cabin3D = vehicle_get_cabin(vehicle_rid)
+    var shown:Cabin3D = _shown_cabin(vehicle_rid)
     if shown:
         shown.set_cabin(cabin_rid)
         return shown
@@ -213,13 +213,13 @@ func cabin_show(cabin_rid:RID, parent:Node) -> Cabin3D:
     # a cabin holds the handle of its cabin, its vehicle comes with it, and takes everything else
     # from here - told once it is in the tree, because building its interior puts nodes there
     cabin.set_cabin(cabin_rid)
-    vehicle_cabin_built.emit(vehicle_rid)
+    vehicle_cabin_built.emit(vehicle_rid, cabin)
     return cabin
 
 
 ## The cab interior freed; a camera put into it is to be taken out first
 func vehicle_hide_cabin(vehicle_rid:RID) -> void:
-    var cabin:Cabin3D = vehicle_get_cabin(vehicle_rid)
+    var cabin:Cabin3D = _shown_cabin(vehicle_rid)
     _cabins.erase(vehicle_rid)
     if not cabin:
         return
@@ -227,8 +227,8 @@ func vehicle_hide_cabin(vehicle_rid:RID) -> void:
     cabin.queue_free()
 
 
-## The cab interior while it is shown, else null
-func vehicle_get_cabin(vehicle_rid:RID) -> Cabin3D:
+## The cab interior of the vehicle while it is shown (cabin_show()), else null
+func _shown_cabin(vehicle_rid:RID) -> Cabin3D:
     return instance_from_id(_cabins.get(vehicle_rid, 0)) as Cabin3D
 
 
