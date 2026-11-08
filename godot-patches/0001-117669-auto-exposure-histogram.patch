@@ -1,0 +1,440 @@
+diff --git a/servers/rendering/renderer_rd/effects/luminance.cpp b/servers/rendering/renderer_rd/effects/luminance.cpp
+index 7d83aa1b3d7c..5c6b3e0adca3 100644
+--- a/servers/rendering/renderer_rd/effects/luminance.cpp
++++ b/servers/rendering/renderer_rd/effects/luminance.cpp
+@@ -54,9 +54,8 @@ Luminance::Luminance(bool p_prefer_raster_effects) {
+ 	} else {
+ 		// Initialize luminance_reduce
+ 		Vector<String> luminance_reduce_modes;
+-		luminance_reduce_modes.push_back("\n#define READ_TEXTURE\n");
++		luminance_reduce_modes.push_back("\n#define HISTOGRAM_PASS\n");
+ 		luminance_reduce_modes.push_back("\n");
+-		luminance_reduce_modes.push_back("\n#define WRITE_LUMINANCE\n");
+ 
+ 		luminance_reduce.shader.initialize(luminance_reduce_modes);
+ 		luminance_reduce.shader_version = luminance_reduce.shader.version_create();
+@@ -79,44 +78,74 @@ Luminance::~Luminance() {
+ 	}
+ }
+ 
+-void Luminance::LuminanceBuffers::set_prefer_raster_effects(bool p_prefer_raster_effects) {
+-	prefer_raster_effects = p_prefer_raster_effects;
++Luminance::LuminanceBuffers::~LuminanceBuffers() {
++	if (current.is_valid()) {
++		RD::get_singleton()->free_rid(current);
++		current = RID();
++	}
++
++	if (previous.is_valid()) {
++		RD::get_singleton()->free_rid(previous);
++		previous = RID();
++	}
++
++	if (histogram.is_valid()) {
++		RD::get_singleton()->free_rid(histogram);
++		histogram = RID();
++	}
+ }
+ 
+ void Luminance::LuminanceBuffers::configure(RenderSceneBuffersRD *p_render_buffers) {
+-	Size2i internal_size = p_render_buffers->get_internal_size();
+-	int w = internal_size.x;
+-	int h = internal_size.y;
++	if (prefer_raster_effects) {
++		Size2i internal_size = p_render_buffers->get_internal_size();
++		int w = internal_size.x;
++		int h = internal_size.y;
++
++		while (true) {
++			w = MAX(w / 8, 1);
++			h = MAX(h / 8, 1);
++
++			RD::TextureFormat tf;
++			tf.format = RD::DATA_FORMAT_R32_SFLOAT;
++			tf.width = w;
++			tf.height = h;
++			tf.usage_bits = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT;
+ 
+-	while (true) {
+-		w = MAX(w / 8, 1);
+-		h = MAX(h / 8, 1);
++			RID texture = RD::get_singleton()->texture_create(tf, RD::TextureView());
++			reduce.push_back(texture);
+ 
+-		RD::TextureFormat tf;
+-		tf.format = RD::DATA_FORMAT_R32_SFLOAT;
+-		tf.width = w;
+-		tf.height = h;
++			if (w == 1 && h == 1) {
++				break;
++			}
++		}
++	}
++}
+ 
+-		bool final = w == 1 && h == 1;
++void Luminance::LuminanceBuffers::init(bool p_prefer_raster_effects) {
++	prefer_raster_effects = p_prefer_raster_effects;
+ 
+-		if (prefer_raster_effects) {
+-			tf.usage_bits = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT;
+-		} else {
+-			tf.usage_bits = RD::TEXTURE_USAGE_STORAGE_BIT;
+-		}
++	RD::TextureFormat tf;
++	tf.format = RD::DATA_FORMAT_R32_SFLOAT;
++	tf.width = 1;
++	tf.height = 1;
++	tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
+ 
+-		if (final) {
+-			tf.usage_bits |= RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
+-		}
++	if (!prefer_raster_effects) {
++		tf.usage_bits |= RD::TEXTURE_USAGE_STORAGE_BIT;
+ 
+-		RID texture = RD::get_singleton()->texture_create(tf, RD::TextureView());
+-		reduce.push_back(texture);
++		current = RD::get_singleton()->texture_create(tf, RD::TextureView());
++		RD::get_singleton()->texture_clear(current, Color(1.0, 1.0, 1.0), 0u, 1u, 0u, 1u);
+ 
+-		if (final) {
+-			current = RD::get_singleton()->texture_create(tf, RD::TextureView());
+-			RD::get_singleton()->texture_clear(current, Color(0.0, 0.0, 0.0), 0u, 1u, 0u, 1u);
+-			break;
+-		}
++		previous = RD::get_singleton()->texture_create(tf, RD::TextureView());
++		RD::get_singleton()->texture_clear(previous, Color(1.0, 1.0, 1.0), 0u, 1u, 0u, 1u);
++
++		histogram = RD::get_singleton()->storage_buffer_create(256 * sizeof(uint32_t));
++		RD::get_singleton()->buffer_clear(histogram, 0, 256 * sizeof(uint32_t));
++	} else {
++		tf.usage_bits |= RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
++
++		current = RD::get_singleton()->texture_create(tf, RD::TextureView());
++		RD::get_singleton()->texture_clear(current, Color(1.0, 1.0, 1.0), 0u, 1u, 0u, 1u);
+ 	}
+ }
+ 
+@@ -125,11 +154,6 @@ void Luminance::LuminanceBuffers::free_data() {
+ 		RD::get_singleton()->free_rid(reduce[i]);
+ 	}
+ 	reduce.clear();
+-
+-	if (current.is_valid()) {
+-		RD::get_singleton()->free_rid(current);
+-		current = RID();
+-	}
+ }
+ 
+ Ref<Luminance::LuminanceBuffers> Luminance::get_luminance_buffers(Ref<RenderSceneBuffersRD> p_render_buffers) {
+@@ -139,7 +163,7 @@ Ref<Luminance::LuminanceBuffers> Luminance::get_luminance_buffers(Ref<RenderScen
+ 
+ 	Ref<LuminanceBuffers> buffers;
+ 	buffers.instantiate();
+-	buffers->set_prefer_raster_effects(prefer_raster_effects);
++	buffers->init(prefer_raster_effects);
+ 	buffers->configure(p_render_buffers.ptr());
+ 
+ 	p_render_buffers->set_custom_data(RB_LUMINANCE_BUFFERS, buffers);
+@@ -200,58 +224,61 @@ void Luminance::luminance_reduction(RID p_source_texture, const Size2i p_source_
+ 			RD::get_singleton()->draw_list_draw(draw_list, false, 1u, 3u);
+ 			RD::get_singleton()->draw_list_end();
+ 		}
++
++		SWAP(p_luminance_buffers->current, p_luminance_buffers->reduce.write[p_luminance_buffers->reduce.size() - 1]);
+ 	} else {
+ 		LuminanceReducePushConstant push_constant;
+ 		memset(&push_constant, 0, sizeof(LuminanceReducePushConstant));
+ 
++		// set lower limit to 2^-16 to avoid log2(0)
++		const float EPSILON = 0.0000152587890625f;
++
+ 		push_constant.source_size[0] = p_source_size.x;
+ 		push_constant.source_size[1] = p_source_size.y;
+-		push_constant.max_luminance = p_max_luminance;
+-		push_constant.min_luminance = p_min_luminance;
++		push_constant.min_log_lum = Math::log2(MAX(p_min_luminance, EPSILON));
++		push_constant.log_lum_range = MAX(Math::log2(MAX(p_max_luminance, EPSILON)) - push_constant.min_log_lum, 0.0001f);
+ 		push_constant.exposure_adjust = p_adjust;
+ 
+ 		RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
+ 
+-		for (int i = 0; i < p_luminance_buffers->reduce.size(); i++) {
+-			RID shader;
+-
+-			if (i == 0) {
+-				shader = luminance_reduce.shader.version_get_shader(luminance_reduce.shader_version, LUMINANCE_REDUCE_READ);
+-				RD::Uniform u_source_texture(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 0, Vector<RID>({ default_sampler, p_source_texture }));
+-
+-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, luminance_reduce.pipelines[LUMINANCE_REDUCE_READ]);
+-				RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 0, u_source_texture), 0);
+-			} else {
+-				RD::get_singleton()->compute_list_add_barrier(compute_list); //needs barrier, wait until previous is done
+-
+-				if (i == p_luminance_buffers->reduce.size() - 1 && !p_set) {
+-					shader = luminance_reduce.shader.version_get_shader(luminance_reduce.shader_version, LUMINANCE_REDUCE_WRITE);
+-					RD::Uniform u_current_texture(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 0, Vector<RID>({ default_sampler, p_luminance_buffers->current }));
+-
+-					RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, luminance_reduce.pipelines[LUMINANCE_REDUCE_WRITE]);
+-					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 2, u_current_texture), 2);
+-				} else {
+-					shader = luminance_reduce.shader.version_get_shader(luminance_reduce.shader_version, LUMINANCE_REDUCE);
+-					RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, luminance_reduce.pipelines[LUMINANCE_REDUCE]);
+-				}
+-
+-				RD::Uniform u_source_texture(RD::UNIFORM_TYPE_IMAGE, 0, p_luminance_buffers->reduce[i - 1]);
+-				RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 0, u_source_texture), 0);
+-			}
++		// Build histogram pass.
++		{
++			RID shader = luminance_reduce.shader.version_get_shader(luminance_reduce.shader_version, LUMINANCE_REDUCE_HISTOGRAM);
++			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, luminance_reduce.pipelines[LUMINANCE_REDUCE_HISTOGRAM]);
+ 
+-			RD::Uniform u_reduce_texture(RD::UNIFORM_TYPE_IMAGE, 0, p_luminance_buffers->reduce[i]);
+-			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 1, u_reduce_texture), 1);
++			RD::Uniform u_source_texture(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 0, Vector<RID>({ default_sampler, p_source_texture }));
++			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 0, u_source_texture), 0);
+ 
+-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(LuminanceReducePushConstant));
++			RD::Uniform u_histogram(RD::UNIFORM_TYPE_STORAGE_BUFFER, 0, p_luminance_buffers->histogram);
++			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 1, u_histogram), 1);
+ 
++			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(LuminanceReducePushConstant));
+ 			RD::get_singleton()->compute_list_dispatch_threads(compute_list, push_constant.source_size[0], push_constant.source_size[1], 1);
++		}
++
++		// Wait for the histogram pass to finish.
++		RD::get_singleton()->compute_list_add_barrier(compute_list);
++
++		// Calculate average luminance pass.
++		{
++			RID shader = luminance_reduce.shader.version_get_shader(luminance_reduce.shader_version, LUMINANCE_REDUCE_WRITE);
++			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, luminance_reduce.pipelines[LUMINANCE_REDUCE_WRITE]);
++
++			RD::Uniform u_source_texture(RD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 0, Vector<RID>({ default_sampler, p_luminance_buffers->previous }));
++			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 0, u_source_texture), 0);
+ 
+-			push_constant.source_size[0] = MAX(push_constant.source_size[0] / 8, 1);
+-			push_constant.source_size[1] = MAX(push_constant.source_size[1] / 8, 1);
++			RD::Uniform u_histogram(RD::UNIFORM_TYPE_STORAGE_BUFFER, 0, p_luminance_buffers->histogram);
++			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 1, u_histogram), 1);
++
++			RD::Uniform u_dest_texture(RD::UNIFORM_TYPE_IMAGE, 0, p_luminance_buffers->current);
++			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, uniform_set_cache->get_cache(shader, 2, u_dest_texture), 2);
++
++			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(LuminanceReducePushConstant));
++			RD::get_singleton()->compute_list_dispatch(compute_list, 1, 1, 1);
+ 		}
+ 
+ 		RD::get_singleton()->compute_list_end();
+-	}
+ 
+-	SWAP(p_luminance_buffers->current, p_luminance_buffers->reduce.write[p_luminance_buffers->reduce.size() - 1]);
++		SWAP(p_luminance_buffers->current, p_luminance_buffers->previous);
++	}
+ }
+diff --git a/servers/rendering/renderer_rd/effects/luminance.h b/servers/rendering/renderer_rd/effects/luminance.h
+index 31e1fd007d31..bd932b0d01e9 100644
+--- a/servers/rendering/renderer_rd/effects/luminance.h
++++ b/servers/rendering/renderer_rd/effects/luminance.h
+@@ -44,16 +44,15 @@ class Luminance {
+ 	bool prefer_raster_effects;
+ 
+ 	enum LuminanceReduceMode {
+-		LUMINANCE_REDUCE_READ,
+-		LUMINANCE_REDUCE,
++		LUMINANCE_REDUCE_HISTOGRAM,
+ 		LUMINANCE_REDUCE_WRITE,
+ 		LUMINANCE_REDUCE_MAX
+ 	};
+ 
+ 	struct LuminanceReducePushConstant {
+ 		int32_t source_size[2];
+-		float max_luminance;
+-		float min_luminance;
++		float min_log_lum;
++		float log_lum_range;
+ 		float exposure_adjust;
+ 		float pad[3];
+ 	};
+@@ -96,11 +95,15 @@ class Luminance {
+ 	public:
+ 		Vector<RID> reduce;
+ 		RID current;
++		RID previous;
++		RID histogram;
++
++		~LuminanceBuffers();
+ 
+ 		virtual void configure(RenderSceneBuffersRD *p_render_buffers) override;
+ 		virtual void free_data() override;
+ 
+-		void set_prefer_raster_effects(bool p_prefer_raster_effects);
++		void init(bool p_prefer_raster_effects);
+ 	};
+ 
+ 	Ref<LuminanceBuffers> get_luminance_buffers(Ref<RenderSceneBuffersRD> p_render_buffers);
+diff --git a/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl b/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl
+index 0ee4cf6e3170..7eb116a3b80a 100644
+--- a/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl
++++ b/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl
+@@ -4,79 +4,111 @@
+ 
+ #VERSION_DEFINES
+ 
+-#define BLOCK_SIZE 8
++// https://www.alextardif.com/HistogramLuminance.html
++// https://bruop.github.io/exposure/
+ 
+-layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
++#define BLOCK_SIZE 16
++#define GROUP_SIZE (BLOCK_SIZE * BLOCK_SIZE)
+ 
+-shared float tmp_data[BLOCK_SIZE * BLOCK_SIZE];
++#ifdef HISTOGRAM_PASS
++layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
++#else
++layout(local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
++#endif
+ 
+-#ifdef READ_TEXTURE
++layout(push_constant, std430) uniform Params {
++	ivec2 source_size;
++	float min_log_lum;
++	float log_lum_range;
++	float exposure_adjust;
++	float pad[3];
++}
++params;
+ 
+-//use for main texture
+ layout(set = 0, binding = 0) uniform sampler2D source_texture;
+ 
++#ifdef HISTOGRAM_PASS
++layout(set = 1, binding = 0) restrict writeonly buffer HistogramBuffer {
++	uint data[GROUP_SIZE];
++}
++histogram;
++
++shared uint histogram_shared[GROUP_SIZE];
+ #else
++layout(set = 1, binding = 0) restrict buffer HistogramBuffer {
++	uint data[GROUP_SIZE];
++}
++histogram;
+ 
+-//use for intermediate textures
+-layout(r32f, set = 0, binding = 0) uniform restrict readonly image2D source_luminance;
++layout(r32f, set = 2, binding = 0) uniform restrict writeonly image2D dest_luminance;
+ 
++shared float histogram_shared[GROUP_SIZE];
+ #endif
+ 
+-layout(r32f, set = 1, binding = 0) uniform restrict writeonly image2D dest_luminance;
++uint color_to_bin(vec3 hdr_color) {
++	// REC-709 luminance weights.
++	float lum = dot(hdr_color, vec3(0.2126, 0.7152, 0.0722));
+ 
+-#ifdef WRITE_LUMINANCE
+-layout(set = 2, binding = 0) uniform sampler2D prev_luminance;
+-#endif
++	// Avoid taking the log of zero
++	if (lum < 0.005) {
++		return 0;
++	}
+ 
+-layout(push_constant, std430) uniform Params {
+-	ivec2 source_size;
+-	float max_luminance;
+-	float min_luminance;
+-	float exposure_adjust;
+-	float pad[3];
++	// Calculate the log_2 luminance and express it as a value in [0.0, 1.0]
++	// where 0.0 represents the minimum luminance, and 1.0 represents the max.
++	float log_lum = clamp((log2(lum) - params.min_log_lum) / params.log_lum_range, 0.0, 1.0);
++
++	// Map [0, 1] to [1, 255]. The zeroth bin is handled by the epsilon check above.
++	return uint(log_lum * 254.0 + 1.0);
+ }
+-params;
+ 
+ void main() {
+-	uint t = gl_LocalInvocationID.y * BLOCK_SIZE + gl_LocalInvocationID.x;
+-	ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
++#ifdef HISTOGRAM_PASS
++	histogram_shared[gl_LocalInvocationIndex] = 0;
+ 
+-	if (any(lessThan(pos, params.source_size))) {
+-#ifdef READ_TEXTURE
+-		vec3 v = texelFetch(source_texture, pos, 0).rgb;
+-		tmp_data[t] = max(v.r, max(v.g, v.b));
+-#else
+-		tmp_data[t] = imageLoad(source_luminance, pos).r;
+-#endif
+-	} else {
+-		tmp_data[t] = 0.0;
++	groupMemoryBarrier();
++	barrier();
++
++	ivec2 tex_coords = ivec2(gl_GlobalInvocationID.xy);
++	if (all(lessThan(tex_coords, params.source_size))) {
++		vec3 source_color = texelFetch(source_texture, tex_coords, 0).rgb;
++		uint bin_index = color_to_bin(source_color);
++		atomicAdd(histogram_shared[bin_index], 1);
+ 	}
+ 
+ 	groupMemoryBarrier();
+ 	barrier();
+ 
+-	uint size = (BLOCK_SIZE * BLOCK_SIZE) >> 1;
++	atomicAdd(histogram.data[gl_LocalInvocationIndex], histogram_shared[gl_LocalInvocationIndex]);
++#else
++	float count_for_this_bin = float(histogram.data[gl_LocalInvocationIndex]);
++	histogram_shared[gl_LocalInvocationIndex] = count_for_this_bin * float(gl_LocalInvocationIndex);
++
++	groupMemoryBarrier();
++	barrier();
++
++	histogram.data[gl_LocalInvocationIndex] = 0;
+ 
+-	do {
+-		if (t < size) {
+-			tmp_data[t] += tmp_data[t + size];
++	// Perform a weighted count of the luminance range.
++	for (uint cutoff = (GROUP_SIZE >> 1); cutoff > 0; cutoff >>= 1) {
++		if (uint(gl_LocalInvocationIndex) < cutoff) {
++			histogram_shared[gl_LocalInvocationIndex] += histogram_shared[gl_LocalInvocationIndex + cutoff];
+ 		}
+ 		groupMemoryBarrier();
+ 		barrier();
++	}
+ 
+-		size >>= 1;
+-	} while (size >= 1);
+-
+-	if (t == 0) {
+-		//compute rect size
+-		ivec2 rect_size = min(params.source_size - pos, ivec2(BLOCK_SIZE));
+-		float avg = tmp_data[0] / float(rect_size.x * rect_size.y);
+-		//float avg = tmp_data[0] / float(BLOCK_SIZE*BLOCK_SIZE);
+-		pos /= ivec2(BLOCK_SIZE);
+-#ifdef WRITE_LUMINANCE
+-		float prev_lum = texelFetch(prev_luminance, ivec2(0, 0), 0).r; //1 pixel previous exposure
+-		avg = clamp(prev_lum + (avg - prev_lum) * params.exposure_adjust, params.min_luminance, params.max_luminance);
+-#endif
+-		imageStore(dest_luminance, pos, vec4(avg));
++	if (gl_LocalInvocationIndex == 0) {
++		float pixel_count = float(params.source_size.x * params.source_size.y);
++		float weighted_log_average = (histogram_shared[0] / max(pixel_count - count_for_this_bin, 1.0)) - 1.0;
++
++		// Map from our histogram space to actual luminance.
++		float weighted_avg_lum = exp2((weighted_log_average / 254.0) * params.log_lum_range + params.min_log_lum);
++
++		// The new stored value will be interpolated using the last frame's value to prevent sudden shifts in the exposure.
++		float prev_lum = texelFetch(source_texture, ivec2(0, 0), 0).x;
++		float adapted_lum = prev_lum + (weighted_avg_lum - prev_lum) * params.exposure_adjust;
++		imageStore(dest_luminance, ivec2(0, 0), vec4(adapted_lum));
+ 	}
++#endif
+ }
