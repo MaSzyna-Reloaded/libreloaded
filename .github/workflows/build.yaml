@@ -34,6 +34,8 @@ jobs:
           submodules: recursive
 
       - name: Fetch the double precision Godot
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ci/fetch-godot.sh godot.linuxbsd.editor.double.x86_64
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -102,6 +104,8 @@ jobs:
       # CMake dumps the double precision API from it (CMakeLists.txt) - on the runner also for the
       # Linux library, whose SDK container has no Godot
       - name: Fetch the double precision Godot
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ci/fetch-godot.sh godot.linuxbsd.editor.double.x86_64
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"

@@ -57,6 +57,8 @@ jobs:
       # CMake dumps the double precision API from it (CMakeLists.txt) when it configures the
       # clang-tidy database
       - name: Fetch the double precision Godot
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ci/fetch-godot.sh godot.linuxbsd.editor.double.x86_64
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
