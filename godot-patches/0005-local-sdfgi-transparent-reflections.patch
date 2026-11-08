@@ -1,0 +1,26 @@
+diff --git a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
+index 431f480..3746f75 100644
+--- a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
++++ b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
+@@ -1923,7 +1923,9 @@ void fragment_shader(in SceneData scene_data) {
+ 				if (cascade == sdfgi.max_cascades - 1) {
+ 					diffuse = mix(diffuse, ambient_light, blend);
+ 					if (use_specular) {
+-						indirect_specular_light = mix(specular, indirect_specular_light, blend);
++						// Into the sky's reflection, as the diffuse light goes into the ambient light: it was
++						// assigned here and overwritten below, so the reflections ended with the last cascade.
++						specular = mix(specular, indirect_specular_light, blend);
+ 					}
+ 				} else {
+ 					vec3 diffuse2, specular2;
+@@ -1939,7 +1941,9 @@ void fragment_shader(in SceneData scene_data) {
+ 
+ 			ambient_light = diffuse;
+ 			if (use_specular) {
+-				indirect_specular_light = specular;
++				// The probes hold no mirror image: a smooth surface takes the sky's reflection, as the
++				// opaque path does where its traced ray reaches the sky (gi.glsl, sdfgi_process()).
++				indirect_specular_light = mix(indirect_specular_light, specular, min(1.0, roughness * 5.0));
+ 			}
+ 		}
+ 	}

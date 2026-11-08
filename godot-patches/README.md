@@ -21,6 +21,10 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
 * `0002-118329-sdfgi-ambient-light.patch` - godotengine/godot#118329: SDFGI takes the environment's
   ambient light as the forward pass does (godotengine/godot#55104). Without it the ground within
   SDFGI's cascades, a cube around the camera, is darker than beyond them (MaSzyna-Reloaded/libreloaded#9)
+  - with the reflections kept the sky's: the ambient light is diffuse only, as in the forward pass;
+  the probes record where their rays reached the sky (the history's alpha) and the store pass
+  gives the radiance the sky back there. Without it water within the cascades reflected the ambient
+  colour - a grey, warm square on every river
 * `0003-local-auto-exposure-metering.patch` - on `0001-117669-auto-exposure-histogram.patch`, auto
   exposure measures as Unreal Engine's histogram does: a pixel darker than the min sensitivity is
   counted at it, not left out (below a luminance of 0.005); the darkest pixels, in percent of the
@@ -39,3 +43,8 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
   scene waited on the same mutex for the scene's own script (MaSzyna-Reloaded/libreloaded#11).
   The game's main scene hung behind its loading screen every few launches; a project of 256 such
   preloads hung 11 runs in 30 without it, none in 100 with it
+* `0005-local-sdfgi-transparent-reflections.patch` - a transparent material within SDFGI's cascades
+  takes the sky's reflection as smooth as it is (`min(1, roughness * 5)`, as `gi.glsl` does where
+  an opaque surface's traced ray reaches the sky), and its reflection goes into the sky's at the
+  last cascade, where `scene_forward_clustered.glsl` overwrote the blend. Without it water had a
+  hard edge where SDFGI ends: blurred, darker probe reflections within, the sky beyond
