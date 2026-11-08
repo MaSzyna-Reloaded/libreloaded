@@ -104,6 +104,11 @@
 			</description>
 		</method>
 	</methods>
+	<members>
+		<member name="config_path" type="String" setter="set_config_path" getter="get_config_path" default="&quot;user://settings.cfg&quot;">
+			The file the configuration is loaded from and saved to - the player's [code]settings.cfg[/code]; another one (the tests') is loaded at once, the player's file left as it is.
+		</member>
+	</members>
 	<signals>
 		<signal name="config_changed">
 			<description>
