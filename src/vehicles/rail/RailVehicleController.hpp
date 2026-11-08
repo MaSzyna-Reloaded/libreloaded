@@ -180,6 +180,8 @@ namespace godot {
             static const char *coupler_adapter_removed_signal;
             /// The vehicle left the rails, once (dtrain_out set, EventFlag; DynObj.cpp:5207-5214)
             static const char *derailed_signal;
+            /// The cab switched on or the one in command is another now (CabActive, IsCabMaster())
+            static const char *active_cabin_changed_signal;
 
             virtual void cab_activation(bool p_enabled) = 0;
             /* The track under the vehicle, as RailVehicleServer finds it where the vehicle stands -
@@ -254,16 +256,20 @@ namespace godot {
             virtual bool is_coupled_by(CouplerEnd p_end, BitField<CouplingFlags> p_flags) const = 0;
             /* Which of the two vehicles coupled at an end draws the coupler itself */
             virtual bool is_coupling_owner(CouplerEnd p_end) const = 0;
-            /* One more coupling of an end with the vehicle beyond it, and an end uncoupled
-             * (TDynamicObject::couple(), uncouple(), DynObj.cpp:1509, 1614) */
+            /* Coupling as the implementation does it, asked for by RailVehicleServer only (its
+             * coupler_connect(), coupler_disconnect(), coupler_adapter_attach(),
+             * coupler_adapter_remove() and the vehicle's commands of those names) - C++ only. One
+             * more coupling of an end with the vehicle beyond it, and an end uncoupled where it
+             * may be (TDynamicObject::couple(), uncouple()) */
             virtual void coupler_connect(CouplerEnd p_end) = 0;
             virtual void coupler_disconnect(CouplerEnd p_end) = 0;
             /* The adapter of the neighbour beyond an end (its coupleradapter:, or the original's own
-             * when it has none) fitted to that end, with room left for it (attach_coupler_adapter(),
-             * DynObj.cpp:1754-1789) */
+             * when it has none) fitted to that end, with room left for it, and an end's adapter taken
+             * off (attach_coupler_adapter(), remove_coupler_adapter()); false when nothing was done */
             virtual bool coupler_adapter_attach(CouplerEnd p_end) = 0;
+            virtual bool coupler_adapter_remove(CouplerEnd p_end) = 0;
             /* The adapter of the vehicle coupled at an end fitted to it, whatever the room - a
-             * trainset the scenery couples (AttachNext(), DynObj.cpp:2740-2758) */
+             * trainset the scenery couples (AttachNext()) */
             virtual bool coupler_adapter_fit(CouplerEnd p_end) = 0;
             /* Whether an end couples as an automatic coupler, its adapter's or its own
              * (TCoupling::type(), MOVER.h:800) */
@@ -271,8 +277,6 @@ namespace godot {
             /* The couplings this end and the neighbour beyond it can join: what both couplers allow, the
              * control line only between equal control types; none without a neighbour */
             virtual BitField<CouplingFlags> get_coupler_joinable_flags(CouplerEnd p_end) const = 0;
-            /* The adapter taken off an end, uncoupling it first (DynObj.cpp:1791-1810) */
-            virtual bool coupler_adapter_remove(CouplerEnd p_end) = 0;
             /* The model of the adapter fitted to an end, "" without one */
             String get_coupler_adapter_fitted_model(CouplerEnd p_end) const;
             /* The fitted adapter's length added to the end and its height over the rail [m] */

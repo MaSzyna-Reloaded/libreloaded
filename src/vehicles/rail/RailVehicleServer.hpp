@@ -28,6 +28,8 @@
 #include <initializer_list>
 
 namespace godot {
+    class RailVehicleTrainsetClassifier;
+
     class VehicleComponent;
     class VehicleController;
 
@@ -245,8 +247,6 @@ namespace godot {
                     RID driver;
                     /* That person's cabin, last announced */
                     RID driver_cabin;
-                    /* The type of its trainset, as last determined */
-                    TrainsetType trainset_type = TRAINSET_TYPE_NONE;
             };
 
             RIDMap<VehiclePlacement> vehicles;
@@ -275,8 +275,20 @@ namespace godot {
                     Vector<TrainsetMember> members;
                     /* Asked to stand while a vehicle of it had no simulation yet: it stands once it has */
                     bool placement_pending = false;
-                    /* Its vehicles now, coupled one to the next, from one end to the other */
+                    /* Its vehicles now, coupled one to the next, from its head to its end */
                     Vector<RID> vehicles;
+                    /* Its head (trainset_get_head()) and its type, recomputed with its vehicles
+                     * (_update_trainset()) */
+                    RID head;
+                    TrainsetType type = TRAINSET_TYPE_NONE;
+                    /* Which way each of its vehicles faces: true where its front faces the
+                     * trainset's end rather than its head (vehicle_is_reversed_in_trainset()). Kept
+                     * as it was until _update_trainset() works it out again - the way the trainset
+                     * faced, which decides the head on a tie */
+                    RIDMap<bool> reversed;
+                    /* Its vehicle that last took command (_trainset_follow_command()) - the head
+                     * while it commands at an end */
+                    RID commanding;
                     /* Made by this server of vehicles uncoupled - it ends with its last vehicle;
                      * one of trainset_create() lives until it is freed */
                     bool made_by_server = false;
@@ -296,10 +308,25 @@ namespace godot {
             bool _stays(const Vector<RID> &p_part, const Vector<RID> &p_other, bool p_part_in_front) const;
             /* p_vehicle's trainset made the vehicles coupled to it now: split off, joined, made */
             void _regroup(const RID &p_vehicle);
-            RID _make_trainset(const Vector<RID> &p_vehicles);
+            /* A trainset of this server's of the vehicles, facing the way p_faced says they faced
+             * (a split-off part keeps its former trainset's way) */
+            RID _make_trainset(const Vector<RID> &p_vehicles, const RIDMap<bool> &p_faced);
             void _set_trainset_vehicles(const RID &p_trainset, const Vector<RID> &p_vehicles);
             /* The vehicle is in no trainset any more; a trainset of this server's ends with it */
             void _leave_trainset(const RID &p_vehicle);
+            /* The trainset worked out anew from its vehicles: their order from the head, which way
+             * each faces, the head and the type. The head is always an end vehicle: the one that
+             * last took command, while it commands at an end; else the one end vehicle in command;
+             * else the one end vehicle with a driving cab; else the end nearer a vehicle with a
+             * driving cab inside; else the way the trainset faced (Trainset::reversed) */
+            void _update_trainset(const RID &p_trainset);
+            /* The vehicle's command changed - a driver sat down in it or left it, its cab in command
+             * is another: while it commands it is its trainset's commanding vehicle, and the
+             * trainset is worked out anew. Connected to the controller's active_cabin_changed. */
+            void _trainset_follow_command(const RID &p_vehicle);
+            /* A vehicle with a driving cab whose cab a driver occupies or is in command */
+            bool _is_in_command(const RID &p_vehicle) const;
+            Ref<RailVehicleTrainsetClassifier> classifier;
             void _on_vehicle_configured(const RID &p_vehicle);
             void _on_vehicle_config_changed(const RID &p_vehicle);
             bool diagnostics = false;
@@ -316,11 +343,17 @@ namespace godot {
             void _on_switch_active_track_changed(const RID &p_switch, int p_active_track);
 
             RailVehicleController *_get_controller(const VehiclePlacement &p_placement) const;
-            /* Whether p_answers(doors, side) holds for a vehicle coupled to p_vehicle by its
-             * couplers, p_side being the side of p_vehicle - swapped for a vehicle standing the other
-             * way round (TController's consist state, Driver.cpp:6093-6106) */
+            /* Whether p_answers(doors, side) holds for a vehicle of the trainset, p_side being the
+             * side towards its head - swapped for a vehicle standing the other way round
+             * (TController's consist state, Driver.cpp:6093-6106) */
             template<typename Answers>
-            bool _trainset_any_doors(const RID &p_vehicle, RailVehicleController::Side p_side, Answers p_answers) const;
+            bool
+            _trainset_any_doors(const RID &p_trainset, RailVehicleController::Side p_side, Answers p_answers) const;
+            /* The vehicle's coupler commands are this server's operations under its handle */
+            void _on_coupler_connect_command(int64_t p_end, const RID &p_vehicle);
+            void _on_coupler_disconnect_command(int64_t p_end, const RID &p_vehicle);
+            bool _on_coupler_adapter_attach_command(int64_t p_end, const RID &p_vehicle);
+            bool _on_coupler_adapter_remove_command(int64_t p_end, const RID &p_vehicle);
             /* The controller's rail events, relayed under the handle, so whoever follows a vehicle
              * never holds its controller - connected when the vehicle is attached or VehicleServer
              * gives it another controller, disconnected when it is replaced or detached */
@@ -426,13 +459,13 @@ namespace godot {
             /* The vehicle is somewhere else on the route - once a step it moved in, or once a
              * deliberate move (vehicle_move()); what draws it follows */
             static const char *vehicle_placement_changed_signal;
-            /* The vehicles coupled to this one are others now (RailVehicleController::trainset_changed) */
-            static const char *vehicle_trainset_changed_signal;
             /* A trainset began - of vehicles uncoupled - or ended (trainset: RID) */
             static const char *trainset_created_signal;
             static const char *trainset_freed_signal;
-            /* Its vehicles are others now (trainset: RID) */
+            /* Its vehicles are others now, a trainset just made included (trainset: RID) */
             static const char *trainset_vehicles_changed_signal;
+            /* Another of its vehicles is its head now (trainset: RID) - trainset_get_head() */
+            static const char *trainset_head_changed_signal;
             /* Uncoupled, p_trainset left p_new_trainset as a trainset of its own; coupled, it took
              * p_absorbed's vehicles, and p_absorbed ends (trainset, new_trainset / absorbed: RID) */
             static const char *trainset_split_signal;
@@ -490,6 +523,10 @@ namespace godot {
              * (cabin_person_enter(), cabin_person_move(), cabin_list_persons()). */
             RID vehicle_add_cabin(const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind);
             RID vehicle_get_cabin(const RID &p_vehicle, RailVehicleCabinKind::Kind p_kind) const;
+            /* Whether the vehicle is driven from a cab of its own - a master controller and a front
+             * or rear cab: a locomotive, a control wagon, a unit's end wagon; not a unit's middle wagon,
+             * which has a master controller and no cab */
+            bool vehicle_has_driving_cabin(const RID &p_vehicle) const;
             RailVehicleCabinKind::Kind cabin_get_kind(const RID &p_cabin) const;
             /* The cabin whose driver the vehicle answers to - the original's occupied cab
              * (CabOccupied); RID() when nobody drives it. With more drivers than one the vehicle
@@ -514,8 +551,18 @@ namespace godot {
              * the kinds every vehicle has */
             Ref<VehicleComponent>
             vehicle_component_get(const RID &p_vehicle, RailVehicleComponentType::Type p_type) const;
-            /* Couples p_end of the vehicle to p_other_end of p_other by p_coupling
-             * (TMoverParameters::Attach(), Mover.cpp:548) */
+            /* Coupling asked for: one more coupling of an end with the vehicle beyond it, an end
+             * uncoupled where it may be, the neighbour's adapter fitted to an end and an end's
+             * adapter taken off - the vehicle's own operations, done by its controller's
+             * implementation (TDynamicObject::couple(), uncouple(), attach_coupler_adapter(),
+             * remove_coupler_adapter()). The vehicle's commands of these names come here; the
+             * adapter's two answer false when nothing was done. */
+            void coupler_connect(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end);
+            void coupler_disconnect(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end);
+            bool coupler_adapter_attach(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end);
+            bool coupler_adapter_remove(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end);
+            /* Couples p_end of the vehicle to p_other_end of p_other by p_coupling, whatever the
+             * gap - as a trainset is placed (TMoverParameters::Attach() with Enforce, Mover.cpp:548) */
             void coupler_attach(
                     const RID &p_vehicle, RailVehicleController::CouplerEnd p_end, const RID &p_other,
                     RailVehicleController::CouplerEnd p_other_end,
@@ -590,7 +637,8 @@ namespace godot {
             TypedArray<RID> trainset_list() const;
             /* The mass of its vehicles now, their loads included [kg] */
             double trainset_get_mass(const RID &p_trainset) const;
-            /* The trainset the vehicle is in, RID() for one not placed */
+            /* The trainset the vehicle is in, RID() for one never stood on a track - no trainset is
+             * made of vehicles off the tracks, coupled or not */
             RID vehicle_get_trainset(const RID &p_vehicle) const;
             /* Whether the vehicle stands - as it stops and starts on its tracks (TrackServer) */
             bool vehicle_is_standing(const RID &p_vehicle) const;
@@ -600,21 +648,31 @@ namespace godot {
              * couplers allow (RailVehicleController::coupling_mode_get_flags()) - at once, or as soon
              * as every vehicle of it has its simulation */
             void trainset_place(const RID &p_trainset);
-            /* A doorway (its door or its step) of the trainset coupled to the vehicle not closed on
-             * p_side of the vehicle; doors closing by themselves do not count (IsAnyDoorOpen,
-             * Driver.cpp:6097) */
-            bool trainset_get_doorway_open(const RID &p_vehicle, RailVehicleController::Side p_side) const;
-            /* The same for a door alone, its step whatever (IsAnyDoorOnlyOpen, Driver.cpp:6101) */
-            bool trainset_get_door_open(const RID &p_vehicle, RailVehicleController::Side p_side) const;
-            /* A door permit given on p_side of the vehicle, of the trainset's vehicles needing one
+            /* Its head - always an end vehicle - and its type, both recomputed whenever its vehicles,
+             * their cabs in command or their configuration change; RID() and NONE for a trainset
+             * of no vehicles */
+            RID trainset_get_head(const RID &p_trainset) const;
+            TrainsetType trainset_get_type(const RID &p_trainset) const;
+            /* The rule the type is worked out by - the core's own (RailVehicleTrainsetClassifier)
+             * until a plugin hands its own; every trainset's type is recomputed */
+            void trainset_set_classifier(const Ref<RailVehicleTrainsetClassifier> &p_classifier);
+            /* Whether the vehicle's front faces the end of its trainset rather than its head; a
+             * vehicle alone is not reversed */
+            bool vehicle_is_reversed_in_trainset(const RID &p_vehicle) const;
+            /* Which way the vehicle faces in its trainset, as trainset_add_vehicle() takes it:
+             * reversed when its front faces the trainset's end (vehicle_is_reversed_in_trainset()) */
+            TrackServer::Direction trainset_vehicle_get_direction(const RID &p_vehicle) const;
+            /* A door of the trainset not closed on p_side - the side looking towards its head - its
+             * step whatever; doors closing by themselves do not count (IsAnyDoorOnlyOpen,
+             * Driver.cpp:6101). A door or a step not closed (IsAnyDoorOpen, Driver.cpp:6097) is
+             * either of the two. */
+            bool trainset_has_door_open(const RID &p_trainset, RailVehicleController::Side p_side) const;
+            /* A step of the trainset not folded on p_side (is_closed less is_door_closed,
+             * Mover.cpp:8753-8754) */
+            bool trainset_has_step_extended(const RID &p_trainset, RailVehicleController::Side p_side) const;
+            /* A door permit given on p_side, of the trainset's vehicles needing one
              * (IsAnyDoorPermitActive, Driver.cpp:6104) */
-            bool trainset_get_door_permit(const RID &p_vehicle, RailVehicleController::Side p_side) const;
-            /* Determines the type of the trainset coupled to the vehicle from its cars, for every
-             * vehicle of it, by the cars' brake delays (AutoRewident(), Driver.cpp:2154-2165): one
-             * with R or without G carries passengers, one with G and without R goods */
-            void trainset_determine_type(const RID &p_vehicle);
-            /* The type of the vehicle's trainset, as last determined */
-            TrainsetType trainset_get_type(const RID &p_vehicle) const;
+            bool trainset_has_door_permit(const RID &p_trainset, RailVehicleController::Side p_side) const;
             /* Walks one vehicle the distance its own simulation asked for. The step does this for
              * every vehicle; on its own it is how a single vehicle is advanced deliberately. */
             void vehicle_process_movement(const RID &p_vehicle, double p_delta);

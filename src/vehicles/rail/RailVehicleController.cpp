@@ -7,6 +7,7 @@ namespace godot {
     const char *RailVehicleController::coupler_adapter_attached_signal = "coupler_adapter_attached";
     const char *RailVehicleController::coupler_adapter_removed_signal = "coupler_adapter_removed";
     const char *RailVehicleController::derailed_signal = "derailed";
+    const char *RailVehicleController::active_cabin_changed_signal = "active_cabin_changed";
     const char *RailVehicleController::coupler_detached_signal = "coupler_detached";
 
     RailVehicleController::CouplerEnd RailVehicleController::opposite_end(const CouplerEnd p_end) {
@@ -125,14 +126,9 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("is_coupled_by", "end", "flags"), &RailVehicleController::is_coupled_by);
         ClassDB::bind_method(D_METHOD("get_coupled_controller", "end"), &RailVehicleController::get_coupled_controller);
         ClassDB::bind_method(D_METHOD("get_coupled_end", "end"), &RailVehicleController::get_coupled_end);
-        ClassDB::bind_method(D_METHOD("coupler_connect", "end"), &RailVehicleController::coupler_connect);
-        ClassDB::bind_method(D_METHOD("coupler_disconnect", "end"), &RailVehicleController::coupler_disconnect);
-        ClassDB::bind_method(D_METHOD("coupler_adapter_attach", "end"), &RailVehicleController::coupler_adapter_attach);
-        ClassDB::bind_method(D_METHOD("coupler_adapter_fit", "end"), &RailVehicleController::coupler_adapter_fit);
         ClassDB::bind_method(D_METHOD("is_coupler_automatic", "end"), &RailVehicleController::is_coupler_automatic);
         ClassDB::bind_method(
                 D_METHOD("get_coupler_joinable_flags", "end"), &RailVehicleController::get_coupler_joinable_flags);
-        ClassDB::bind_method(D_METHOD("coupler_adapter_remove", "end"), &RailVehicleController::coupler_adapter_remove);
         ClassDB::bind_method(
                 D_METHOD("get_coupler_adapter_fitted_model", "end"),
                 &RailVehicleController::get_coupler_adapter_fitted_model);
@@ -180,6 +176,7 @@ namespace godot {
         ADD_SIGNAL(MethodInfo(coupler_detached_signal, coupling_flag));
         ADD_SIGNAL(MethodInfo(coupler_adapter_attached_signal, PropertyInfo(Variant::INT, "end")));
         ADD_SIGNAL(MethodInfo(coupler_adapter_removed_signal, PropertyInfo(Variant::INT, "end")));
+        ADD_SIGNAL(MethodInfo(active_cabin_changed_signal));
         ADD_SIGNAL(MethodInfo(
                 derailed_signal,
                 PropertyInfo(
@@ -280,10 +277,6 @@ namespace godot {
                 "second_controller_decrease", callable_mp(this, &RailVehicleController::second_controller_decrease));
         register_command("direction_increase", callable_mp(this, &RailVehicleController::direction_increase));
         register_command("direction_decrease", callable_mp(this, &RailVehicleController::direction_decrease));
-        register_command("coupler_connect", callable_mp(this, &RailVehicleController::coupler_connect));
-        register_command("coupler_disconnect", callable_mp(this, &RailVehicleController::coupler_disconnect));
-        register_command("coupler_adapter_attach", callable_mp(this, &RailVehicleController::coupler_adapter_attach));
-        register_command("coupler_adapter_remove", callable_mp(this, &RailVehicleController::coupler_adapter_remove));
     }
 
     void RailVehicleController::_unregister_commands() {
@@ -304,10 +297,6 @@ namespace godot {
         unregister_command("second_controller_decrease");
         unregister_command("direction_increase");
         unregister_command("direction_decrease");
-        unregister_command("coupler_connect");
-        unregister_command("coupler_disconnect");
-        unregister_command("coupler_adapter_attach");
-        unregister_command("coupler_adapter_remove");
     }
 
     /* The vehicle's own state only - what it may or may not have, each component fills itself

@@ -4,9 +4,11 @@
 #include "vehicles/rail/RailVehicleController.hpp"
 #include "vehicles/rail/RailVehicleEngine.hpp"
 #include "vehicles/rail/RailVehicleEnginePowerSource.hpp"
+#include "vehicles/rail/RailVehicleMasterController.hpp"
 #include "vehicles/rail/RailVehiclePantographs.hpp"
 #include "vehicles/rail/RailVehiclePowerSupply.hpp"
 #include "vehicles/rail/RailVehicleRadio.hpp"
+#include "vehicles/rail/RailVehicleTrainsetClassifier.hpp"
 #include "vehicles/rail/RailVehicleWheels.hpp"
 
 #include "logging/GameLog.hpp"
@@ -22,16 +24,17 @@
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <tuple>
 
 namespace godot {
     /* Reports physics inconsistencies with push_error (see _check_movement) */
     constexpr const char *DIAGNOSTICS_SETTING = "reloaded/debug/physics_diagnostics";
     const char *RailVehicleServer::vehicle_placed_signal = "vehicle_placed";
     const char *RailVehicleServer::vehicle_placement_changed_signal = "vehicle_placement_changed";
-    const char *RailVehicleServer::vehicle_trainset_changed_signal = "vehicle_trainset_changed";
     const char *RailVehicleServer::trainset_created_signal = "trainset_created";
     const char *RailVehicleServer::trainset_freed_signal = "trainset_freed";
     const char *RailVehicleServer::trainset_vehicles_changed_signal = "trainset_vehicles_changed";
+    const char *RailVehicleServer::trainset_head_changed_signal = "trainset_head_changed";
     const char *RailVehicleServer::trainset_split_signal = "trainset_split";
     const char *RailVehicleServer::trainset_merged_signal = "trainset_merged";
     const char *RailVehicleServer::vehicle_derailed_signal = "vehicle_derailed";
@@ -45,6 +48,7 @@ namespace godot {
 
     RailVehicleServer::RailVehicleServer() {
         singleton = this;
+        classifier.instantiate();
         ProjectSettings *settings = ProjectSettings::get_singleton();
         diagnostics = settings->get_setting(DIAGNOSTICS_SETTING, false);
         settings->connect("settings_changed", callable_mp(this, &RailVehicleServer::_on_project_settings_changed));
@@ -124,6 +128,8 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("vehicle_attach", "vehicle"), &RailVehicleServer::vehicle_attach);
         ClassDB::bind_method(D_METHOD("vehicle_add_cabin", "vehicle", "kind"), &RailVehicleServer::vehicle_add_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_get_cabin", "vehicle", "kind"), &RailVehicleServer::vehicle_get_cabin);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_has_driving_cabin", "vehicle"), &RailVehicleServer::vehicle_has_driving_cabin);
         ClassDB::bind_method(D_METHOD("cabin_get_kind", "cabin"), &RailVehicleServer::cabin_get_kind);
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_driver_cabin", "vehicle"), &RailVehicleServer::vehicle_get_driver_cabin);
@@ -166,15 +172,28 @@ namespace godot {
                 &RailVehicleServer::vehicle_set_track);
         ClassDB::bind_method(D_METHOD("vehicle_move", "vehicle", "distance"), &RailVehicleServer::vehicle_move);
         ClassDB::bind_method(
-                D_METHOD("trainset_get_doorway_open", "vehicle", "side"),
-                &RailVehicleServer::trainset_get_doorway_open);
+                D_METHOD("trainset_has_door_open", "trainset", "side"), &RailVehicleServer::trainset_has_door_open);
         ClassDB::bind_method(
-                D_METHOD("trainset_get_door_open", "vehicle", "side"), &RailVehicleServer::trainset_get_door_open);
+                D_METHOD("trainset_has_step_extended", "trainset", "side"),
+                &RailVehicleServer::trainset_has_step_extended);
         ClassDB::bind_method(
-                D_METHOD("trainset_get_door_permit", "vehicle", "side"), &RailVehicleServer::trainset_get_door_permit);
+                D_METHOD("trainset_has_door_permit", "trainset", "side"), &RailVehicleServer::trainset_has_door_permit);
+        ClassDB::bind_method(D_METHOD("trainset_get_head", "trainset"), &RailVehicleServer::trainset_get_head);
+        ClassDB::bind_method(D_METHOD("trainset_get_type", "trainset"), &RailVehicleServer::trainset_get_type);
         ClassDB::bind_method(
-                D_METHOD("trainset_determine_type", "vehicle"), &RailVehicleServer::trainset_determine_type);
-        ClassDB::bind_method(D_METHOD("trainset_get_type", "vehicle"), &RailVehicleServer::trainset_get_type);
+                D_METHOD("trainset_set_classifier", "classifier"), &RailVehicleServer::trainset_set_classifier);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_is_reversed_in_trainset", "vehicle"),
+                &RailVehicleServer::vehicle_is_reversed_in_trainset);
+        ClassDB::bind_method(
+                D_METHOD("trainset_vehicle_get_direction", "vehicle"),
+                &RailVehicleServer::trainset_vehicle_get_direction);
+        ClassDB::bind_method(D_METHOD("coupler_connect", "vehicle", "end"), &RailVehicleServer::coupler_connect);
+        ClassDB::bind_method(D_METHOD("coupler_disconnect", "vehicle", "end"), &RailVehicleServer::coupler_disconnect);
+        ClassDB::bind_method(
+                D_METHOD("coupler_adapter_attach", "vehicle", "end"), &RailVehicleServer::coupler_adapter_attach);
+        ClassDB::bind_method(
+                D_METHOD("coupler_adapter_remove", "vehicle", "end"), &RailVehicleServer::coupler_adapter_remove);
         BIND_ENUM_CONSTANT(TRAINSET_TYPE_NONE);
         BIND_ENUM_CONSTANT(TRAINSET_TYPE_PASSENGER);
         BIND_ENUM_CONSTANT(TRAINSET_TYPE_CARGO);
@@ -197,11 +216,9 @@ namespace godot {
                 D_METHOD("coupler_get_adapter_height", "vehicle", "end"),
                 &RailVehicleServer::coupler_get_adapter_height);
         ClassDB::bind_method(
-                D_METHOD("pantograph_get_position", "vehicle", "index"),
-                &RailVehicleServer::pantograph_get_position);
+                D_METHOD("pantograph_get_position", "vehicle", "index"), &RailVehicleServer::pantograph_get_position);
         ClassDB::bind_method(
-                D_METHOD("bogie_get_transform", "vehicle", "bogie"),
-                &RailVehicleServer::bogie_get_transform);
+                D_METHOD("bogie_get_transform", "vehicle", "bogie"), &RailVehicleServer::bogie_get_transform);
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_track_position", "vehicle"), &RailVehicleServer::vehicle_get_track_position);
         ClassDB::bind_method(
@@ -222,8 +239,9 @@ namespace godot {
                         Variant::INT, "cause", PROPERTY_HINT_NONE, "",
                         PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM,
                         "RailVehicleServer.PantographContactLoss")));
-        ADD_SIGNAL(MethodInfo(vehicle_trainset_changed_signal, PropertyInfo(Variant::RID, "vehicle")));
-        for (const char *signal: {trainset_created_signal, trainset_freed_signal, trainset_vehicles_changed_signal}) {
+        for (const char *signal:
+             {trainset_created_signal, trainset_freed_signal, trainset_vehicles_changed_signal,
+              trainset_head_changed_signal}) {
             ADD_SIGNAL(MethodInfo(signal, PropertyInfo(Variant::RID, "trainset")));
         }
         ADD_SIGNAL(MethodInfo(
@@ -613,16 +631,19 @@ namespace godot {
         return p_part_in_front;
     }
 
-    RID RailVehicleServer::_make_trainset(const Vector<RID> &p_vehicles) {
+    RID RailVehicleServer::_make_trainset(const Vector<RID> &p_vehicles, const RIDMap<bool> &p_faced) {
         const RID trainset = UtilityFunctions::rid_from_int64(UtilityFunctions::rid_allocate_id());
         Trainset made;
         made.made_by_server = true;
         made.vehicles = p_vehicles;
+        made.reversed = p_faced;
         trainsets[trainset] = made;
         for (const RID &vehicle: p_vehicles) {
             vehicle_trainsets[vehicle] = trainset;
         }
+        _update_trainset(trainset);
         emit_signal(trainset_created_signal, trainset);
+        emit_signal(trainset_vehicles_changed_signal, trainset);
         return trainset;
     }
 
@@ -633,6 +654,7 @@ namespace godot {
         for (const RID &vehicle: p_vehicles) {
             vehicle_trainsets[vehicle] = p_trainset;
         }
+        _update_trainset(p_trainset);
         emit_signal(trainset_vehicles_changed_signal, p_trainset);
     }
 
@@ -646,16 +668,20 @@ namespace godot {
         Trainset *trainset = trainsets.getptr(trainset_rid);
         ERR_FAIL_NULL(trainset);
         trainset->vehicles.erase(p_vehicle);
+        trainset->reversed.erase(p_vehicle);
         if (trainset->vehicles.is_empty() && trainset->made_by_server) {
             trainsets.erase(trainset_rid);
             emit_signal(trainset_freed_signal, trainset_rid);
             return;
         }
+        _update_trainset(trainset_rid);
         emit_signal(trainset_vehicles_changed_signal, trainset_rid);
     }
 
     void RailVehicleServer::_regroup(const RID &p_vehicle) {
-        if (placing_trainset || !vehicles.has(p_vehicle)) {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        // a vehicle never stood on a track is in no trainset, coupled or not
+        if (placing_trainset || placement == nullptr || !placement->axles[placement->primary_axle].track.is_valid()) {
             return;
         }
         const Vector<RID> coupled = _coupled_vehicles(p_vehicle);
@@ -668,12 +694,17 @@ namespace godot {
             }
         }
         if (involved.is_empty()) {
-            _make_trainset(coupled);
+            _make_trainset(coupled, RIDMap<bool>());
             return;
         }
         if (involved.size() == 1) {
             const Vector<RID> before = trainsets[involved[0]].vehicles;
-            if (before == coupled) {
+            // the same vehicles, whichever end each list starts from
+            bool same = before.size() == coupled.size();
+            for (int index = 0; same && index < coupled.size(); ++index) {
+                same = before.has(coupled[index]);
+            }
+            if (same) {
                 return;
             }
             // uncoupled: the coupled vehicles and the rest are two trainsets - the one that stays
@@ -690,8 +721,11 @@ namespace godot {
             }
             const bool in_front = coupled.has(before[0]);
             const bool coupled_stay = _stays(coupled, rest, in_front);
+            // the part split off faces the way the whole did
+            RIDMap<bool> faced;
+            faced = trainsets[involved[0]].reversed;
             _set_trainset_vehicles(involved[0], coupled_stay ? coupled : rest);
-            const RID split = _make_trainset(coupled_stay ? rest : coupled);
+            const RID split = _make_trainset(coupled_stay ? rest : coupled, faced);
             // what the scenario offers the player it offers of either part
             trainsets[split].player_drivable = trainsets[involved[0]].player_drivable;
             emit_signal(trainset_split_signal, involved[0], split);
@@ -729,6 +763,7 @@ namespace godot {
                 emit_signal(trainset_freed_signal, absorbed);
             } else {
                 ending.vehicles = kept;
+                _update_trainset(absorbed);
                 emit_signal(trainset_vehicles_changed_signal, absorbed);
             }
         }
@@ -752,6 +787,11 @@ namespace godot {
             }
         }
         trainset->placement_pending = false;
+        // standing anew it faces the scenery's way, not the one it had
+        trainset->reversed.clear();
+        for (const TrainsetMember &member: trainset->members) {
+            trainset->reversed.insert(member.vehicle, member.direction == TrackServer::DIRECTION_REVERSED);
+        }
         const Vector<TrainsetMember> members = trainset->members;
         const RID placed_track = trainset->track;
         const double placed_offset = trainset->offset;
@@ -874,6 +914,11 @@ namespace godot {
         }
         for (const RID &trainset: pending) {
             trainset_place(trainset);
+        }
+        // with its simulation the vehicle's brakes and cabs are known; a trainset just placed
+        // was worked out as it stood
+        if (const RID trainset = vehicle_get_trainset(p_vehicle); trainset.is_valid() && !pending.has(trainset)) {
+            _update_trainset(trainset);
         }
     }
 
@@ -1148,6 +1193,52 @@ namespace godot {
         controller->couple(Ref<RailVehicleController>(other_controller), p_end, p_other_end, p_coupling);
     }
 
+    void RailVehicleServer::coupler_connect(const RID &p_vehicle, const RailVehicleController::CouplerEnd p_end) {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        ERR_FAIL_NULL(controller);
+        controller->coupler_connect(p_end);
+    }
+
+    void RailVehicleServer::coupler_disconnect(const RID &p_vehicle, const RailVehicleController::CouplerEnd p_end) {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        ERR_FAIL_NULL(controller);
+        controller->coupler_disconnect(p_end);
+    }
+
+    bool
+    RailVehicleServer::coupler_adapter_attach(const RID &p_vehicle, const RailVehicleController::CouplerEnd p_end) {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        ERR_FAIL_NULL_V(controller, false);
+        return controller->coupler_adapter_attach(p_end);
+    }
+
+    bool
+    RailVehicleServer::coupler_adapter_remove(const RID &p_vehicle, const RailVehicleController::CouplerEnd p_end) {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        ERR_FAIL_NULL_V(controller, false);
+        return controller->coupler_adapter_remove(p_end);
+    }
+
+    void RailVehicleServer::_on_coupler_connect_command(const int64_t p_end, const RID &p_vehicle) {
+        coupler_connect(p_vehicle, static_cast<RailVehicleController::CouplerEnd>(p_end));
+    }
+
+    void RailVehicleServer::_on_coupler_disconnect_command(const int64_t p_end, const RID &p_vehicle) {
+        coupler_disconnect(p_vehicle, static_cast<RailVehicleController::CouplerEnd>(p_end));
+    }
+
+    bool RailVehicleServer::_on_coupler_adapter_attach_command(const int64_t p_end, const RID &p_vehicle) {
+        return coupler_adapter_attach(p_vehicle, static_cast<RailVehicleController::CouplerEnd>(p_end));
+    }
+
+    bool RailVehicleServer::_on_coupler_adapter_remove_command(const int64_t p_end, const RID &p_vehicle) {
+        return coupler_adapter_remove(p_vehicle, static_cast<RailVehicleController::CouplerEnd>(p_end));
+    }
+
     void RailVehicleServer::_on_vehicle_controller_changed(const RID &p_vehicle) {
         VehiclePlacement *placement = vehicles.getptr(p_vehicle);
         const VehicleServer *vehicle_server = VehicleServer::get_instance();
@@ -1182,6 +1273,9 @@ namespace godot {
             return;
         }
         _place_axles(p_vehicle, _vehicle_centre(*placement));
+        if (const RID trainset = vehicle_get_trainset(p_vehicle); trainset.is_valid()) {
+            _update_trainset(trainset);
+        }
         placement = vehicles.getptr(p_vehicle); // the track signals may have rehashed
         /* The pantographs rebuilt with their new geometry (RailVehiclePantographs) keep their height,
          * but a raised one is held under the wire over it - from there the arms press on as before */
@@ -1240,11 +1334,25 @@ namespace godot {
         controller->connect(
                 RailVehicleController::coupler_adapter_removed_signal,
                 callable_mp(this, &RailVehicleServer::_on_vehicle_coupler_adapter_removed).bind(p_vehicle));
-        // the vehicle's load commands are the server's operations under its handle
+        controller->connect(
+                RailVehicleController::active_cabin_changed_signal,
+                callable_mp(this, &RailVehicleServer::_trainset_follow_command).bind(p_vehicle));
+        // the vehicle's load and coupler commands are the server's operations under its handle
         controller->register_command(
                 "load_add", callable_mp(this, &RailVehicleServer::_on_load_add_command).bind(p_vehicle));
         controller->register_command(
                 "load_remove", callable_mp(this, &RailVehicleServer::_on_load_remove_command).bind(p_vehicle));
+        controller->register_command(
+                "coupler_connect", callable_mp(this, &RailVehicleServer::_on_coupler_connect_command).bind(p_vehicle));
+        controller->register_command(
+                "coupler_disconnect",
+                callable_mp(this, &RailVehicleServer::_on_coupler_disconnect_command).bind(p_vehicle));
+        controller->register_command(
+                "coupler_adapter_attach",
+                callable_mp(this, &RailVehicleServer::_on_coupler_adapter_attach_command).bind(p_vehicle));
+        controller->register_command(
+                "coupler_adapter_remove",
+                callable_mp(this, &RailVehicleServer::_on_coupler_adapter_remove_command).bind(p_vehicle));
     }
 
     void RailVehicleServer::_disconnect_relays(const RID &p_vehicle, const VehiclePlacement &p_placement) {
@@ -1270,8 +1378,15 @@ namespace godot {
         controller->disconnect(
                 RailVehicleController::coupler_adapter_removed_signal,
                 callable_mp(this, &RailVehicleServer::_on_vehicle_coupler_adapter_removed).bind(p_vehicle));
+        controller->disconnect(
+                RailVehicleController::active_cabin_changed_signal,
+                callable_mp(this, &RailVehicleServer::_trainset_follow_command).bind(p_vehicle));
         controller->unregister_command("load_add");
         controller->unregister_command("load_remove");
+        controller->unregister_command("coupler_connect");
+        controller->unregister_command("coupler_disconnect");
+        controller->unregister_command("coupler_adapter_attach");
+        controller->unregister_command("coupler_adapter_remove");
     }
 
     void RailVehicleServer::_on_cabin_person_entered(
@@ -1334,6 +1449,7 @@ namespace godot {
             controller->wake();
         }
         emit_signal(vehicle_driver_cabin_changed_signal, p_vehicle, cabin);
+        _trainset_follow_command(p_vehicle);
     }
 
     /* The controller holds what its occupied cab is (CabOccupied), and only this server tells it -
@@ -1348,7 +1464,6 @@ namespace godot {
 
     void RailVehicleServer::_on_vehicle_trainset_changed(const RID &p_vehicle) {
         _regroup(p_vehicle);
-        emit_signal(vehicle_trainset_changed_signal, p_vehicle);
     }
 
     void RailVehicleServer::_on_vehicle_derailed(const int64_t p_cause, const RID &p_vehicle) {
@@ -1577,115 +1692,202 @@ namespace godot {
 
     template<typename Answers>
     bool RailVehicleServer::_trainset_any_doors(
-            const RID &p_vehicle, const RailVehicleController::Side p_side, Answers p_answers) const {
-        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
-        RailVehicleController *first = placement != nullptr ? _get_controller(*placement) : nullptr;
-        if (first == nullptr) {
-            return false;
-        }
+            const RID &p_trainset, const RailVehicleController::Side p_side, Answers p_answers) const {
+        const Trainset *trainset = trainsets.getptr(p_trainset);
+        ERR_FAIL_NULL_V(trainset, false);
         const RailVehicleController::Side other_side = p_side == RailVehicleController::SIDE_LEFT
                                                                ? RailVehicleController::SIDE_RIGHT
                                                                : RailVehicleController::SIDE_LEFT;
-        const auto answers = [&](const RailVehicleController *p_controller, const bool p_same_way) {
+        for (const RID &vehicle: trainset->vehicles) {
+            const VehiclePlacement *placement = vehicles.getptr(vehicle);
+            const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+            if (controller == nullptr) {
+                continue;
+            }
             const RailVehicleDoors *doors = Object::cast_to<RailVehicleDoors>(
-                    p_controller->get_component(VehicleComponentType::COMPONENT_DOORS).ptr());
-            return doors != nullptr && p_answers(*doors, p_same_way ? p_side : other_side);
-        };
-        if (answers(first, true)) {
-            return true;
-        }
-        // out through each end; a neighbour entered by the same end as the one left stands the other
-        // way round
-        for (const RailVehicleController::CouplerEnd start:
-             {RailVehicleController::COUPLER_END_FRONT, RailVehicleController::COUPLER_END_REAR}) {
-            const RailVehicleController *vehicle = first;
-            RailVehicleController::CouplerEnd end = start;
-            bool same_way = true;
-            while (vehicle->is_coupled_by(end, RailVehicleController::COUPLING_FLAG_COUPLER)) {
-                const RailVehicleController::CouplerEnd entered = vehicle->get_coupled_end(end);
-                same_way = same_way == (entered != end);
-                vehicle = vehicle->get_coupled_controller(end).ptr();
-                end = RailVehicleController::opposite_end(entered);
-                if (vehicle == first) {
-                    break;
-                }
-                if (answers(vehicle, same_way)) {
-                    return true;
-                }
+                    controller->get_component(VehicleComponentType::COMPONENT_DOORS).ptr());
+            const bool *reversed = trainset->reversed.getptr(vehicle);
+            if (doors != nullptr && p_answers(*doors, reversed != nullptr && *reversed ? other_side : p_side)) {
+                return true;
             }
         }
         return false;
     }
 
     bool
-    RailVehicleServer::trainset_get_doorway_open(const RID &p_vehicle, const RailVehicleController::Side p_side) const {
+    RailVehicleServer::trainset_has_door_open(const RID &p_trainset, const RailVehicleController::Side p_side) const {
         return _trainset_any_doors(
-                p_vehicle, p_side, [](const RailVehicleDoors &p_doors, const RailVehicleController::Side p_at) {
-                    return p_doors.get_close_method() != RailVehicleDoors::CONTROLS_AUTOMATIC &&
-                           !(p_at == RailVehicleController::SIDE_LEFT ? p_doors.get_left_closed()
-                                                                      : p_doors.get_right_closed());
-                });
-    }
-
-    bool
-    RailVehicleServer::trainset_get_door_open(const RID &p_vehicle, const RailVehicleController::Side p_side) const {
-        return _trainset_any_doors(
-                p_vehicle, p_side, [](const RailVehicleDoors &p_doors, const RailVehicleController::Side p_at) {
+                p_trainset, p_side, [](const RailVehicleDoors &p_doors, const RailVehicleController::Side p_at) {
                     return p_doors.get_close_method() != RailVehicleDoors::CONTROLS_AUTOMATIC &&
                            !(p_at == RailVehicleController::SIDE_LEFT ? p_doors.get_left_door_closed()
                                                                       : p_doors.get_right_door_closed());
                 });
     }
 
-    bool
-    RailVehicleServer::trainset_get_door_permit(const RID &p_vehicle, const RailVehicleController::Side p_side) const {
+    bool RailVehicleServer::trainset_has_step_extended(
+            const RID &p_trainset, const RailVehicleController::Side p_side) const {
         return _trainset_any_doors(
-                p_vehicle, p_side, [](const RailVehicleDoors &p_doors, const RailVehicleController::Side p_at) {
+                p_trainset, p_side, [](const RailVehicleDoors &p_doors, const RailVehicleController::Side p_at) {
+                    return p_doors.get_close_method() != RailVehicleDoors::CONTROLS_AUTOMATIC &&
+                           (p_at == RailVehicleController::SIDE_LEFT ? p_doors.get_left_step_position()
+                                                                     : p_doors.get_right_step_position()) > 0.0;
+                });
+    }
+
+    bool
+    RailVehicleServer::trainset_has_door_permit(const RID &p_trainset, const RailVehicleController::Side p_side) const {
+        return _trainset_any_doors(
+                p_trainset, p_side, [](const RailVehicleDoors &p_doors, const RailVehicleController::Side p_at) {
                     return p_doors.get_permit_required() &&
                            (p_at == RailVehicleController::SIDE_LEFT ? p_doors.get_left_open_permit()
                                                                      : p_doors.get_right_open_permit());
                 });
     }
 
-    void RailVehicleServer::trainset_determine_type(const RID &p_vehicle) {
-        const TypedArray<RID> trainset = vehicle_get_coupled(
-                p_vehicle, RailVehicleController::COUPLER_END_FRONT, RailVehicleController::COUPLING_FLAG_COUPLER);
-        bool passenger = false;
-        bool cargo = false;
-        for (const Variant &member: trainset) {
-            const VehiclePlacement *placement = vehicles.getptr(member);
-            const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
-            // a car is a vehicle without power (Power < 1, Driver.cpp:2156)
-            if (controller == nullptr || controller->get_power() >= 1.0) {
-                continue;
-            }
-            const Ref<RailVehicleBrake> brake =
-                    controller->get_rail_component(RailVehicleComponentType::COMPONENT_BRAKES);
-            const int delays = brake.is_valid() ? brake->get_cntrl_brake_delays() : RailVehicleBrake::BRAKE_DELAY_NONE;
-            if ((delays & RailVehicleBrake::BRAKE_DELAY_G) != 0 && (delays & RailVehicleBrake::BRAKE_DELAY_R) == 0) {
-                cargo = true;
-            } else {
-                passenger = true;
-            }
+    RID RailVehicleServer::trainset_get_head(const RID &p_trainset) const {
+        const Trainset *trainset = trainsets.getptr(p_trainset);
+        ERR_FAIL_NULL_V(trainset, RID());
+        return trainset->head;
+    }
+
+    RailVehicleServer::TrainsetType RailVehicleServer::trainset_get_type(const RID &p_trainset) const {
+        const Trainset *trainset = trainsets.getptr(p_trainset);
+        ERR_FAIL_NULL_V(trainset, TRAINSET_TYPE_NONE);
+        return trainset->type;
+    }
+
+    void RailVehicleServer::trainset_set_classifier(const Ref<RailVehicleTrainsetClassifier> &p_classifier) {
+        ERR_FAIL_COND(p_classifier.is_null());
+        classifier = p_classifier;
+        // taken first: working one out announces it, and a listener may change the trainsets
+        Vector<RID> listed;
+        for (const KeyValue<RID, Trainset> &trainset: trainsets) {
+            listed.push_back(trainset.key);
         }
-        TrainsetType type = TRAINSET_TYPE_NONE;
-        if (passenger && cargo) {
-            type = TRAINSET_TYPE_MIXED;
-        } else if (cargo) {
-            type = TRAINSET_TYPE_CARGO;
-        } else if (passenger) {
-            type = TRAINSET_TYPE_PASSENGER;
-        }
-        for (const Variant &member: trainset) {
-            if (VehiclePlacement *placement = vehicles.getptr(member)) {
-                placement->trainset_type = type;
-            }
+        for (const RID &trainset: listed) {
+            _update_trainset(trainset);
         }
     }
 
-    RailVehicleServer::TrainsetType RailVehicleServer::trainset_get_type(const RID &p_vehicle) const {
+    bool RailVehicleServer::vehicle_is_reversed_in_trainset(const RID &p_vehicle) const {
+        const RID *trainset = vehicle_trainsets.getptr(p_vehicle);
+        ERR_FAIL_NULL_V_MSG(trainset, false, "The vehicle is in no trainset.");
+        const bool *reversed = trainsets[*trainset].reversed.getptr(p_vehicle);
+        return reversed != nullptr && *reversed;
+    }
+
+    TrackServer::Direction RailVehicleServer::trainset_vehicle_get_direction(const RID &p_vehicle) const {
+        return vehicle_is_reversed_in_trainset(p_vehicle) ? TrackServer::DIRECTION_REVERSED
+                                                          : TrackServer::DIRECTION_NORMAL;
+    }
+
+    /* A master controller alone is no driving cab: a unit's middle wagon has one and no cab (EN57's s) */
+    bool RailVehicleServer::vehicle_has_driving_cabin(const RID &p_vehicle) const {
         const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
-        return placement != nullptr ? placement->trainset_type : TRAINSET_TYPE_NONE;
+        const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        return controller != nullptr &&
+               controller->get_rail_component(RailVehicleComponentType::COMPONENT_MASTER_CONTROLLER).is_valid() &&
+               _vehicle_find_cabin(
+                       p_vehicle,
+                       {RailVehicleCabinKind::RAIL_VEHICLE_CABIN_FRONT, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_REAR})
+                       .is_valid();
+    }
+
+    bool RailVehicleServer::_is_in_command(const RID &p_vehicle) const {
+        if (!vehicle_has_driving_cabin(p_vehicle)) {
+            return false;
+        }
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        const Ref<RailVehicleMasterController> master =
+                _get_controller(*placement)->get_rail_component(RailVehicleComponentType::COMPONENT_MASTER_CONTROLLER);
+        return placement->driver.is_valid() || master->is_cabin_master();
+    }
+
+    void RailVehicleServer::_trainset_follow_command(const RID &p_vehicle) {
+        const RID trainset = vehicle_get_trainset(p_vehicle);
+        if (!trainset.is_valid()) {
+            return;
+        }
+        if (_is_in_command(p_vehicle)) {
+            trainsets[trainset].commanding = p_vehicle;
+        }
+        _update_trainset(trainset);
+    }
+
+    void RailVehicleServer::_update_trainset(const RID &p_trainset) {
+        Trainset *trainset = trainsets.getptr(p_trainset);
+        ERR_FAIL_NULL(trainset);
+        Vector<RID> line = trainset->vehicles;
+        const int64_t count = line.size();
+        // which way each faces with line[0] taken for the front: towards the next one by its rear
+        // or towards the one before by its front
+        Vector<bool> reversed;
+        reversed.resize(count);
+        reversed.fill(false);
+        for (int64_t index = 0; count > 1 && index < count; ++index) {
+            const VehiclePlacement *placement = vehicles.getptr(line[index]);
+            const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+            if (controller == nullptr) {
+                continue;
+            }
+            const RID toward = index + 1 < count ? line[index + 1] : line[index - 1];
+            const RailVehicleController::CouplerEnd facing_back = index + 1 < count
+                                                                          ? RailVehicleController::COUPLER_END_REAR
+                                                                          : RailVehicleController::COUPLER_END_FRONT;
+            const RailVehicleController::CouplerEnd facing_away = RailVehicleController::opposite_end(facing_back);
+            const Ref<RailVehicleController> coupled_away = controller->is_coupled(facing_away)
+                                                                    ? controller->get_coupled_controller(facing_away)
+                                                                    : Ref<RailVehicleController>();
+            reversed.set(index, coupled_away.is_valid() && coupled_away->get_rid() == toward);
+        }
+        // how far from each end the nearest vehicle with a driving cab is - count with none - and
+        // the first vehicle whose way of facing the trainset already knows
+        int64_t from_front = count;
+        int64_t from_back = count;
+        int64_t reference = -1;
+        for (int64_t index = 0; index < count; ++index) {
+            if (vehicle_has_driving_cabin(line[index])) {
+                from_front = MIN(from_front, index);
+                from_back = count - 1 - index;
+            }
+            if (reference < 0 && trainset->reversed.has(line[index])) {
+                reference = index;
+            }
+        }
+        // the head is the end that ranks higher (the rules in _update_trainset()'s declaration);
+        // ends of one rank keep the way the trainset faced
+        bool head_last = false;
+        if (count > 1) {
+            const auto rank = [&](const RID &p_end, const int64_t p_cab_distance) {
+                const bool in_command = _is_in_command(p_end);
+                return std::make_tuple(in_command && p_end == trainset->commanding, in_command, -p_cab_distance);
+            };
+            const auto front = rank(line[0], from_front);
+            const auto back = rank(line[count - 1], from_back);
+            head_last = front != back
+                                ? back > front
+                                : reference >= 0 && reversed[reference] != *trainset->reversed.getptr(line[reference]);
+        }
+        if (head_last) {
+            line.reverse();
+            reversed.reverse();
+            for (int64_t index = 0; index < count; ++index) {
+                reversed.set(index, !reversed[index]);
+            }
+        }
+        trainset->vehicles = line;
+        trainset->reversed.clear();
+        TypedArray<RID> ordered;
+        for (int64_t index = 0; index < count; ++index) {
+            ordered.push_back(line[index]);
+            trainset->reversed.insert(line[index], reversed[index]);
+        }
+        trainset->type = count > 0 ? classifier->classify(ordered) : TRAINSET_TYPE_NONE;
+        const RID head = count > 0 ? line[0] : RID();
+        if (head != trainset->head) {
+            trainset->head = head;
+            emit_signal(trainset_head_changed_signal, p_trainset);
+        }
     }
 
     /* TDynamicObject::move_set() (DynObj.cpp:4302) moves every vehicle by the distance times its

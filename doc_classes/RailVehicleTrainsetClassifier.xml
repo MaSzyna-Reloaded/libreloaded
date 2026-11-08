@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RailVehicleTrainsetClassifier" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The rule a trainset's type is worked out by.
+	</brief_description>
+	<description>
+		What a trainset is, from its vehicles - the rule [RailVehicleServer] recomputes the type of every trainset with whenever its vehicles change ([method RailVehicleServer.trainset_get_type]). This one is the core's: a wagon (a vehicle of power below 1) with the R brake delay or without G carries passengers, one with G and without R goods; both kinds make a mixed trainset and no wagon at all none. A plugin hands the server its own rule through [method RailVehicleServer.trainset_set_classifier]: a script overrides [method _classify], a C++ class [method classify].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_classify" qualifiers="virtual const">
+			<return type="int" enum="RailVehicleServer.TrainsetType" />
+			<param index="0" name="vehicles" type="RID[]" />
+			<description>
+				Override to work out the type of a trainset of [param vehicles], its head first, by a rule of your own.
+			</description>
+		</method>
+		<method name="classify" qualifiers="const">
+			<return type="int" enum="RailVehicleServer.TrainsetType" />
+			<param index="0" name="vehicles" type="RID[]" />
+			<description>
+				Returns the type of a trainset of [param vehicles], its head first: by [method _classify] when a script overrides it, else by the core's rule.
+			</description>
+		</method>
+	</methods>
+</class>
