@@ -68,6 +68,9 @@ namespace godot {
 
     void UserSettings::_bind_methods() {
         ClassDB::bind_method(D_METHOD("load_config"), &UserSettings::load_config);
+        ClassDB::bind_method(D_METHOD("set_config_path", "path"), &UserSettings::set_config_path);
+        ClassDB::bind_method(D_METHOD("get_config_path"), &UserSettings::get_config_path);
+        ADD_PROPERTY(PropertyInfo(Variant::STRING, "config_path"), "set_config_path", "get_config_path");
 
         ClassDB::bind_method(D_METHOD("save_setting", "section", "key", "value"), &UserSettings::save_setting);
         ClassDB::bind_method(D_METHOD("set_setting", "section", "key", "value"), &UserSettings::set_setting);
@@ -108,6 +111,15 @@ namespace godot {
                 }
             }
         }
+    }
+
+    void UserSettings::set_config_path(const String &p_path) {
+        config_file_path = p_path;
+        load_config();
+    }
+
+    String UserSettings::get_config_path() const {
+        return config_file_path;
     }
 
     void UserSettings::load_config() {
