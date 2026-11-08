@@ -120,6 +120,10 @@ func _process_tool(_delta):
     if _t > 0.1:
         _t = 0.0
         _on_state_update_timer_timeout()
+    # the value every frame, as the original's TGauge::Update() takes it: read ten times a second, a
+    # needle of no friction jumped as a Hasler's does
+    elif _vehicle_rid and state_property:
+        value = _vehicle_state_value(state_property, 0.0)
 
     if _setup_phase and target_mesh_path and not _mesh:
         _dirty = true

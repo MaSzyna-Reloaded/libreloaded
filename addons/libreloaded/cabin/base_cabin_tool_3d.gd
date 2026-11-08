@@ -49,6 +49,26 @@ signal vehicle_rid_changing
 @export var target:CabinState.Target = CabinState.Target.OCCUPIED
 ## The keys of this control, named under its caption - the cab logic takes them (CabinLogic.input())
 @export var hint_actions:PackedStringArray = []
+## Turn the mesh about its own axes as its parent sees them, its scale kept: a mesh scaled unevenly
+## (an EU07's wiper handle, 3.2 x 5.2 x 9.9) shears when turned in its own frame, as the original's
+## gauges turn - a game's own controls (a patch's) turn as a real one does
+@export var turn_unscaled:bool = false
+## The mesh's rotation at each whole position from the first, between them in proportion - a switch
+## whose positions do not follow one turn (a ČD 181's wiper switch: 0 up, 1 left, 2 right); none,
+## the control's own offset and step
+@export var position_rotations:PackedVector3Array = []:
+    set(x):
+        position_rotations = x
+        _dirty = true
+## The axis the mesh turns about, in its own frame, by the turn about its up (position_rotations' y):
+## ZERO, its own axes - a knob on a slanted stem turns about none of them
+@export var turn_axis:Vector3 = Vector3.ZERO
+## The point the mesh turns about, in its own frame: ZERO, its origin - a mesh made where its origin
+## lies off it (a cab model's knob built at the cab floor's origin) turns about its own middle
+@export var turn_pivot:Vector3 = Vector3.ZERO:
+    set(x):
+        turn_pivot = x
+        _dirty = true
 ## A wiper animation (MMD `wip`): the control's first submodel below it and that one's first turn
 ## with it, by the same angle (TGauge gt_Wiper, Gauge.cpp:469-479) - wipers, folding doors, the
 ## alarm chain's handle
@@ -171,6 +191,32 @@ func _on_cabin_control_changed(cabin:RID, p_control_id:StringName, value:Variant
 
 func _apply_control_value(_value:Variant) -> void:
     pass
+
+
+## Sets `mesh` turned by `rotation` (degrees, X, Y, Z as the widgets animate) and moved by `offset`
+## from where it was made (`original_basis`, `original_position`), its turn_pivot standing still
+func _place_mesh(mesh:Node3D, original_basis:Basis, original_position:Vector3, rotation:Vector3, offset:Vector3) -> void:
+    var turned:Basis = original_basis
+    if not turn_axis == Vector3.ZERO:
+        turned = Basis((original_basis * turn_axis).normalized(), deg_to_rad(rotation.y)) * turned
+    elif turn_unscaled:
+        # about its own axes as its parent sees them: a mesh of uneven scale turns, not shears
+        turned = Basis((original_basis * Vector3.FORWARD).normalized(), deg_to_rad(rotation.z)) * turned
+        turned = Basis((original_basis * Vector3.UP).normalized(), deg_to_rad(rotation.y)) * turned
+        turned = Basis((original_basis * Vector3.RIGHT).normalized(), deg_to_rad(rotation.x)) * turned
+    else:
+        turned = turned * Basis(Vector3.RIGHT, deg_to_rad(rotation.x)) * Basis(Vector3.UP, deg_to_rad(rotation.y)) \
+                * Basis(Vector3.FORWARD, deg_to_rad(rotation.z))
+    mesh.transform.basis = turned
+    mesh.position = original_position + offset + original_basis * turn_pivot - turned * turn_pivot
+
+
+## The rotation at `at` positions from the first, of position_rotations
+func _position_rotation(at:float) -> Vector3:
+    at = clampf(at, 0.0, position_rotations.size() - 1)
+    var below:int = floori(at)
+    var above:int = mini(below + 1, position_rotations.size() - 1)
+    return position_rotations[below].lerp(position_rotations[above], at - below)
 
 
 ## Makes `mesh` operable by mouse with this control's own operations; an empty `increase` leaves

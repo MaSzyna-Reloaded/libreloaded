@@ -47,6 +47,7 @@ enum ControllerMode { OnOff, On, Off }
         mesh_rotation_offset = x
         _dirty = true
 
+
 ## How fast the control follows its value - 1 / the MMD's friction; 0 moves it at once
 ## (TGauge::Update(), Gauge.cpp:364-375)
 @export var animation_speed = 10.0
@@ -110,10 +111,19 @@ func _update_state():
             value_min = _vehicle_config().get(config_min_property, value_min)
         if config_max_property:
             value_max = _vehicle_config().get(config_max_property, value_max)
-        if state_property and not _held:
-            value = _vehicle_state_value(state_property, value)
-        _value_normalized = value / (value_max - value_min)
-        _target_mesh_position = mesh_position_offset + mesh_position * _value_normalized
+        _take_value()
+
+
+## The vehicle's value of the knob and where it puts the mesh - every frame (_process_tool()), as the
+## original's TGauge::Update() takes it: read twenty times a second, a knob of no friction jumped
+func _take_value() -> void:
+    if state_property and not _held:
+        value = _vehicle_state_value(state_property, value)
+    _value_normalized = value / (value_max - value_min)
+    _target_mesh_position = mesh_position_offset + mesh_position * _value_normalized
+    if position_rotations:
+        _target_mesh_rotation = _position_rotation(value - value_min)
+    else:
         _target_mesh_rotation = mesh_rotation_offset + mesh_rotation * _value_normalized
 
 func _ready():
@@ -128,6 +138,8 @@ func _process_tool(delta):
 
         if _setup_phase and mesh_path and not _mesh:
             _dirty = true
+    elif _vehicle_rid:
+        _take_value()
 
     if _setup_phase and _mesh:
         _setup_phase = false
@@ -144,12 +156,7 @@ func _process_tool(delta):
         _sounded_value = value
 
     if is_instance_valid(_mesh):
-        var new_basis = _mesh_original_basis
-        new_basis *= Basis(Vector3.RIGHT, deg_to_rad(_current_rotation.x))
-        new_basis *= Basis(Vector3.UP, deg_to_rad(_current_rotation.y))
-        new_basis *= Basis(Vector3.FORWARD, deg_to_rad(_current_rotation.z))
-        _mesh.transform.basis = new_basis
-        _mesh.position = _mesh_original_position + _current_position
+        _place_mesh(_mesh, _mesh_original_basis, _mesh_original_position, _current_rotation, _current_position)
 
 
 func _apply_control_value(p_value:Variant) -> void:
