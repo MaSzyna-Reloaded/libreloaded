@@ -1,0 +1,290 @@
+diff --git a/doc/classes/RenderingServer.xml b/doc/classes/RenderingServer.xml
+index 5f8cb39..6e727c5 100644
+--- a/doc/classes/RenderingServer.xml
++++ b/doc/classes/RenderingServer.xml
+@@ -63,6 +63,14 @@
+ 				Sets the parameters to use with the auto-exposure effect. These parameters take on the same meaning as their counterparts in [CameraAttributes] and [CameraAttributesPractical].
+ 			</description>
+ 		</method>
++		<method name="camera_attributes_set_auto_exposure_low_percent">
++			<return type="void" />
++			<param index="0" name="camera_attributes" type="RID" />
++			<param index="1" name="low_percent" type="float" />
++			<description>
++				Sets the share of the picture's darkest pixels, in percent (10 by default, at most 89), left out of the average luminance the auto-exposure measures. The brightest 10% are always left out. Raise it so that a dark frame or object near the camera does not brighten the picture.
++			</description>
++		</method>
+ 		<method name="camera_attributes_set_dof_blur">
+ 			<return type="void" />
+ 			<param index="0" name="camera_attributes" type="RID" />
+diff --git a/servers/rendering/renderer_rd/effects/luminance.cpp b/servers/rendering/renderer_rd/effects/luminance.cpp
+index 5c6b3e0..7e69cf5 100644
+--- a/servers/rendering/renderer_rd/effects/luminance.cpp
++++ b/servers/rendering/renderer_rd/effects/luminance.cpp
+@@ -180,7 +180,7 @@ RID Luminance::get_current_luminance_buffer(Ref<RenderSceneBuffersRD> p_render_b
+ 	return RID();
+ }
+ 
+-void Luminance::luminance_reduction(RID p_source_texture, const Size2i p_source_size, Ref<LuminanceBuffers> p_luminance_buffers, float p_min_luminance, float p_max_luminance, float p_adjust, bool p_set) {
++void Luminance::luminance_reduction(RID p_source_texture, const Size2i p_source_size, Ref<LuminanceBuffers> p_luminance_buffers, float p_min_luminance, float p_max_luminance, float p_adjust, float p_low_percent, bool p_set) {
+ 	UniformSetCacheRD *uniform_set_cache = UniformSetCacheRD::get_singleton();
+ 	ERR_FAIL_NULL(uniform_set_cache);
+ 	MaterialStorage *material_storage = MaterialStorage::get_singleton();
+@@ -238,6 +238,7 @@ void Luminance::luminance_reduction(RID p_source_texture, const Size2i p_source_
+ 		push_constant.min_log_lum = Math::log2(MAX(p_min_luminance, EPSILON));
+ 		push_constant.log_lum_range = MAX(Math::log2(MAX(p_max_luminance, EPSILON)) - push_constant.min_log_lum, 0.0001f);
+ 		push_constant.exposure_adjust = p_adjust;
++		push_constant.low_percent = p_low_percent;
+ 
+ 		RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
+ 
+diff --git a/servers/rendering/renderer_rd/effects/luminance.h b/servers/rendering/renderer_rd/effects/luminance.h
+index bd932b0..f38b7c8 100644
+--- a/servers/rendering/renderer_rd/effects/luminance.h
++++ b/servers/rendering/renderer_rd/effects/luminance.h
+@@ -54,7 +54,8 @@ private:
+ 		float min_log_lum;
+ 		float log_lum_range;
+ 		float exposure_adjust;
+-		float pad[3];
++		float low_percent;
++		float pad[2];
+ 	};
+ 
+ 	struct LuminanceReduce {
+@@ -108,7 +109,7 @@ public:
+ 
+ 	Ref<LuminanceBuffers> get_luminance_buffers(Ref<RenderSceneBuffersRD> p_render_buffers);
+ 	RID get_current_luminance_buffer(Ref<RenderSceneBuffersRD> p_render_buffers);
+-	void luminance_reduction(RID p_source_texture, const Size2i p_source_size, Ref<LuminanceBuffers> p_luminance_buffers, float p_min_luminance, float p_max_luminance, float p_adjust, bool p_set = false);
++	void luminance_reduction(RID p_source_texture, const Size2i p_source_size, Ref<LuminanceBuffers> p_luminance_buffers, float p_min_luminance, float p_max_luminance, float p_adjust, float p_low_percent, bool p_set = false);
+ 
+ 	Luminance(bool p_prefer_raster_effects);
+ 	~Luminance();
+diff --git a/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp b/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp
+index fb4d422..420b31e 100644
+--- a/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp
++++ b/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp
+@@ -567,7 +567,8 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
+ 		double step = RSG::camera_attributes->camera_attributes_get_auto_exposure_adjust_speed(p_render_data->camera_attributes) * time_step;
+ 		float auto_exposure_min_sensitivity = RSG::camera_attributes->camera_attributes_get_auto_exposure_min_sensitivity(p_render_data->camera_attributes);
+ 		float auto_exposure_max_sensitivity = RSG::camera_attributes->camera_attributes_get_auto_exposure_max_sensitivity(p_render_data->camera_attributes);
+-		luminance->luminance_reduction(rb->get_internal_texture(), rb->get_internal_size(), luminance_buffers, auto_exposure_min_sensitivity, auto_exposure_max_sensitivity, step, set_immediate);
++		float auto_exposure_low_percent = RSG::camera_attributes->camera_attributes_get_auto_exposure_low_percent(p_render_data->camera_attributes);
++		luminance->luminance_reduction(rb->get_internal_texture(), rb->get_internal_size(), luminance_buffers, auto_exposure_min_sensitivity, auto_exposure_max_sensitivity, step, auto_exposure_low_percent, set_immediate);
+ 
+ 		// Swap final reduce with prev luminance.
+ 
+diff --git a/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl b/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl
+index 7eb116a..3fde365 100644
+--- a/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl
++++ b/servers/rendering/renderer_rd/shaders/effects/luminance_reduce.glsl
+@@ -10,6 +10,17 @@
+ #define BLOCK_SIZE 16
+ #define GROUP_SIZE (BLOCK_SIZE * BLOCK_SIZE)
+ 
++// The brightest pixels left out of the average, in percent of the picture, as Unreal Engine's
++// histogram auto exposure does by default (high_percent 90); the darkest ones are set by
++// RenderingServer.camera_attributes_set_auto_exposure_low_percent() (params.low_percent).
++#define HIGH_PERCENT 90.0
++
++// Center-weighted metering: a pixel in the middle of the picture counts CENTER_WEIGHT times as much
++// as one in its corners, falling off smoothly between - in WEIGHT_STEPS steps, the histogram counts
++// whole numbers.
++#define CENTER_WEIGHT 4.0
++#define WEIGHT_STEPS 16.0
++
+ #ifdef HISTOGRAM_PASS
+ layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
+ #else
+@@ -21,7 +32,8 @@ layout(push_constant, std430) uniform Params {
+ 	float min_log_lum;
+ 	float log_lum_range;
+ 	float exposure_adjust;
+-	float pad[3];
++	float low_percent;
++	float pad[2];
+ }
+ params;
+ 
+@@ -43,23 +55,21 @@ histogram;
+ layout(r32f, set = 2, binding = 0) uniform restrict writeonly image2D dest_luminance;
+ 
+ shared float histogram_shared[GROUP_SIZE];
++shared float cumulative_count_shared[GROUP_SIZE];
+ #endif
+ 
+ uint color_to_bin(vec3 hdr_color) {
+ 	// REC-709 luminance weights.
+ 	float lum = dot(hdr_color, vec3(0.2126, 0.7152, 0.0722));
+ 
+-	// Avoid taking the log of zero
+-	if (lum < 0.005) {
+-		return 0;
+-	}
+-
+ 	// Calculate the log_2 luminance and express it as a value in [0.0, 1.0]
+ 	// where 0.0 represents the minimum luminance, and 1.0 represents the max.
+-	float log_lum = clamp((log2(lum) - params.min_log_lum) / params.log_lum_range, 0.0, 1.0);
++	// A pixel darker than the minimum is counted at it, not left out: a dark picture is measured
++	// as dark. max() avoids taking the log of zero.
++	float log_lum = clamp((log2(max(lum, 1e-10)) - params.min_log_lum) / params.log_lum_range, 0.0, 1.0);
+ 
+-	// Map [0, 1] to [1, 255]. The zeroth bin is handled by the epsilon check above.
+-	return uint(log_lum * 254.0 + 1.0);
++	// Map [0, 1] to [0, 255].
++	return uint(log_lum * float(GROUP_SIZE - 1));
+ }
+ 
+ void main() {
+@@ -73,7 +83,10 @@ void main() {
+ 	if (all(lessThan(tex_coords, params.source_size))) {
+ 		vec3 source_color = texelFetch(source_texture, tex_coords, 0).rgb;
+ 		uint bin_index = color_to_bin(source_color);
+-		atomicAdd(histogram_shared[bin_index], 1);
++		vec2 offset = (vec2(tex_coords) + 0.5) / vec2(params.source_size) * 2.0 - 1.0;
++		float distance_to_center = clamp(length(offset) / sqrt(2.0), 0.0, 1.0);
++		uint weight = uint(WEIGHT_STEPS * mix(CENTER_WEIGHT, 1.0, smoothstep(0.0, 1.0, distance_to_center)) + 0.5);
++		atomicAdd(histogram_shared[bin_index], weight);
+ 	}
+ 
+ 	groupMemoryBarrier();
+@@ -82,13 +95,35 @@ void main() {
+ 	atomicAdd(histogram.data[gl_LocalInvocationIndex], histogram_shared[gl_LocalInvocationIndex]);
+ #else
+ 	float count_for_this_bin = float(histogram.data[gl_LocalInvocationIndex]);
+-	histogram_shared[gl_LocalInvocationIndex] = count_for_this_bin * float(gl_LocalInvocationIndex);
++	cumulative_count_shared[gl_LocalInvocationIndex] = count_for_this_bin;
+ 
+ 	groupMemoryBarrier();
+ 	barrier();
+ 
+ 	histogram.data[gl_LocalInvocationIndex] = 0;
+ 
++	// Count the pixels up to and including this bin (an inclusive prefix sum).
++	for (uint offset = 1; offset < GROUP_SIZE; offset <<= 1) {
++		float preceding = gl_LocalInvocationIndex >= offset ? cumulative_count_shared[gl_LocalInvocationIndex - offset] : 0.0;
++		groupMemoryBarrier();
++		barrier();
++		cumulative_count_shared[gl_LocalInvocationIndex] += preceding;
++		groupMemoryBarrier();
++		barrier();
++	}
++
++	// Only the share of this bin's pixels between the low and the high percent is averaged.
++	float pixel_count = cumulative_count_shared[GROUP_SIZE - 1];
++	float low_count = pixel_count * (clamp(params.low_percent, 0.0, HIGH_PERCENT - 1.0) / 100.0);
++	float high_count = pixel_count * (HIGH_PERCENT / 100.0);
++	float bin_end = cumulative_count_shared[gl_LocalInvocationIndex];
++	float bin_start = bin_end - count_for_this_bin;
++	float counted = max(min(bin_end, high_count) - max(bin_start, low_count), 0.0);
++	histogram_shared[gl_LocalInvocationIndex] = counted * float(gl_LocalInvocationIndex);
++
++	groupMemoryBarrier();
++	barrier();
++
+ 	// Perform a weighted count of the luminance range.
+ 	for (uint cutoff = (GROUP_SIZE >> 1); cutoff > 0; cutoff >>= 1) {
+ 		if (uint(gl_LocalInvocationIndex) < cutoff) {
+@@ -99,15 +134,15 @@ void main() {
+ 	}
+ 
+ 	if (gl_LocalInvocationIndex == 0) {
+-		float pixel_count = float(params.source_size.x * params.source_size.y);
+-		float weighted_log_average = (histogram_shared[0] / max(pixel_count - count_for_this_bin, 1.0)) - 1.0;
++		float weighted_log_average = histogram_shared[0] / max(high_count - low_count, 1.0);
+ 
+-		// Map from our histogram space to actual luminance.
+-		float weighted_avg_lum = exp2((weighted_log_average / 254.0) * params.log_lum_range + params.min_log_lum);
++		// Map from our histogram space to log_2 luminance.
++		float weighted_avg_log_lum = (weighted_log_average / float(GROUP_SIZE - 1)) * params.log_lum_range + params.min_log_lum;
+ 
+-		// The new stored value will be interpolated using the last frame's value to prevent sudden shifts in the exposure.
++		// The new stored value will be interpolated using the last frame's value to prevent sudden shifts in the exposure,
++		// in log_2 luminance (exposure values), so it adapts up and down alike. The first frame has no previous value.
+ 		float prev_lum = texelFetch(source_texture, ivec2(0, 0), 0).x;
+-		float adapted_lum = prev_lum + (weighted_avg_lum - prev_lum) * params.exposure_adjust;
++		float adapted_lum = prev_lum > 0.0 ? exp2(mix(log2(prev_lum), weighted_avg_log_lum, params.exposure_adjust)) : exp2(weighted_avg_log_lum);
+ 		imageStore(dest_luminance, ivec2(0, 0), vec4(adapted_lum));
+ 	}
+ #endif
+diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/rendering_server.cpp
+index d2b235f..dde6b3e 100644
+--- a/servers/rendering/rendering_server.cpp
++++ b/servers/rendering/rendering_server.cpp
+@@ -3189,6 +3189,7 @@ void RenderingServer::_bind_methods() {
+ 	ClassDB::bind_method(D_METHOD("camera_attributes_set_dof_blur", "camera_attributes", "far_enable", "far_distance", "far_transition", "near_enable", "near_distance", "near_transition", "amount"), &RenderingServer::camera_attributes_set_dof_blur);
+ 	ClassDB::bind_method(D_METHOD("camera_attributes_set_exposure", "camera_attributes", "multiplier", "normalization"), &RenderingServer::camera_attributes_set_exposure);
+ 	ClassDB::bind_method(D_METHOD("camera_attributes_set_auto_exposure", "camera_attributes", "enable", "min_sensitivity", "max_sensitivity", "speed", "scale"), &RenderingServer::camera_attributes_set_auto_exposure);
++	ClassDB::bind_method(D_METHOD("camera_attributes_set_auto_exposure_low_percent", "camera_attributes", "low_percent"), &RenderingServer::camera_attributes_set_auto_exposure_low_percent);
+ 
+ 	BIND_ENUM_CONSTANT(RSE::DOF_BOKEH_BOX);
+ 	BIND_ENUM_CONSTANT(RSE::DOF_BOKEH_HEXAGON);
+diff --git a/servers/rendering/rendering_server.h b/servers/rendering/rendering_server.h
+index 4a5f852..b35c56d 100644
+--- a/servers/rendering/rendering_server.h
++++ b/servers/rendering/rendering_server.h
+@@ -709,6 +709,7 @@ public:
+ 	virtual void camera_attributes_set_dof_blur(RID p_camera_attributes, bool p_far_enable, float p_far_distance, float p_far_transition, bool p_near_enable, float p_near_distance, float p_near_transition, float p_amount) = 0;
+ 	virtual void camera_attributes_set_exposure(RID p_camera_attributes, float p_multiplier, float p_exposure_normalization) = 0;
+ 	virtual void camera_attributes_set_auto_exposure(RID p_camera_attributes, bool p_enable, float p_min_sensitivity, float p_max_sensitivity, float p_speed, float p_scale) = 0;
++	virtual void camera_attributes_set_auto_exposure_low_percent(RID p_camera_attributes, float p_low_percent) = 0;
+ 
+ 	/* SCENARIO API */
+ 
+diff --git a/servers/rendering/rendering_server_default.h b/servers/rendering/rendering_server_default.h
+index 30d52d8..3cb2fa3 100644
+--- a/servers/rendering/rendering_server_default.h
++++ b/servers/rendering/rendering_server_default.h
+@@ -915,6 +915,7 @@ public:
+ 	FUNC8(camera_attributes_set_dof_blur, RID, bool, float, float, bool, float, float, float)
+ 	FUNC3(camera_attributes_set_exposure, RID, float, float)
+ 	FUNC6(camera_attributes_set_auto_exposure, RID, bool, float, float, float, float)
++	FUNC2(camera_attributes_set_auto_exposure_low_percent, RID, float)
+ 
+ 	/* SCENARIO API */
+ 
+diff --git a/servers/rendering/storage/camera_attributes_storage.cpp b/servers/rendering/storage/camera_attributes_storage.cpp
+index a8f0057..996814c 100644
+--- a/servers/rendering/storage/camera_attributes_storage.cpp
++++ b/servers/rendering/storage/camera_attributes_storage.cpp
+@@ -183,6 +183,18 @@ float RendererCameraAttributes::camera_attributes_get_auto_exposure_scale(RID p_
+ 	return cam_attributes->auto_exposure_scale;
+ }
+ 
++void RendererCameraAttributes::camera_attributes_set_auto_exposure_low_percent(RID p_camera_attributes, float p_low_percent) {
++	CameraAttributes *cam_attributes = camera_attributes_owner.get_or_null(p_camera_attributes);
++	ERR_FAIL_NULL(cam_attributes);
++	cam_attributes->auto_exposure_low_percent = p_low_percent;
++}
++
++float RendererCameraAttributes::camera_attributes_get_auto_exposure_low_percent(RID p_camera_attributes) {
++	CameraAttributes *cam_attributes = camera_attributes_owner.get_or_null(p_camera_attributes);
++	ERR_FAIL_NULL_V(cam_attributes, 0.0);
++	return cam_attributes->auto_exposure_low_percent;
++}
++
+ uint64_t RendererCameraAttributes::camera_attributes_get_auto_exposure_version(RID p_camera_attributes) {
+ 	CameraAttributes *cam_attributes = camera_attributes_owner.get_or_null(p_camera_attributes);
+ 	ERR_FAIL_NULL_V(cam_attributes, 0);
+diff --git a/servers/rendering/storage/camera_attributes_storage.h b/servers/rendering/storage/camera_attributes_storage.h
+index e8afd98..329dde2 100644
+--- a/servers/rendering/storage/camera_attributes_storage.h
++++ b/servers/rendering/storage/camera_attributes_storage.h
+@@ -47,6 +47,7 @@ private:
+ 		float auto_exposure_max_sensitivity = 800.0;
+ 		float auto_exposure_adjust_speed = 1.0;
+ 		float auto_exposure_scale = 1.0;
++		float auto_exposure_low_percent = 10.0;
+ 		uint64_t auto_exposure_version = 0;
+ 
+ 		bool dof_blur_far_enabled = false;
+@@ -104,6 +105,8 @@ public:
+ 	float camera_attributes_get_auto_exposure_max_sensitivity(RID p_camera_attributes);
+ 	float camera_attributes_get_auto_exposure_adjust_speed(RID p_camera_attributes);
+ 	float camera_attributes_get_auto_exposure_scale(RID p_camera_attributes);
++	void camera_attributes_set_auto_exposure_low_percent(RID p_camera_attributes, float p_low_percent);
++	float camera_attributes_get_auto_exposure_low_percent(RID p_camera_attributes);
+ 	uint64_t camera_attributes_get_auto_exposure_version(RID p_camera_attributes);
+ 
+ 	_FORCE_INLINE_ bool camera_attributes_uses_auto_exposure(RID p_camera_attributes) {

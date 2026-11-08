@@ -137,10 +137,6 @@ static func register() -> void:
         PROPERTY_HINT_EXP_EASING, "positive_only"
     )
     ReloadedProjectSetting.add(
-        SkyEnvironment.FOG_SKY_HEIGHT_SETTING, SkyEnvironment.FOG_SKY_HEIGHT_DEFAULT,
-        TYPE_FLOAT, PROPERTY_HINT_RANGE, "10.0,5000.0,10.0,or_greater,suffix:m"
-    )
-    ReloadedProjectSetting.add(
         SkyEnvironment.FOG_AERIAL_PERSPECTIVE_SETTING,
         SkyEnvironment.FOG_AERIAL_PERSPECTIVE_DEFAULT, TYPE_FLOAT,
         PROPERTY_HINT_RANGE, "0.0,1.0,0.01"
