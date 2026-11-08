@@ -96,7 +96,7 @@
 	</members>
 	<constants>
 		<constant name="BOGIE_FRONT" value="0" enum="Bogie">
-			The front bogie ([method RailVehicleServer.vehicle_get_bogie_transform]).
+			The front bogie ([method RailVehicleServer.bogie_get_transform]).
 		</constant>
 		<constant name="BOGIE_REAR" value="1" enum="Bogie">
 			The rear bogie.

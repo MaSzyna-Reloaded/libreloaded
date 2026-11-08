@@ -82,12 +82,12 @@ func _vehicle(road:RID, offset:float, facing:RoadServer.RoadEnd, velocity:float)
 
 
 func _x(vehicle:RID) -> float:
-    return RoadVehicleServer.vehicle_get_transform(vehicle).origin.x
+    return VehicleServer.vehicle_get_transform(vehicle).origin.x
 
 
 ## Its front's way along the X axis
 func _heading(vehicle:RID) -> float:
-    return -RoadVehicleServer.vehicle_get_transform(vehicle).basis.z.x
+    return -VehicleServer.vehicle_get_transform(vehicle).basis.z.x
 
 
 func test_it_moves_off_within_its_acceleration_limit() -> void:
@@ -134,8 +134,8 @@ func test_vehicles_in_their_lanes_pass_each_other() -> void:
     await step(ticks(20.0))
 
     assert_gt(_x(east), _x(west), "they went past each other")
-    assert_ne(RoadVehicleServer.vehicle_get_transform(east).origin.z,
-            RoadVehicleServer.vehicle_get_transform(west).origin.z, "each in its own lane")
+    assert_ne(VehicleServer.vehicle_get_transform(east).origin.z,
+            VehicleServer.vehicle_get_transform(west).origin.z, "each in its own lane")
 
 
 func test_vehicles_in_one_lane_stop_before_each_other() -> void:

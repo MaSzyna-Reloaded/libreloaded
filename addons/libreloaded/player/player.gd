@@ -332,7 +332,7 @@ func _on_vehicle_cabin_scene_changed(vehicle:RID) -> void:
 
 ## The player went over to another cabin of the vehicle: its interior is shown instead (into
 ## another vehicle, PlayerServer's player_vehicle_changed shows that one's)
-func _on_cabin_person_moved(person:RID, cabin:RID, _previous:RID) -> void:
+func _on_cabin_person_moved(cabin:RID, person:RID, _previous:RID) -> void:
     if person == PlayerServer.player_get_person() and _cabin_vehicle.is_valid() \
             and VehicleServer.cabin_get_vehicle(cabin) == _cabin_vehicle:
         CabinSystem.cabin_show(cabin, _cabin_mount)
@@ -422,7 +422,7 @@ func _on_camera_changed() -> void:
     var previous:Node3D = camera.get_parent()
     var view:Node3D = _mode_view()
     if view == free_view and previous == cabin_view and _cabin_vehicle.is_valid():
-        var body:Transform3D = RailVehicleServer.vehicle_get_transform(_cabin_vehicle)
+        var body:Transform3D = VehicleServer.vehicle_get_transform(_cabin_vehicle)
         var rear:bool = RailVehicleServer.cabin_get_kind(VehicleServer.person_get_cabin(
                 PlayerServer.player_get_person())) == RailVehicleCabinKind.RAIL_VEHICLE_CABIN_REAR
         # MaSzyna's vehicle frame is (left, up, front), Godot vehicles face -Z; the side of the

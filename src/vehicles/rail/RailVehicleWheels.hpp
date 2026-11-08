@@ -35,7 +35,7 @@ namespace godot {
             virtual double get_rotation_acceleration_rps2() const = 0;
             virtual bool get_slipping() const = 0;
             virtual double get_flat() const = 0;
-            /// Which of the vehicle's two bogies (RailVehicleServer::vehicle_get_bogie_transform()).
+            /// Which of the vehicle's two bogies (RailVehicleServer::bogie_get_transform()).
             enum Bogie {
                 BOGIE_FRONT = 0,
                 BOGIE_REAR = 1,

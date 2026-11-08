@@ -253,13 +253,17 @@ namespace godot {
                 const TypedArray<RID> in_view = rail_vehicles->vehicle_get_rids_in_rect(view_rect);
                 for (int index = 0; index < in_view.size(); ++index) {
                     const RID vehicle = in_view[index];
-                    if (!rail_vehicles->vehicle_get_front_cabin(vehicle).is_valid() &&
-                        !rail_vehicles->vehicle_get_rear_cabin(vehicle).is_valid() &&
-                        !rail_vehicles->vehicle_machine_room_has_person_role(vehicle, anybody)) {
+                    if (!rail_vehicles->vehicle_get_cabin(vehicle, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_FRONT)
+                                 .is_valid() &&
+                        !rail_vehicles->vehicle_get_cabin(vehicle, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_REAR)
+                                 .is_valid() &&
+                        !vehicles->cabin_has_person_role(
+                                rail_vehicles->vehicle_get_cabin(
+                                        vehicle, RailVehicleCabinKind::RAIL_VEHICLE_CABIN_MACHINE),
+                                anybody)) {
                         continue;
                     }
-                    const Vector2 position =
-                            view_transform.xform(to_map(rail_vehicles->vehicle_get_transform(vehicle).origin));
+                    const Vector2 position = view_transform.xform(to_map(vehicles->vehicle_get_position(vehicle)));
                     const Vector2 marker_size = Vector2(VEHICLE_MARKER_SIZE, VEHICLE_MARKER_SIZE);
                     draw_rect(Rect2(position - marker_size * 0.5, marker_size), vehicle_color);
                     draw_string(

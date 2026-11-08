@@ -30,7 +30,9 @@ namespace godot {
         if (server == nullptr || !server->vehicle_get_road(p_vehicle).is_valid()) {
             return false;
         }
-        p_r_transform = server->vehicle_get_transform(p_vehicle);
+        const VehicleServer *vehicle_server = VehicleServer::get_instance();
+        ERR_FAIL_NULL_V(vehicle_server, false);
+        p_r_transform = vehicle_server->vehicle_get_transform(p_vehicle);
         return true;
     }
 

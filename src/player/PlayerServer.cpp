@@ -132,10 +132,10 @@ namespace godot {
             return;
         }
         SceneryStreamingServer *streaming = SceneryStreamingServer::get_instance();
-        RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
+        const VehicleServer *vehicles = VehicleServer::get_instance();
         ERR_FAIL_NULL(streaming);
-        ERR_FAIL_NULL(rail_vehicles);
-        streaming->streaming_set_anchor_position(rail_vehicles->vehicle_get_transform(vehicle).origin);
+        ERR_FAIL_NULL(vehicles);
+        streaming->streaming_set_anchor_position(vehicles->vehicle_get_position(vehicle));
     }
 
     void PlayerServer::_on_vehicle_freed(const RID &p_vehicle) {
@@ -153,7 +153,7 @@ namespace godot {
      * the player takes its vehicle's driver along into every cab - the original's driver is the
      * train's, its cab the occupied one (CabOccupied) - and the driver of a vehicle entered gets
      * out: one driver to a vehicle (TController::MoveTo(), Driver.cpp:5864-5880) */
-    void PlayerServer::_on_cabin_person_moved(const RID &p_person, const RID &p_cabin, const RID & /* p_previous */) {
+    void PlayerServer::_on_cabin_person_moved(const RID &p_cabin, const RID &p_person, const RID & /* p_previous */) {
         VehicleServer *vehicles = VehicleServer::get_instance();
         const DriverServer *drivers = DriverServer::get_instance();
         ERR_FAIL_NULL(vehicles);
@@ -167,7 +167,7 @@ namespace godot {
                 if (const RID other = drivers->vehicle_get_driver(entered); other.is_valid() && entered != vehicle) {
                     vehicles->cabin_person_leave(vehicles->person_get_cabin(other), other);
                 }
-                vehicles->cabin_person_move(driver, p_cabin);
+                vehicles->cabin_person_move(p_cabin, driver);
             }
         }
         if (entered == vehicle) {
@@ -268,7 +268,7 @@ namespace godot {
         vehicles->cabin_person_change_role(cabin, person, VehiclePersonRole::VEHICLE_PERSON_ROLE_OBSERVER);
         vehicles->cabin_person_change_role(
                 vehicles->person_get_cabin(driver), driver, VehiclePersonRole::VEHICLE_PERSON_ROLE_OBSERVER);
-        vehicles->cabin_person_move(driver, cabin);
+        vehicles->cabin_person_move(cabin, driver);
         vehicles->cabin_person_change_role(cabin, driver, VehiclePersonRole::VEHICLE_PERSON_ROLE_DRIVER);
     }
 

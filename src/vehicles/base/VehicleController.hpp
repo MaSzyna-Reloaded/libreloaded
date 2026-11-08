@@ -148,6 +148,8 @@ namespace godot {
             void set_vehicle_rid(const RID &p_vehicle_rid);
             RID _get_rid() const override;
             void emit_position_changed_if_needed();
+            /* The place handed down, for the backend's own physics - C++ only; everybody else asks
+             * VehicleServer.vehicle_get_transform(), its owner */
             Vector3 get_world_position() const;
             Transform3D get_world_transform() const;
             /* The vehicle's place in the world - state its owner hands down: only the server

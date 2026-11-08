@@ -43,7 +43,6 @@ namespace godot {
                 D_METHOD("vehicle_set_road", "vehicle", "road", "offset", "facing"),
                 &RoadVehicleServer::vehicle_set_road);
         ClassDB::bind_method(D_METHOD("vehicle_get_road", "vehicle"), &RoadVehicleServer::vehicle_get_road);
-        ClassDB::bind_method(D_METHOD("vehicle_get_transform", "vehicle"), &RoadVehicleServer::vehicle_get_transform);
         ClassDB::bind_method(
                 D_METHOD("vehicle_trace_route", "vehicle", "distance"), &RoadVehicleServer::vehicle_trace_route);
 
@@ -120,18 +119,13 @@ namespace godot {
             return; // a listener of the reports freed it
         }
         placement = vehicles.getptr(p_vehicle);
-        _place(*placement);
+        _place(p_vehicle, *placement);
         emit_signal(vehicle_placed_signal, p_vehicle);
     }
 
     RID RoadVehicleServer::vehicle_get_road(const RID &p_vehicle) const {
         const Placement *placement = vehicles.getptr(p_vehicle);
         return placement != nullptr ? placement->road : RID();
-    }
-
-    Transform3D RoadVehicleServer::vehicle_get_transform(const RID &p_vehicle) const {
-        const Placement *placement = vehicles.getptr(p_vehicle);
-        return placement != nullptr ? placement->transform : Transform3D();
     }
 
     bool RoadVehicleServer::_route_link(
@@ -326,7 +320,7 @@ namespace godot {
 
     /* On the road's path - a road has no rails to stand on - at its place across the road, its
      * front (-Z) the way it travels */
-    void RoadVehicleServer::_place(Placement &p_placement) const {
+    void RoadVehicleServer::_place(const RID &p_vehicle, const Placement &p_placement) const {
         Vector3 origin;
         Vector3 forward;
         if (!RoadServer::get_instance()->road_sample(p_placement.road, p_placement.offset, origin, forward) ||
@@ -338,10 +332,12 @@ namespace godot {
         }
         const Vector3 right = forward.cross(Vector3(0.0, 1.0, 0.0)).normalized();
         const Vector3 back = -forward;
-        p_placement.transform = Transform3D(
-                Basis(right, back.cross(right), back),
-                origin + (right * static_cast<real_t>(p_placement.controller->get_side_offset())));
-        p_placement.controller->set_world_transform(p_placement.transform);
+        VehicleServer *vehicle_server = VehicleServer::get_instance();
+        ERR_FAIL_NULL(vehicle_server);
+        vehicle_server->vehicle_set_transform(
+                p_vehicle, Transform3D(
+                                   Basis(right, back.cross(right), back),
+                                   origin + (right * static_cast<real_t>(p_placement.controller->get_side_offset()))));
     }
 
     void RoadVehicleServer::stepping_advance(
@@ -359,7 +355,7 @@ namespace godot {
             const double distance =
                     controller->process_movement(p_delta, _allowed_velocity(vehicle, *placement, p_delta));
             if (distance > 0.0 && _move(vehicle, *placement, distance)) {
-                _place(*vehicles.getptr(vehicle));
+                _place(vehicle, *vehicles.getptr(vehicle));
                 moved.push_back(vehicle);
             }
             controller->process_components(p_delta);

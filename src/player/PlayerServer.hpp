@@ -54,7 +54,7 @@ namespace godot {
 
             void _set_vehicle(const RID &p_vehicle);
             void _on_vehicle_freed(const RID &p_vehicle);
-            void _on_cabin_person_moved(const RID &p_person, const RID &p_cabin, const RID &p_previous);
+            void _on_cabin_person_moved(const RID &p_cabin, const RID &p_person, const RID &p_previous);
             void _on_vehicle_placed(const RID &p_vehicle);
             /// The player's person is named by the player's nick
             void _on_project_settings_changed();

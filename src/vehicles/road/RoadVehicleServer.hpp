@@ -54,7 +54,6 @@ namespace godot {
                     Vector<RoadServer::Link> route;
                     /* The track it is reported on (RoadServer.road_get_track()) */
                     RID track;
-                    Transform3D transform;
             };
 
             RIDMap<Placement> vehicles;
@@ -79,7 +78,7 @@ namespace godot {
             /* It is on p_road now, travelling toward p_toward, and reported there; false when a
              * listener of the reports freed it */
             bool _enter(const RID &p_vehicle, Placement &p_placement, const RID &p_road, RoadServer::RoadEnd p_toward);
-            void _place(Placement &p_placement) const;
+            void _place(const RID &p_vehicle, const Placement &p_placement) const;
             void _on_vehicle_controller_changed(const RID &p_vehicle);
 
         protected:
@@ -105,7 +104,6 @@ namespace godot {
             void
             vehicle_set_road(const RID &p_vehicle, const RID &p_road, double p_offset, RoadServer::RoadEnd p_facing);
             RID vehicle_get_road(const RID &p_vehicle) const;
-            Transform3D vehicle_get_transform(const RID &p_vehicle) const;
             /* The roads of the vehicle's way ahead as far as p_distance [m], the one it is on first -
              * the way it takes, chosen that far where it was not yet */
             TypedArray<RoadRouteSegment> vehicle_trace_route(const RID &p_vehicle, double p_distance);

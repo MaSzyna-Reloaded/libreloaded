@@ -62,7 +62,7 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("get_main_no_power_position"), &RailVehicleMasterController::get_main_no_power_position);
         ClassDB::bind_method(D_METHOD("get_cabin"), &RailVehicleMasterController::get_cabin);
-        ClassDB::bind_method(D_METHOD("get_cabin_controleable"), &RailVehicleMasterController::get_cabin_controleable);
+        ClassDB::bind_method(D_METHOD("is_cabin_master"), &RailVehicleMasterController::is_cabin_master);
         ClassDB::bind_method(D_METHOD("get_tachometer_speed"), &RailVehicleMasterController::get_tachometer_speed);
         ClassDB::bind_method(
                 D_METHOD("get_tachometer_speed_jump"), &RailVehicleMasterController::get_tachometer_speed_jump);
@@ -97,7 +97,7 @@ namespace godot {
         p_state["controller_second_actual_position"] = get_second_actual_position();
         p_state["controller_main_no_power_position"] = get_main_no_power_position();
         p_state["cabin"] = get_cabin();
-        p_state["cabin_controleable"] = get_cabin_controleable();
+        p_state["cabin_master"] = is_cabin_master();
         p_state["tachometer_speed"] = get_tachometer_speed();
         p_state["tachometer_speed_jump"] = get_tachometer_speed_jump();
         p_state["tachometer_clock_speed"] = get_tachometer_clock_speed();
