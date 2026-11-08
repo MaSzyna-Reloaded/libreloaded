@@ -64,6 +64,13 @@
 				How much snow lies on the vehicle, 0-1, as [method vehicle_set_snow] last told.
 			</description>
 		</method>
+		<method name="vehicle_get_wiper_sweeps" qualifiers="const">
+			<return type="PackedVector4Array" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The wipers of the vehicle's exterior model, three vectors each in the model's frame: where its arm turns about and how long the arm is ([code]x, y, z; w[/code]), which way it points at rest and the most it turns away from there ([code]x, y, z; w[/code], radians, signed about the axis), and the axis it turns about ([code]x, y, z[/code]). Empty while its model is not built, or for a kind that knows of no wipers.
+			</description>
+		</method>
 		<method name="vehicle_get_transform" qualifiers="const">
 			<return type="Transform3D" />
 			<param index="0" name="vehicle" type="RID" />
