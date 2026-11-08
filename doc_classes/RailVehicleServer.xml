@@ -25,6 +25,22 @@
 				What [param cabin] is in its rail vehicle: the front cab, the rear one or the machine room; [constant RailVehicleCabinKind.RAIL_VEHICLE_CABIN_NONE] for a cabin this server did not add.
 			</description>
 		</method>
+		<method name="coupler_adapter_attach">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				Asks [param vehicle] to fit the adapter of the vehicle beyond [param end] to that end, which then couples as an automatic one ([code]attach_coupler_adapter()[/code]). The vehicle's controller does it, as its implementation models the couplers. Returns [code]false[/code] when nothing was fitted. The vehicle's command [code]coupler_adapter_attach[/code] comes here.
+			</description>
+		</method>
+		<method name="coupler_adapter_remove">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				Asks [param vehicle] to take the adapter off [param end], uncoupling it first ([code]remove_coupler_adapter()[/code]); its controller does it. Returns [code]false[/code] when nothing was taken off. The vehicle's command [code]coupler_adapter_remove[/code] comes here.
+			</description>
+		</method>
 		<method name="coupler_attach">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
@@ -33,7 +49,23 @@
 			<param index="3" name="other_end" type="int" enum="RailVehicleController.CouplerEnd" />
 			<param index="4" name="coupling" type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
 			<description>
-				Couples [param end] of [param vehicle] to [param other_end] of [param other] by [param coupling] ([code]TMoverParameters::Attach()[/code], [code]Mover.cpp:548[/code]).
+				Couples [param end] of [param vehicle] to [param other_end] of [param other] by [param coupling], whatever the gap - as a trainset is placed. A coupling asked for by the player, the AI or a script is [method coupler_connect].
+			</description>
+		</method>
+		<method name="coupler_connect">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				Asks [param vehicle] to couple [param end] one coupling further with the vehicle beyond it ([code]TDynamicObject::couple()[/code]); its controller does it, as its implementation models the couplers. The vehicle's command [code]coupler_connect[/code] comes here.
+			</description>
+		</method>
+		<method name="coupler_disconnect">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<description>
+				Asks [param vehicle] to uncouple [param end] where it may be ([code]TDynamicObject::uncouple()[/code]); its controller does it. The vehicle's command [code]coupler_disconnect[/code] comes here.
 			</description>
 		</method>
 		<method name="coupler_get_adapter_height" qualifiers="const">
@@ -167,13 +199,6 @@
 				A trainset to place ([method trainset_set_track], [method trainset_add_vehicle], [method trainset_place]): vehicles standing one after another on a track, coupled. A trainset is always its vehicles coupled now - uncoupled it becomes two, coupled to another one of two, the other one ending ([signal trainset_split], [signal trainset_merged]). One made here lives until [method trainset_free].
 			</description>
 		</method>
-		<method name="trainset_determine_type">
-			<return type="void" />
-			<param index="0" name="vehicle" type="RID" />
-			<description>
-				Determines what the trainset coupled to [param vehicle] carries, from its cars (the vehicles without power) and their brake delays, and gives every vehicle of the trainset that type: a car with R, or without G, carries passengers; one with G and without R, goods. The type stays until it is determined again. The legacy driver determines it where the original judges its train (AutoRewident(), Driver.cpp:2154-2165).
-			</description>
-		</method>
 		<method name="trainset_free">
 			<return type="void" />
 			<param index="0" name="trainset" type="RID" />
@@ -188,28 +213,11 @@
 				What the scenario says the train is to do - its mission - empty for none.
 			</description>
 		</method>
-		<method name="trainset_get_door_open" qualifiers="const">
-			<return type="bool" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
+		<method name="trainset_get_head" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="trainset" type="RID" />
 			<description>
-				Whether a door alone (its step whatever) of the trainset coupled to [param vehicle] is not closed on [param side] of [param vehicle]; a vehicle standing the other way round has its sides swapped, doors closing by themselves do not count.
-			</description>
-		</method>
-		<method name="trainset_get_door_permit" qualifiers="const">
-			<return type="bool" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
-			<description>
-				Whether a door permit is given on [param side] of [param vehicle], among the trainset's vehicles that need one.
-			</description>
-		</method>
-		<method name="trainset_get_doorway_open" qualifiers="const">
-			<return type="bool" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
-			<description>
-				Whether a doorway (its door or its step) of the trainset coupled to [param vehicle] is not closed on [param side] of [param vehicle]; a vehicle standing the other way round has its sides swapped, doors closing by themselves do not count.
+				Returns the head of [param trainset] - always an end vehicle: the vehicle with a driving cab in command or occupied by a driver at an end (the latest when both are), else the one vehicle with a driving cab at an end, else the end nearer a vehicle with a driving cab inside, else the way the trainset faced before. Recomputed whenever its vehicles, their cabs or their configuration change; [code]RID()[/code] for a trainset of no vehicles.
 			</description>
 		</method>
 		<method name="trainset_get_mass" qualifiers="const">
@@ -228,9 +236,9 @@
 		</method>
 		<method name="trainset_get_type" qualifiers="const">
 			<return type="int" enum="RailVehicleServer.TrainsetType" />
-			<param index="0" name="vehicle" type="RID" />
+			<param index="0" name="trainset" type="RID" />
 			<description>
-				The type of [param vehicle]'s trainset, as [method trainset_determine_type] last determined it; [constant TRAINSET_TYPE_NONE] before that.
+				Returns the type of [param trainset], recomputed by its classifier ([method trainset_set_classifier]) whenever its vehicles or their configuration change.
 			</description>
 		</method>
 		<method name="trainset_get_vehicles" qualifiers="const">
@@ -238,6 +246,30 @@
 			<param index="0" name="trainset" type="RID" />
 			<description>
 				The trainset's vehicles now, coupled one to the next, end to end.
+			</description>
+		</method>
+		<method name="trainset_has_door_open" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="trainset" type="RID" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
+			<description>
+				Returns whether a door of [param trainset] is not closed on [param side] - the side looking towards its head - its step whatever; doors closing by themselves do not count ([code]IsAnyDoorOnlyOpen[/code], [code]Driver.cpp:6101[/code]). A door or a step not closed ([code]IsAnyDoorOpen[/code], [code]Driver.cpp:6097[/code]) is either this or [method trainset_has_step_extended].
+			</description>
+		</method>
+		<method name="trainset_has_door_permit" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="trainset" type="RID" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
+			<description>
+				Returns whether a door permit is given on [param side] - the side looking towards its head - of the vehicles of [param trainset] needing one ([code]IsAnyDoorPermitActive[/code], [code]Driver.cpp:6104[/code]).
+			</description>
+		</method>
+		<method name="trainset_has_step_extended" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="trainset" type="RID" />
+			<param index="1" name="side" type="int" enum="RailVehicleController.Side" />
+			<description>
+				Returns whether a step of [param trainset] is not folded on [param side] - the side looking towards its head; doors closing by themselves do not count ([code]Mover.cpp:8753-8754[/code]).
 			</description>
 		</method>
 		<method name="trainset_is_player_drivable" qualifiers="const">
@@ -258,6 +290,13 @@
 			<param index="0" name="trainset" type="RID" />
 			<description>
 				Stands the vehicles on the track one after another, each as long as it is, and couples them - at once, or as soon as every vehicle of it has its simulation. Each pair couples by the flags its coupling mode takes of what the couplers of both allow ([method RailVehicleController.coupling_mode_get_flags], [method coupler_get_joinable_flags]).
+			</description>
+		</method>
+		<method name="trainset_set_classifier">
+			<return type="void" />
+			<param index="0" name="classifier" type="RailVehicleTrainsetClassifier" />
+			<description>
+				Sets the rule the type of every trainset is worked out by - the core's own [RailVehicleTrainsetClassifier] until a plugin hands its own - and recomputes every trainset's type.
 			</description>
 		</method>
 		<method name="trainset_set_description">
@@ -291,6 +330,13 @@
 			<param index="2" name="offset" type="float" />
 			<description>
 				Where the trainset's front stands - the track and the distance along it [m].
+			</description>
+		</method>
+		<method name="trainset_vehicle_get_direction" qualifiers="const">
+			<return type="int" enum="TrackServer.Direction" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Which way [param vehicle] faces in its trainset, as [method trainset_add_vehicle] takes it: [constant TrackServer.DIRECTION_REVERSED] when its front faces the trainset's end ([method vehicle_is_reversed_in_trainset]).
 			</description>
 		</method>
 		<method name="vehicle_add_cabin">
@@ -402,7 +448,7 @@
 			<return type="RID" />
 			<param index="0" name="vehicle" type="RID" />
 			<description>
-				The trainset [param vehicle] is in now, [code]RID()[/code] for a vehicle not placed.
+				The trainset [param vehicle] is in now, [code]RID()[/code] for a vehicle never stood on a track - no trainset is made of vehicles off the tracks, coupled or not.
 			</description>
 		</method>
 		<method name="vehicle_get_type_name" qualifiers="const">
@@ -412,11 +458,25 @@
 				The type of [param vehicle] - the original's CHK/MMD name ([code]TMoverParameters::TypeName[/code]).
 			</description>
 		</method>
+		<method name="vehicle_has_driving_cabin" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Whether [param vehicle] is driven from a cab of its own: it has a master controller and a front or a rear cab - a locomotive, a control wagon, a unit's end wagon. A unit's middle wagon has a master controller and no cab.
+			</description>
+		</method>
 		<method name="vehicle_is_attached" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="vehicle" type="RID" />
 			<description>
 				Whether [param vehicle] is a rail vehicle ([method vehicle_attach]).
+			</description>
+		</method>
+		<method name="vehicle_is_reversed_in_trainset" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Returns whether the front of [param vehicle] faces the end of its trainset rather than its head. A vehicle alone is not reversed.
 			</description>
 		</method>
 		<method name="vehicle_is_standing" qualifiers="const">
@@ -519,6 +579,12 @@
 				A trainset ended: coupled into another, its last vehicle gone, or freed.
 			</description>
 		</signal>
+		<signal name="trainset_head_changed">
+			<param index="0" name="trainset" type="RID" />
+			<description>
+				Another vehicle of [param trainset] is its head now ([method trainset_get_head]).
+			</description>
+		</signal>
 		<signal name="trainset_merged">
 			<param index="0" name="trainset" type="RID" />
 			<param index="1" name="absorbed" type="RID" />
@@ -536,7 +602,7 @@
 		<signal name="trainset_vehicles_changed">
 			<param index="0" name="trainset" type="RID" />
 			<description>
-				The vehicles of [param trainset] are others now ([method trainset_get_vehicles]).
+				The vehicles of [param trainset] are others now - a trainset just made included; [method trainset_get_vehicles] lists them from its head.
 			</description>
 		</signal>
 		<signal name="vehicle_derailed">
@@ -569,12 +635,6 @@
 			<param index="0" name="vehicle" type="RID" />
 			<description>
 				The vehicle is somewhere else on the route - once a step it moved in, or once a deliberate move.
-			</description>
-		</signal>
-		<signal name="vehicle_trainset_changed">
-			<param index="0" name="vehicle" type="RID" />
-			<description>
-				The vehicles coupled to [param vehicle] are others now ([signal RailVehicleController.trainset_changed]).
 			</description>
 		</signal>
 	</signals>

@@ -97,41 +97,6 @@
 				Couples [param end] of this vehicle to [param other_end] of [param other] by [param coupling] ([code]TMoverParameters::Attach()[/code]); both vehicles announce [signal trainset_changed].
 			</description>
 		</method>
-		<method name="coupler_adapter_attach">
-			<return type="bool" />
-			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The adapter of the vehicle nearest beyond [param end] (its [member coupler_adapter_model], length and height) fitted to that end, as long as it stands within reach and leaves room for it (attach_coupler_adapter(), DynObj.cpp:1754-1789). Command [code]coupler_adapter_attach[/code].
-			</description>
-		</method>
-		<method name="coupler_adapter_fit">
-			<return type="bool" />
-			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The adapter of the vehicle coupled at an end fitted to it whatever the room - a trainset the scenery couples (AttachNext(), DynObj.cpp:2740-2758).
-			</description>
-		</method>
-		<method name="coupler_adapter_remove">
-			<return type="bool" />
-			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				The adapter taken off [param end], which is uncoupled first (remove_coupler_adapter(), DynObj.cpp:1791-1810). Command [code]coupler_adapter_remove[/code].
-			</description>
-		</method>
-		<method name="coupler_connect">
-			<return type="void" />
-			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				Joins one more coupling to the neighbour at [param end] - the coupler first, then the hoses, the control line, the gangway and the heating, what both couplers allow. Command [code]coupler_connect[/code].
-			</description>
-		</method>
-		<method name="coupler_disconnect">
-			<return type="void" />
-			<param index="0" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
-			<description>
-				Uncouples [param end], unless it is a permanent coupling or cannot be undone now ([code]DettachStatus()[/code]). Command [code]coupler_disconnect[/code].
-			</description>
-		</method>
 		<method name="coupling_mode_get_flags" qualifiers="static">
 			<return type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
 			<param index="0" name="mode" type="int" enum="RailVehicleController.CouplingMode" />
@@ -389,6 +354,11 @@
 		</member>
 	</members>
 	<signals>
+		<signal name="active_cabin_changed">
+			<description>
+				The cab switched on, or the one in command, is another now ([code]CabActive[/code], [code]IsCabMaster()[/code]).
+			</description>
+		</signal>
 		<signal name="coupler_adapter_attached">
 			<param index="0" name="end" type="int" />
 			<description>

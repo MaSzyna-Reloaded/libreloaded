@@ -364,6 +364,13 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 
 ## Vehicles
 
+* **A vehicle's power thresholds are kept twice and read from configuration outside a component**
+  (DRY): whether a vehicle has traction power is `VehicleController.power` compared with a
+  constant - `RailVehicleServer::POWERED_MIN` (`power > 1`, `_count_locomotives()`,
+  `vehicle_find_powered()`) and `RailVehicleTrainsetClassifier::WAGON_POWER_MAX` (`power < 1`,
+  `classify()`), and a plugin copies the same thresholds again. `power` is configuration that
+  belongs to no component, so neither a component answers it nor a server shortcut may
+  (`vehicle_is_powered()` only for a vehicle's current state, operator 2026-11-11). Needs a design.
 * **Wagons with full cylinders show no brake force** (reports#13, l053_poludnie.scn,
   ES64F4-846 + 20 wagons, build 20261007-1333): all wagons `brake_air_pressure` ~3.95 bar with
   `brake_force` 0.0 while the train creeps on at 0.05-0.1 km/h; the loco itself 365 kN (hand brake
@@ -690,15 +697,6 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 
 ## Drivers (#297)
 
-* **High-level vehicle operations through the servers, executed by components**
-  (`architecture`, "Servers forward to components", 2026-10-09): `RailVehicleServer`
-  couples (`vehicle_couple()`, `uncouple`, `is_coupled_by`, `is_coupler_automatic`, adapters,
-  `coupler_get_joinable_flags()`) through `RailVehicleController`/
-  `MaszynaMoverRailVehicleController`; the coupling logic moves to the server, executed by the
-  `RailVehicleBuffCoupl` component (`MaszynaMoverRailVehicleBuffCoupl` on the Mover), the per-end
-  `AllowedFlag` (`BuffCoupl1/2`) and `control_type` with it. The same for walking through the cabins,
-  managing trainsets and moving a vehicle. The AI then couples by a server operation instead of the
-  `coupler_connect` command. Plan with the operator first.
 * **`scenery_loaded` comes before the vehicles are placed**: `TrainSet3D` places its trainset in
   `_process` on the next frame (`train_set_3d.gd:119-140`), after `MaszynaScenery._load_content()`
   emitted `scenery_loaded` (`maszyna_scenery.gd:89`) - the player (`player.gd:104`), `world.gd`,

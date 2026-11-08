@@ -137,6 +137,7 @@
 #include "vehicles/rail/RailVehicleSpeedControl.hpp"
 #include "vehicles/rail/RailVehicleSpringBrake.hpp"
 #include "vehicles/rail/RailVehicleSwitches.hpp"
+#include "vehicles/rail/RailVehicleTrainsetClassifier.hpp"
 #include "vehicles/rail/RailVehicleUniversalController.hpp"
 #include "vehicles/rail/RailVehicleWheels.hpp"
 #include "vehicles/rail/RailVehicleWiperListItem.hpp"
@@ -230,6 +231,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(VehiclePerson);
         GDREGISTER_ABSTRACT_CLASS(VehicleImplementationServer);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleServer);
+        GDREGISTER_CLASS(RailVehicleTrainsetClassifier);
         GDREGISTER_ABSTRACT_CLASS(RoadServer);
         GDREGISTER_CLASS(RoadRouteSegment);
         GDREGISTER_ABSTRACT_CLASS(RoadVehicleServer);

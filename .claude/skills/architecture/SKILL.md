@@ -22,32 +22,28 @@ Read top to bottom: each layer may use the ones below it and must know nothing o
 |---|---|---|---|
 | Backend | a plugin's `VehicleImplementationServer`, registered with `VehicleServer` (`implementation_register()`) under the name a controller gives, and its implementations of the component interfaces | physical quantities, its own model of the vehicle, how its vehicles are stepped together | appear in any name, parameter or return type of the core; the core never knows which plugin simulates a vehicle |
 | Vehicle model | `VehicleController` (an `Object`, any vehicle) and `RailVehicleController` (a railway one: cabs, couplers, controllers, relays), `VehicleComponent` / `RailVehicleComponent` + `RailVehicle<Domain>` interfaces | a vehicle's state, configuration and the operations that change them | name the backend; be a `Node`; hold anything only a drawing, sound or UI layer needs |
-| Servers | `VehicleServer`, `RailVehicleServer`, `TrackServer`, `TractionServer`, `SignallingServer`, `SceneryStreamingServer`, `ModelRenderingServer`, `TrackRenderingServer`, `PlayerServer`, `DriverServer`, `StationServer`, and the GDScript servers (`SceneryServer`, `VehicleCatalogServer`, `TractionRenderingServer`, `ScenerySoundServer`) | handles (`RID`), the placement and the composition of what they own, their own worker threads | hand out raw pointers, or hold state a single node could own; reach a vehicle's controller to execute vehicle logic (see "Servers forward to components") |
+| Servers | `VehicleServer`, `RailVehicleServer`, `TrackServer`, `TractionServer`, `SignallingServer`, `SceneryStreamingServer`, `ModelRenderingServer`, `TrackRenderingServer`, `PlayerServer`, `DriverServer`, `StationServer`, and the GDScript servers (`SceneryServer`, `VehicleCatalogServer`, `TractionRenderingServer`, `ScenerySoundServer`) | handles (`RID`), the placement and the composition of what they own, their own worker threads | hand out raw pointers, or hold state a single node could own; execute a vehicle's own behaviour themselves - they ask its controller (see "Servers ask, the controller's implementation executes") |
 | Systems | `CabinSystem` (a cab per vehicle RID and cab), `CabinHUDMouseSystem`, `TranscriptSystem` | cross-cutting bookkeeping keyed by handle | duplicate state the model already has; drive per-frame work that a server could do natively |
 | Nodes | `RailVehicle3D`, `VehiclePhysicsNode`, `Cabin3D`, cab widgets (`BaseCabinTool3D`), `SignalHeadNode`/`SignallingSystemNode` (proxies holding a server RID) | what is drawn and what is in the scene tree | contain simulation; own a handle the server already owns; reach a vehicle by walking the tree |
 | Importers | a plugin's or a tool's readers of its source data | turning that data into the core's data classes (`CompiledScenery`, `VehicleData`, `TrainsetData`, `WorldData`) | build scene trees as their output, or keep parse results in nodes; save a scripted `Resource` or `Node` into what they write - saved data holds built-in types and C++ classes only, saved by their names (`CODE_STYLE.md`, "Saved data names no script") |
 
-### Servers forward to components
+### Servers ask, the controller's implementation executes
 
-The components' API (a coupling component, say) is a layer below the server. A server offers the
-**high-level API** for the high-level operations: walking through the cabins
-(`person_change_cabin()`), coupling (`coupler_attach()`), managing trainsets (`trainset_place()`)
-and moving a vehicle (`vehicle_move()`). Whether a server has to wrap everything beyond these is
-not settled - ask the operator before wrapping more. A vehicle server **forwards its execution to
-the vehicle's component** for that domain - the base classes
-(`RailVehicleBuffCoupl`, `RailVehicle<Domain>`) exist for this. The component's backend
-implementation executes it: the server finds the vehicle's rail buffer and coupling component,
-and the backend's implementation of it does the coupling. A server never reaches the vehicle's
-controller to execute such logic.
+A server offers the **high-level API** for the high-level operations: walking through the cabins
+(`person_change_cabin()`), coupling (`coupler_connect()`, `coupler_disconnect()`,
+`coupler_adapter_attach()`, `coupler_adapter_remove()`, `coupler_attach()` as a trainset is
+placed), managing trainsets (`trainset_place()`) and moving a vehicle (`vehicle_move()`). Whether a
+server has to wrap everything beyond these is not settled - ask the operator before wrapping more.
+**The server asks; the vehicle's controller executes.** How a coupling is made - which coupling
+comes next, whether a coupler may be taken off, the room an adapter needs - is the vehicle's
+behaviour, written in its controller's implementation (a plugin's `RailVehicleController`), never
+ported into the server; the controller's interface carries the operation, not the backend's
+primitives. A vehicle's command of the same name reaches the server, which registers its handler
+on the vehicle and calls the controller (AGENTS.md, `load_add`); the controller's operations are
+C++ only.
 
 Logic outside the vehicle - a driver, the player, scripts - **executes through the servers**.
-The components' API is fixed too, but it serves reading state on hot paths and the backend's
-implementation of the forwarding, not executing logic from outside.
-
-Debt on record (2026-10-09, `TODO.md`): `RailVehicleServer`'s coupling (`coupler_attach()`,
-`uncouple`, `is_coupled_by`, `is_coupler_automatic`, adapters,
-`vehicle_get_coupler_joinable_flags()`) still goes through `RailVehicleController`, and a driver
-couples by the `coupler_connect` command; nothing new is added that way.
+The components' API serves reading state on hot paths, not executing logic from outside.
 
 Autoloads are listed in `demo/project.godot`; C++ singletons are registered in
 `src/register_types.cpp` and documented in `doc_classes/<Class>.xml` (AGENTS.md,
@@ -117,7 +113,7 @@ phases, with what sub-steps - is its own business (`VehicleImplementationServer:
 stay inside one class. What a consumer would have wanted the controller for comes out under the
 handle instead - the controller's moves and commands are relayed by `VehicleServer`
 (`vehicle_moved`, `vehicle_command_received`), its rail events by `RailVehicleServer`
-(`vehicle_driver_cabin_changed`, `vehicle_trainset_changed`, `vehicle_coupler_*`).
+(`vehicle_driver_cabin_changed`, `trainset_vehicles_changed`, `coupler_*`).
 
 **3. State has one owner and one writer, and a getter only reads.** A value reaches other layers
 as a typed getter of the component that owns it, and configuration as that component's (or the
