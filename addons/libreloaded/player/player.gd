@@ -47,6 +47,8 @@ var _released_vehicle:RID
 ## it stands while the player looks from outside too (the keys are the cab logic's,
 ## _unhandled_input())
 var _cabin_vehicle:RID = RID()
+## Its cab interior shown - what CabinSystem.cabin_show() handed over
+var _cabin:Cabin3D = null
 ## The node riding on _cabin_vehicle (RailVehicleRenderingServer.vehicle_mount_node()) that the cab
 ## interior is shown under
 var _cabin_mount:Node3D = null
@@ -330,8 +332,9 @@ func _on_vehicle_cabin_scene_changed(vehicle:RID) -> void:
         _show_cabin(vehicle)
 
 
-## The player went over to another cabin of the vehicle: its interior is shown instead (into
-## another vehicle, PlayerServer's player_vehicle_changed shows that one's)
+## The player went over to another cabin of the vehicle: its interior is shown instead - the
+## same Cabin3D kept in _cabin, rebuilt for it (into another vehicle, PlayerServer's
+## player_vehicle_changed shows that one's)
 func _on_cabin_person_moved(cabin:RID, person:RID, _previous:RID) -> void:
     if person == PlayerServer.player_get_person() and _cabin_vehicle.is_valid() \
             and VehicleServer.cabin_get_vehicle(cabin) == _cabin_vehicle:
@@ -350,6 +353,7 @@ func _show_cabin(vehicle:RID) -> void:
         mount.queue_free()
         return
     _cabin_vehicle = vehicle
+    _cabin = cabin
     _cabin_mount = mount
     cabin_view.owner = null
     cabin_view.reparent(cabin, false)
@@ -359,14 +363,14 @@ func _show_cabin(vehicle:RID) -> void:
 
 ## The cab view taken out of the cab, and its interior freed
 func _hide_cabin() -> void:
-    var cabin:Cabin3D = CabinSystem.vehicle_get_cabin(_cabin_vehicle)
-    cabin.camera_configuration_changed.disconnect(_on_cabin_camera_configuration_changed)
+    _cabin.camera_configuration_changed.disconnect(_on_cabin_camera_configuration_changed)
     cabin_view.reparent(self, false)
     RailVehicleRenderingServer.vehicle_set_shown_cabin(_cabin_vehicle, RID())
     CabinSystem.vehicle_hide_cabin(_cabin_vehicle)
     RailVehicleRenderingServer.vehicle_unmount_node(_cabin_vehicle, _cabin_mount.get_instance_id())
     _cabin_mount.queue_free()
     _cabin_mount = null
+    _cabin = null
     _cabin_vehicle = RID()
 
 
@@ -404,12 +408,11 @@ func sit_down() -> void:
 ## the windows (DynObj.cpp:1389-1397: bDisplayCab, mdKabina, simulation::Train->iCabn). The view is
 ## the player's, so the player tells the vehicle's drawing.
 func _draw_cab_interior() -> void:
-    var cabin:Cabin3D = CabinSystem.vehicle_get_cabin(_cabin_vehicle)
-    if not cabin:
+    if not _cabin:
         return
-    cabin.visible = PlayerCameraServer.camera_get_mode() == PlayerCameraServer.CAMERA_MODE_CABIN
+    _cabin.visible = PlayerCameraServer.camera_get_mode() == PlayerCameraServer.CAMERA_MODE_CABIN
     RailVehicleRenderingServer.vehicle_set_shown_cabin(
-            _cabin_vehicle, cabin.get_cabin() if cabin.visible and cabin.get_has_cab_model() else RID())
+            _cabin_vehicle, _cabin.get_cabin() if _cabin.visible and _cabin.get_has_cab_model() else RID())
 
 
 ## The view of the mode: from the cab view the free view steps out beside the vehicle
