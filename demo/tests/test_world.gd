@@ -57,6 +57,25 @@ func test_the_node_becomes_the_world_its_data_describes() -> void:
     world.free()
 
 
+func test_a_loaded_world_lists_the_stations_of_its_scenery() -> void:
+    var scenery:CompiledScenery = CompiledScenery.new()
+    var station:StationData = StationData.new()
+    station.station_name = "Kartuzy"
+    scenery.stations.append(station)
+    var world:World = World.new()
+    world.autoload = false
+    world.scenery = scenery
+    add_child(world)
+
+    await world.load()
+
+    assert_true(SceneryServer.station_list().has(station), "the world's station is listed")
+    await world.clear()
+    assert_false(SceneryServer.station_list().has(station), "it goes with the world's content")
+    world.queue_free()
+    await wait_idle_frames(1)
+
+
 func test_a_world_declaring_no_clock_keeps_the_default() -> void:
     var data:WorldData = _data()
     data.declared_start_time = -1.0
