@@ -1,4 +1,4 @@
-.PHONY: linux-sdk-image linux-sdk-image-push compile-release-linux compile-android-release compile-android-debug godot-version godot-build godot-bin docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
+.PHONY: linux-sdk-image linux-sdk-image-push linux-sdk-run compile-release-linux compile-android-release compile-android-debug godot-version godot-build godot-bin docs compile watch-and-compile docs-site docs-server docs-install docs-pdf cleanup style-check style-fix compile-release-symbols
 .DEFAULT_GOAL = compile-debug
 
 # The Godot project the library is built into (its bin/libreloaded/) and whose addons/ CMake links
@@ -240,16 +240,11 @@ compile-release-linux: $(CMAKE_GODOTCPP_API_FILE) linux-sdk-image
 	$(GND_SFX_MAKE) compile-release-linux
 
 
-# The runtime of the cab Python screens, built in the SDK like the release. PythonScreenServer
-# looks for it in the game dir: cp -a build-python-runtime/python2.7 <game_dir>/
-PYTHON_RUNTIME_BUILD_DIR:=build-python-runtime
-PYTHON_RUNTIME_DIR:=$(PYTHON_RUNTIME_BUILD_DIR)/python2.7
-
-.PHONY: python-runtime
-python-runtime: $(PYTHON_RUNTIME_DIR)/lib/libpython2.7.so.1.0
-
-$(PYTHON_RUNTIME_DIR)/lib/libpython2.7.so.1.0: scripts/build-python-runtime | linux-sdk-image
-	$(LINUX_SDK_RUN) scripts/build-python-runtime $(PYTHON_RUNTIME_DIR) $(PYTHON_RUNTIME_BUILD_DIR)
+# A command run in the Linux SDK container, with the checkouts of LIBRELOADED_PLUGINS mounted - for
+# a plugin's own builds made on the release's glibc: make linux-sdk-run LINUX_SDK_COMMAND=<command>
+linux-sdk-run: linux-sdk-image
+	$(if $(LINUX_SDK_COMMAND),,$(error Which command? make linux-sdk-run LINUX_SDK_COMMAND=<command>))
+	$(LINUX_SDK_RUN) $(LINUX_SDK_COMMAND)
 
 
 # patched before it takes its name: a clone a patch failed on is not taken for the engine's source;

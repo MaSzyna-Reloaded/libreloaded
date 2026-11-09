@@ -64,8 +64,8 @@ hides the new ones.
   sorts includes and puts a file's own header first, so a header that compiled only thanks to an
   earlier `#include` in the `.cpp` breaks as soon as the file is formatted.
 * The `clang-tidy` stage of `make style-check` runs after clang-format and fails on any warning
-  (`WarningsAsErrors: "*"`). A ported external name that the naming rule rejects (the Python C API
-  in `PythonScreenServer`) is fenced with `NOLINTBEGIN/END(readability-identifier-naming)` and a
+  (`WarningsAsErrors: "*"`). A ported external name that the naming rule rejects (a C API resolved
+  by its own symbol names) is fenced with `NOLINTBEGIN/END(readability-identifier-naming)` and a
   comment saying why - never renamed.
 
 ### GDScript

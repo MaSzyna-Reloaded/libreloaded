@@ -164,7 +164,7 @@ anything. Open work belongs in `TODO.md`.
   a light standing for it samples the texture (`MaszynaCabinLampIslands.submodel_color()`), never
   takes the diffuse alone. *(10-12 ST45's blue lamps glowed orange)*
 * When porting a contract consumed by scripts nobody here maintains, run the real scripts against
-  it. *(09-24 Python cab screens)*
+  it.
 * Check sun-altitude thresholds against a winter day. *(09-20 orange fog)*
 * A section is parsed for every `EngineType` that has it, and a parser never reaches its engine
   node by a cast to one engine class - a failed cast drops the section without a word. Check each
@@ -499,10 +499,6 @@ anything. Open work belongs in `TODO.md`.
 * Setting a `Range`'s `min_value`/`max_value`/`step` clamps its value and emits `value_changed`: a
   control is only shown a value, and saving happens on an explicit apply of what differs from what
   was shown. *(10-04 settings saved their minimums)*
-* A runtime loaded from the player's game directory (CPython 2.7) runs in a process of its own,
-  never in the game's: its fatal error is `abort()` on a stderr nobody sees, and Godot's crash
-  handler covers only the main thread. The host's stderr and exit code go to the log.
-  *(10-09 Python screens ended the game without a trace)*
 
 ## Threads and teardown
 * Freeing many of a server's items goes through one call for all of them (`track_free_many()`,
@@ -607,7 +603,7 @@ anything. Open work belongs in `TODO.md`.
   *(09-24 line breaker opened; 09-24 parser)*
 * Test the invariant, not the intermediate. *(09-21 no fog in release)*
 * The headless dummy renderer keeps no texture data. A vehicle without mass or a track is NaN, and
-  NaN never compares equal or culls. *(09-24 Python screens; 09-24 parked vehicle; 09-22 sound
+  NaN never compares equal or culls. *(09-24 parked vehicle; 09-22 sound
   cost)*
 * The headless dummy renderer's mesh storage is not thread safe: meshes created on the streaming
   worker and on the main thread at once corrupt the heap, and the crash shows later, at teardown.

@@ -116,7 +116,7 @@ False positives in the starting JSON that were dropped: `brake_force_max` -> `ma
 | `compressor_cab_a_max_pressure` | - | adapter, fiz: fiz_train_brake_parser.gd | stays | MaxCP: compressor governor cut-out pressure, a limit |
 | `compressor_cab_b_min_pressure` | - | adapter, fiz: fiz_train_brake_parser.gd | stays | MinCP_B: cut-in pressure when driven from cab B (cab-dependent governor) |
 | `compressor_cab_b_max_pressure` | - | adapter, fiz: fiz_train_brake_parser.gd | stays | MaxCP_B: cut-out pressure when driven from cab B |
-| `compressor_speed` | - | adapter, fiz, cabin: python_screen_state.gd | stays | Compressor capacity rating; the cab screen counts the vehicle as having a compressor when it is above a threshold |
+| `compressor_speed` | - | adapter, fiz, cabin | stays | Compressor capacity rating; the cab screen counts the vehicle as having a compressor when it is above a threshold |
 | `compressor_power` | - | adapter, fiz: fiz_train_brake_parser.gd, fiz: fiz_vehicle_builder.gd | stays | What feeds the compressor (main circuit, converter, engine, couplers), which equipment is wired to what |
 | `rig_effectiveness` | - | adapter, fiz: fiz_train_brake_parser.gd | down | BRE: efficiency coefficient of the Mover's brake-force equation |
 | `brake_method` | - | adapter, fiz: fiz_train_brake_parser.gd | unclear | BM: the friction material (block/composite/disc) is a fact, but the enum's values (P10-Bg/Bgu, P10y, FR510/513, Cosid, Disk1+Mg) are the Mover's friction-curve ids. Needs a decision: either a coarse material fact stays in the core and the curve id goes down, or the whole enum goes down |
@@ -485,8 +485,8 @@ Reader lines were checked by grepping `get_/set_<name>`, `"<name>"`, `&"<name>"`
 | `motor_blowers_sustain_time` | - | adapter: MaszynaMoverDriveUnit.cpp:137; fiz: fiz_train_engine_common.gd:44 | stays | how long the traction-motor blowers keep running after stop: the vehicle's blower automation, not a Mover equation coefficient |
 | `motor_blowers_start_velocity` | - | adapter: MaszynaMoverDriveUnit.cpp:138; fiz: fiz_train_engine_common.gd:46 | stays | the speed above which the blowers start automatically: blower automation, a vehicle fact |
 | `pressure_switch_present` | - | adapter: MaszynaMoverDriveUnit.cpp:132; fiz: fiz_train_engine_common.gd:53 | stays | whether the vehicle has a control pressure switch (equipment presence) |
-| `main_init_time` | - (own dump: RailVehicleEngine.cpp:106 key `main_init_time`) | adapter: MaszynaMoverDriveUnit.cpp:133; cab: python_screen_state.gd:138 (dump key); fiz: fiz_train_engine_common.gd:73 | stays | the time the main circuit needs to get ready; the cab screen shows a countdown against it |
-| `inverters_count` | - | adapter: MaszynaMoverDriveUnit.cpp:134; fiz: fiz_train_engine_common.gd:48 | stays | the number of traction inverters, a count (the python screen counts the live `inverters` array instead) |
+| `main_init_time` | - (own dump: RailVehicleEngine.cpp:106 key `main_init_time`) | adapter: MaszynaMoverDriveUnit.cpp:133; cab (dump key); fiz: fiz_train_engine_common.gd:73 | stays | the time the main circuit needs to get ready; the cab screen shows a countdown against it |
+| `inverters_count` | - | adapter: MaszynaMoverDriveUnit.cpp:134; fiz: fiz_train_engine_common.gd:48 | stays | the number of traction inverters, a count (the cab screen counts the live `inverters` array instead) |
 | `motor_blowers_start_mode` | - | adapter: MaszynaMoverDriveUnit.cpp:139; fiz: fiz_train_engine_common.gd:77 | stays | how the blowers are switched on (manual/automatic...), cab-visible behaviour expressed in the core `StartMode` enum |
 | `cntrl_eim_control_additional_zeros` | - | adapter: MaszynaMoverDriveUnit.cpp:142; fiz: fiz_train_engine_common.gd:68 | down | `EIMCtrlAddZeros`, a lever-mapping detail that only Mover's `CheckEIMIC` interprets |
 | `cntrl_eim_control_emergency` | - | adapter: MaszynaMoverDriveUnit.cpp:143; fiz: fiz_train_engine_common.gd:70 | down | `EIMCtrlEmergency`, a variant flag of Mover's EIM lever model |
@@ -601,7 +601,7 @@ Reader lines were checked by grepping `get_/set_<name>`, `"<name>"`, `&"<name>"`
 
 ### RailVehicleSpeedControl
 
-No core file other than the class's own reads any of these; the JSON's core hits for `delay`, `offset`, `min_velocity`, `max_velocity`, `max_power` are unrelated members of the same name. The plugin cab reads only the live state keys (`speed_control_*`, python_screen_state.gd:33-37, mmd_semantic_catalog.gd:995ff).
+No core file other than the class's own reads any of these; the JSON's core hits for `delay`, `offset`, `min_velocity`, `max_velocity`, `max_power` are unrelated members of the same name. The plugin cab reads only the live state keys (`speed_control_*`, mmd_semantic_catalog.gd:995ff).
 
 | Property | Core readers | Plugin readers | Proposal | Why |
 |---|---|---|---|---|
@@ -963,7 +963,7 @@ The adapter writes all three into `AIHint*` in the Mover, and nothing reads them
 
 ### RailVehicleMasterController
 
-The adapter's dump publishes `main_controller_position_max`, `second_controller_position_max` and `master_controller_position_max`, all derived from the counts and `coupled_controllers`. `mmd_semantic_catalog.gd` (`config_max_property`) and `python_screen_state.gd:130` read them by key.
+The adapter's dump publishes `main_controller_position_max`, `second_controller_position_max` and `master_controller_position_max`, all derived from the counts and `coupled_controllers`. `mmd_semantic_catalog.gd` (`config_max_property`) and the cab screens' state read them by key.
 
 | Property | Core readers | Plugin readers | Proposal | Why |
 |---|---|---|---|---|
@@ -982,9 +982,9 @@ This is not configuration. It is a value object the adapter fills fresh on each 
 
 | Property | Core readers | Plugin readers | Proposal | Why |
 |---|---|---|---|---|
-| `active` | - | adapter (writer); cabin: `python_screen_state.gd:265` | stays | the inverter is working, a state readout any backend can give |
-| `error` | - | adapter (writer); cabin: `python_screen_state.gd:266` | stays | the inverter has a fault, a state readout |
-| `allow` | - | adapter (writer); cabin: `python_screen_state.gd:267` | stays | the inverter is allowed to run, a state readout |
+| `active` | - | adapter (writer); cabin | stays | the inverter is working, a state readout any backend can give |
+| `error` | - | adapter (writer); cabin | stays | the inverter has a fault, a state readout |
+| `allow` | - | adapter (writer); cabin | stays | the inverter is allowed to run, a state readout |
 
 ### RailVehicleHorns, RailVehicleCabinKind, RailVehicleComponentType
 
@@ -1000,4 +1000,4 @@ These bind no properties: Horns binds only methods, the other two only enums.
 - **`RailVehicleAppearance`**: the core renderer reads every field. The bogie, wheel, pantograph, wiper and mirror names are also written by the core `RailVehicle3D.cpp` for vehicles assembled by hand, so they are not MaSzyna-only. The slot layouts the renderer expects are still the original's (5 pantograph slots per TAnimPant, 3 elements per wiper and per door, odd left and even right). Only `pantograph_factors`, the raw MMD fallback, is flagged plugin-data.
 - **`coupler_adapter_model/length/height`** sit on RailVehicleController but come from the MMD (`MmdCabinInstancer.parse_coupler_adapter`) and are drawing data; the model name fits better in `RailVehicleAppearance`.
 - **Naming quirks**: `RailVehicleBuffCoupl.buffer_max_tension_tolerance` is `FmaxB`, a buffer's maximum force, not a tension. The `SpringKB` comment in MOVER.h:763 says the same key doubles as a damping percentage, so `buffer_stiffness_k` and `coupler_stiffness_k` hold the Mover's convention, not a clean stiffness.
-- **The dump keys differ from the property names**: `wipers_angle` (from `angle`), `wipers_switch_position_max` (from `positions`), `doors_permit_preset_max` (from `permit_list`), `light_position_max` (from `lights_list`), `main/second/master_controller_position_max` (from the counts and `coupled_controllers`) and `coupler_max_force` (from `FmaxC`). The MMD catalog and the python screen state read them by key; `coupler_max_force` and `wipers_angle` have no reader.
+- **The dump keys differ from the property names**: `wipers_angle` (from `angle`), `wipers_switch_position_max` (from `positions`), `doors_permit_preset_max` (from `permit_list`), `light_position_max` (from `lights_list`), `main/second/master_controller_position_max` (from the counts and `coupled_controllers`) and `coupler_max_force` (from `FmaxC`). The MMD catalog and the cab screens' state read them by key; `coupler_max_force` and `wipers_angle` have no reader.

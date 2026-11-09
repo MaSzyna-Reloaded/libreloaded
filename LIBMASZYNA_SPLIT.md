@@ -48,7 +48,6 @@ Legend:
 - [x] [LS-006](#ls-006) `register_types.cpp` registers the plugin's classes and singletons ✔
 - [x] [LS-007](#ls-007) The plugin's tree in `plugins/libmaszyna/`, without `legacy` directories
 - [x] [LS-008](#ls-008) Plugin pieces in the core's CMake and Makefile
-- [x] [LS-009](#ls-009) The python host in the core's `.gdextension`
 - [x] [LS-010](#ls-010) `MaszynaE3DRenderingServer` created in the middle of the core's boot chain
 
 ### Core reaching the plugin (ALARM)

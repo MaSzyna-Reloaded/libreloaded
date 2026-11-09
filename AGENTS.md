@@ -304,8 +304,8 @@ Commit style:
 * If the change has a GitHub Issue, prefix the first line with its number in the existing `(#NUMBER) Message` format.
 * REQUIRED: **the first line is plain imperative English naming the problem fixed or the feature
   added**, in words a player or a stranger understands - a line of a changelog:
-  `(#351) Fix tracks shaking when the camera moves`, `(#344) Fix missing keys in the Python screen
-  state`, `Add support for scenery missing files in SceneryContentNode`. Never the technique
+  `(#351) Fix tracks shaking when the camera moves`, `(#36) Fix Ctrl+C not stopping a build in the
+  Linux SDK container`, `Add support for scenery missing files in SceneryContentNode`. Never the technique
   (`Track meshes - vertices relative to the track's start`), internal names of fields or classes
   standing for the problem (`Pmax`, `eimc`), two subjects joined by a comma, or terse literary
   phrasing (`the data a scenery missed`). Read it aloud as a changelog line before committing.
