@@ -20,6 +20,7 @@
 			<return type="void" />
 			<param index="0" name="emitter" type="RID" />
 			<description>
+				[param emitter] freed with its particles and its registration in [SceneryStreamingServer].
 			</description>
 		</method>
 		<method name="smoke_get_atlas" qualifiers="const">
@@ -77,6 +78,7 @@
 			<param index="0" name="emitter" type="RID" />
 			<param index="1" name="scenario" type="RID" />
 			<description>
+				The world [param emitter] is drawn in; an empty RID draws it nowhere.
 			</description>
 		</method>
 		<method name="smoke_set_source">

@@ -9,16 +9,16 @@
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="description" type="String" setter="" getter="get_description" default="&quot;&quot;">
+		<member name="description" type="String" setter="" getter="get_description" default="&quot;Vehicles and sceneries of MaSzyna EU07: the vehicles simulated on its Mover, its E3D models, sceneries, scenarios, signalling and cabs&quot;">
 			What the plugin brings, for the player.
 		</member>
 		<member name="logo" type="Texture2D" setter="" getter="get_logo">
 			The plugin's logo, loaded from its addon when its servers are created.
 		</member>
-		<member name="name" type="String" setter="" getter="get_name" default="&quot;&quot;">
+		<member name="name" type="String" setter="" getter="get_name" default="&quot;MaSzyna&quot;">
 			The plugin's name, for the player.
 		</member>
-		<member name="runtime_script" type="String" setter="" getter="get_runtime_script" default="&quot;&quot;">
+		<member name="runtime_script" type="String" setter="" getter="get_runtime_script" default="&quot;res://addons/libmaszyna/libmaszyna_runtime.gd&quot;">
 			The path of the plugin's [code]ReloadedRuntimePlugin[/code] script, set when the plugin is created; empty for none.
 		</member>
 	</members>

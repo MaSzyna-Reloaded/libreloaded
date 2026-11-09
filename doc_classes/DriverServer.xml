@@ -72,14 +72,6 @@
 				An order for [param driver] - a scenario's [param command] with its two values, and the [param position] of what sent it.
 			</description>
 		</method>
-		<method name="implementation_register">
-			<return type="void" />
-			<param index="0" name="name" type="StringName" />
-			<param index="1" name="implementation" type="DriverImplementation" />
-			<description>
-				[param implementation] thinks for the drivers declared with [param name], from now on those declared before it as well; a name registered again is thought with by the new one.
-			</description>
-		</method>
 		<method name="implementation_get" qualifiers="const">
 			<return type="DriverImplementation" />
 			<param index="0" name="name" type="StringName" />
@@ -91,6 +83,14 @@
 			<return type="PackedStringArray" />
 			<description>
 				The names of the registered implementations.
+			</description>
+		</method>
+		<method name="implementation_register">
+			<return type="void" />
+			<param index="0" name="name" type="StringName" />
+			<param index="1" name="implementation" type="DriverImplementation" />
+			<description>
+				[param implementation] thinks for the drivers declared with [param name], from now on those declared before it as well; a name registered again is thought with by the new one.
 			</description>
 		</method>
 		<method name="implementation_unregister">

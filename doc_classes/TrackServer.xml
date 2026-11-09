@@ -285,12 +285,26 @@
 				What runs on [param track] - rails, a road, water ([code]TTrack::iCategoryFlag[/code], [code]Track.cpp:396-432[/code]).
 			</description>
 		</method>
+		<method name="track_get_joint_spacing" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="track" type="RID" />
+			<description>
+				The rail length between joints [lb]m[rb], negative for a continuous rail.
+			</description>
+		</method>
 		<method name="track_get_length" qualifiers="const">
 			<return type="float" />
 			<param index="0" name="track" type="RID" />
 			<param index="1" name="branch" type="int" enum="TrackServer.SwitchTrack" default="0" />
 			<description>
 				Returns the length [m] of [param branch] of a switch track, the first curve's length for any other track.
+			</description>
+		</method>
+		<method name="track_get_meta" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="track" type="RID" />
+			<description>
+				What a plugin keeps of its own about the track ([method track_set_meta]); empty for an unknown track.
 			</description>
 		</method>
 		<method name="track_get_name" qualifiers="const">
@@ -327,20 +341,6 @@
 			<param index="1" name="branch" type="int" enum="TrackServer.SwitchTrack" default="0" />
 			<description>
 				The roll of the branch's curve at its start (x) and its end (y), in degrees, as read out of the curve resource when it was set.
-			</description>
-		</method>
-		<method name="track_get_joint_spacing" qualifiers="const">
-			<return type="float" />
-			<param index="0" name="track" type="RID" />
-			<description>
-				The rail length between joints [lb]m[rb], negative for a continuous rail.
-			</description>
-		</method>
-		<method name="track_get_meta" qualifiers="const">
-			<return type="Dictionary" />
-			<param index="0" name="track" type="RID" />
-			<description>
-				What a plugin keeps of its own about the track ([method track_set_meta]); empty for an unknown track.
 			</description>
 		</method>
 		<method name="track_get_switch" qualifiers="const">
@@ -606,7 +606,7 @@
 		<signal name="track_vehicle_entered">
 			<param index="0" name="track" type="RID" />
 			<param index="1" name="vehicle" type="RID" />
-			<param index="2" name="direction" type="int" enum="TrackServer.TravelDirection" />
+			<param index="2" name="direction" type="int" />
 			<description>
 				[param vehicle] came onto [param track], travelling along it as [param direction] says - [constant TRAVEL_NONE] when it was put there standing, or crossed onto it standing. For every track a moving vehicle crosses, a track shorter than one step included.
 			</description>
@@ -621,7 +621,7 @@
 		<signal name="track_vehicle_started">
 			<param index="0" name="track" type="RID" />
 			<param index="1" name="vehicle" type="RID" />
-			<param index="2" name="direction" type="int" enum="TrackServer.TravelDirection" />
+			<param index="2" name="direction" type="int" />
 			<description>
 				[param vehicle] on [param track] started off, or turned the other way, travelling along it as [param direction] says - once a change.
 			</description>
