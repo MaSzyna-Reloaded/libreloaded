@@ -75,7 +75,7 @@ jobs:
       - name: Build ${{ matrix.files }}
         id: build
         run: |
-          paths=$(for file in ${{ matrix.files }}; do echo "build-godot-$(make -s godot-build)/bin/$file"; done)
+          paths=$(for file in ${{ matrix.files }}; do echo "$(make -s godot-bin)/$file"; done)
           # shellcheck disable=SC2086 # one file per word
           make $paths
           { echo "paths<<EOF"; echo "$paths"; echo "EOF"; } >> "$GITHUB_OUTPUT"

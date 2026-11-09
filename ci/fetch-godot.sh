@@ -15,7 +15,7 @@ VERSION="$(make -s -C "$REPO_DIR" godot-version)"
 BUILD="$(make -s -C "$REPO_DIR" godot-build)"
 TAG="godot-$BUILD-double"
 REPOSITORY="${GODOT_RELEASE_REPOSITORY:-MaSzyna-Reloaded/libreloaded}"
-GODOT_BIN="$REPO_DIR/build-godot-$BUILD/bin"
+GODOT_BIN="$(make -s -C "$REPO_DIR" godot-bin)"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 TEMPLATES_DIR="$HOME/.local/share/godot/export_templates/$VERSION.stable.double"
 
@@ -33,12 +33,31 @@ declare -A INSTALL=(
 FILES=("$@")
 [ "${#FILES[@]}" -eq 0 ] && FILES=("${!INSTALL[@]}")
 
+# A release file into $GODOT_BIN, a few times over before giving up: with the job's token (GH_TOKEN)
+# through the API, as a signed-in user, or without one by its public URL - GitHub times
+# unauthenticated downloads out when it is under load
+FETCH_ATTEMPTS=5
+fetch_release_file() {
+    local attempt
+    for attempt in $(seq "$FETCH_ATTEMPTS"); do
+        if [ -n "${GH_TOKEN:-}" ]; then
+            gh release download "$TAG" --repo "$REPOSITORY" --pattern "$1" --dir "$GODOT_BIN" --clobber \
+                && return 0
+        else
+            curl -fsSL -o "$GODOT_BIN/$1" "https://github.com/$REPOSITORY/releases/download/$TAG/$1" \
+                && return 0
+        fi
+        echo "Fetching $1 failed (attempt $attempt of $FETCH_ATTEMPTS)" >&2
+        sleep $((attempt * 10))
+    done
+    return 1
+}
+
 mkdir -p "$GODOT_BIN"
 for file in "${FILES[@]}"; do
     target="${INSTALL[$file]:?unknown file: $file}"
     if [ ! -f "$GODOT_BIN/$file" ]; then
-        curl -fsSL -o "$GODOT_BIN/$file" \
-            "https://github.com/$REPOSITORY/releases/download/$TAG/$file" \
+        fetch_release_file "$file" \
             || { echo "::error::$TAG has no $file - run the godot-engine workflow of $REPOSITORY by hand" >&2; exit 1; }
     fi
     install -D -m 755 "$GODOT_BIN/$file" "$target"
