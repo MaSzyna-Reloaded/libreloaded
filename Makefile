@@ -68,7 +68,10 @@ LINUX_SDK_PLUGIN_MOUNTS=$(foreach dir,$(LINUX_SDK_PLUGIN_DIRS),-v $(dir):$(dir))
 # checkouts are mounted at their own paths, so the same base directory holds in the container (the
 # engines' own, LINUX_SDK_ENGINE_MOUNT, comes after it and overrides it)
 CCACHE_DIR?=$(HOME)/.cache/ccache
-LINUX_SDK_RUN=mkdir -p $(CCACHE_DIR) && $(BUILD_LOCK) docker run --rm --user $(shell id -u):$(shell id -g) \
+# A container runs under Docker's init (tini), which hands Ctrl+C on to the whole process group of
+# its command: the command itself, as PID 1, would ignore it and keep the container running
+DOCKER_RUN:=docker run --rm --init -e TINI_KILL_PROCESS_GROUP=1
+LINUX_SDK_RUN=mkdir -p $(CCACHE_DIR) && $(BUILD_LOCK) $(DOCKER_RUN) --user $(shell id -u):$(shell id -g) \
     -v $(LINUX_SDK_MOUNT):$(LINUX_SDK_MOUNT) $(LINUX_SDK_OWN_MOUNT) $(LINUX_SDK_PLUGIN_MOUNTS) -e CCACHE_BASEDIR=$(HOME) $(LINUX_SDK_ENGINE_MOUNT) -w $(CURDIR) -v $(CCACHE_DIR):/ccache -e CCACHE_DIR=/ccache \
     -e CMAKE_C_COMPILER_LAUNCHER=ccache -e CMAKE_CXX_COMPILER_LAUNCHER=ccache $(LINUX_SDK_IMAGE)
 # The engines are built outside the checkout, one directory for every checkout of this machine - a
@@ -336,7 +339,7 @@ DOCS_BOOK_DIR=$(DOCS_BUILD_DIR)/book
 DOCS_PDF=$(DOCS_BUILD_DIR)/reloaded-docs.pdf
 DOCS_PANDOC_IMAGE:=pandoc/extra:3.7
 DOCS_MERMAID_IMAGE:=minlag/mermaid-cli:11.4.2
-DOCS_DOCKER_RUN=docker run --rm --user "$(shell id -u):$(shell id -g)" -v "$(CURDIR):$(CURDIR)" \
+DOCS_DOCKER_RUN=$(DOCKER_RUN) --user "$(shell id -u):$(shell id -g)" -v "$(CURDIR):$(CURDIR)" \
 	-v "$(DOCS_BUILD_DIR):$(DOCS_BUILD_DIR)" -w $(DOCS_BUILD_DIR)
 docs-pdf: docs-site
 	rm -rf $(DOCS_BOOK_DIR)
@@ -384,7 +387,7 @@ docker-build-tests:
 
 
 docker-run-tests: docker-build-tests
-	docker run --rm godot-tests
+	$(DOCKER_RUN) godot-tests
 
 
 run-tests: compile-debug
