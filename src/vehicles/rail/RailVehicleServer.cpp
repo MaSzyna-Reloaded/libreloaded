@@ -4,6 +4,7 @@
 #include "vehicles/rail/RailVehicleController.hpp"
 #include "vehicles/rail/RailVehicleEngine.hpp"
 #include "vehicles/rail/RailVehicleEnginePowerSource.hpp"
+#include "vehicles/rail/RailVehiclePantographs.hpp"
 #include "vehicles/rail/RailVehiclePowerSupply.hpp"
 #include "vehicles/rail/RailVehicleRadio.hpp"
 #include "vehicles/rail/RailVehicleWheels.hpp"
@@ -241,16 +242,8 @@ namespace godot {
                 D_METHOD("coupler_get_adapter_height", "vehicle", "end"),
                 &RailVehicleServer::coupler_get_adapter_height);
         ClassDB::bind_method(
-                D_METHOD(
-                        "vehicle_set_pantograph_geometry", "vehicle", "pantograph", "position", "lower_length",
-                        "upper_length", "horizontal", "lower_rest_angle", "upper_rest_angle", "slider_height"),
-                &RailVehicleServer::vehicle_set_pantograph_geometry);
-        ClassDB::bind_method(
-                D_METHOD("vehicle_get_pantograph_position", "vehicle", "pantograph"),
+                D_METHOD("vehicle_get_pantograph_position", "vehicle", "index"),
                 &RailVehicleServer::vehicle_get_pantograph_position);
-        ClassDB::bind_method(
-                D_METHOD("vehicle_get_pantograph_raise", "vehicle", "pantograph"),
-                &RailVehicleServer::vehicle_get_pantograph_raise);
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_bogie_transform", "vehicle", "bogie"),
                 &RailVehicleServer::vehicle_get_bogie_transform);
@@ -308,49 +301,17 @@ namespace godot {
     }
 
 
-    void RailVehicleServer::vehicle_set_pantograph_geometry(
-            const RID &p_vehicle, const RailVehicleEnginePowerSource::PantographSelector p_pantograph,
-            const Vector3 &p_position, const double p_lower_length, const double p_upper_length,
-            const double p_horizontal, const double p_lower_rest_angle, const double p_upper_rest_angle,
-            const double p_slider_height) {
-        VehiclePlacement *placement = vehicles.getptr(p_vehicle);
-        ERR_FAIL_NULL(placement);
-        ERR_FAIL_INDEX(static_cast<int>(p_pantograph), 2);
-        Pantograph &pantograph = placement->pantographs[p_pantograph];
-        // built lowered; a model rebuilt later changes how the arms are drawn, not how far they are up
-        if (!pantograph.present) {
-            pantograph.present = true;
-            pantograph.lower_angle = p_lower_rest_angle;
-            pantograph.upper_angle = p_upper_rest_angle;
-            pantograph.height = (p_lower_length * Math::sin(p_lower_rest_angle)) +
-                                (p_upper_length * Math::sin(p_upper_rest_angle)) + p_slider_height;
-            pantograph.reaches_wire = false;
-        }
-        pantograph.position = p_position;
-        pantograph.lower_length = p_lower_length;
-        pantograph.upper_length = p_upper_length;
-        pantograph.horizontal = p_horizontal;
-        pantograph.lower_rest_angle = p_lower_rest_angle;
-        pantograph.upper_rest_angle = p_upper_rest_angle;
-        pantograph.slider_height = p_slider_height;
-    }
-
-    Vector3 RailVehicleServer::vehicle_get_pantograph_position(
-            const RID &p_vehicle, const RailVehicleEnginePowerSource::PantographSelector p_pantograph) const {
+    Vector3 RailVehicleServer::vehicle_get_pantograph_position(const RID &p_vehicle, const int p_index) const {
         const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL_V(placement, Vector3());
-        ERR_FAIL_INDEX_V(static_cast<int>(p_pantograph), 2, Vector3());
-        return placement->pantographs[p_pantograph].position;
-    }
-
-    Vector2 RailVehicleServer::vehicle_get_pantograph_raise(
-            const RID &p_vehicle, const RailVehicleEnginePowerSource::PantographSelector p_pantograph) const {
-        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
-        ERR_FAIL_NULL_V(placement, Vector2());
-        ERR_FAIL_INDEX_V(static_cast<int>(p_pantograph), 2, Vector2());
-        const Pantograph &pantograph = placement->pantographs[p_pantograph];
-        return {static_cast<real_t>(pantograph.lower_angle - pantograph.lower_rest_angle),
-                static_cast<real_t>(pantograph.upper_angle - pantograph.upper_rest_angle)};
+        const RailVehicleController *controller = _get_controller(*placement);
+        const Ref<RailVehiclePantographs> pantographs =
+                controller != nullptr ? controller->get_rail_component(RailVehicleComponentType::COMPONENT_PANTOGRAPHS)
+                                      : Ref<VehicleComponent>();
+        if (pantographs.is_null() || p_index < 0 || p_index >= pantographs->get_pantograph_count()) {
+            return {};
+        }
+        return pantographs->get_pantograph_position(p_index);
     }
 
     String RailVehicleServer::_track_position_text(const RID &p_vehicle) const {
@@ -370,8 +331,8 @@ namespace godot {
     }
 
     Dictionary RailVehicleServer::_find_pantograph_wire(
-            const RID &p_vehicle, Pantograph &p_pantograph, const int p_index, const Transform3D &p_frame,
-            const double p_half_width) {
+            const RID &p_vehicle, Pantograph &p_pantograph, const int p_index, const Vector3 &p_position,
+            const Transform3D &p_frame, const double p_half_width) {
         TractionServer *traction = TractionServer::get_instance();
         if (traction == nullptr) {
             /* "No wire in reach", the answer the search gives when it finds none: an absent height
@@ -381,7 +342,7 @@ namespace godot {
             missing["height"] = INFINITY;
             return missing;
         }
-        const Vector3 contact_point = p_frame.xform(p_pantograph.position);
+        const Vector3 contact_point = p_frame.xform(p_position);
         const Vector3 up = p_frame.basis.get_column(1);
         const Vector3 forward = -p_frame.basis.get_column(2);
         const Vector3 left = -p_frame.basis.get_column(0);
@@ -411,32 +372,6 @@ namespace godot {
         }
         p_pantograph.wire = found["rid"];
         return found;
-    }
-
-    void RailVehicleServer::Pantograph::raise(
-            const double p_gap, const bool p_active, const double p_speed_factor, const double p_delta) {
-        double angle = lower_angle;
-        if (p_speed_factor > 0.0 && p_active) {
-            if (p_gap > PANTOGRAPH_SETTLED_GAP) {
-                angle += MIN(p_speed_factor, PANTOGRAPH_RISE_SHARE * p_gap);
-            } else if (p_gap < -PANTOGRAPH_SETTLED_GAP) {
-                angle += PANTOGRAPH_PRESS_SHARE * p_gap;
-            }
-        } else {
-            if (angle > lower_rest_angle) {
-                angle -= PANTOGRAPH_FALL_RATE * p_delta;
-            }
-            angle = MAX(angle, lower_rest_angle);
-        }
-        if (!Math::is_equal_approx(angle, lower_angle)) {
-            const double upper = Math::acos(((lower_length * Math::cos(angle)) + horizontal) / upper_length);
-            if (angle + upper < Math::PI) {
-                lower_angle = angle;
-                upper_angle = upper;
-                height = (lower_length * Math::sin(angle)) + (upper_length * Math::sin(upper)) + slider_height;
-            }
-        }
-        reaches_wire = p_active && p_gap < PANTOGRAPH_CONTACT_GAP;
     }
 
     RailVehicleController *RailVehicleServer::_get_controller(const VehiclePlacement &p_placement) const {
@@ -1286,8 +1221,41 @@ namespace godot {
     /* The axle distance comes from the wheels' configuration and the vehicle's length, and the
      * body hangs between the axles */
     void RailVehicleServer::_on_vehicle_config_changed(const RID &p_vehicle) {
-        if (const VehiclePlacement *placement = vehicles.getptr(p_vehicle); placement != nullptr) {
-            _place_axles(p_vehicle, _vehicle_centre(*placement));
+        VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        if (placement == nullptr) {
+            return;
+        }
+        _place_axles(p_vehicle, _vehicle_centre(*placement));
+        placement = vehicles.getptr(p_vehicle); // the track signals may have rehashed
+        /* The pantographs rebuilt with their new geometry (RailVehiclePantographs) keep their height,
+         * but a raised one is held under the wire over it - from there the arms press on as before */
+        const RailVehicleController *controller = _get_controller(*placement);
+        if (controller == nullptr || !placement->axles[placement->primary_axle].track.is_valid()) {
+            return;
+        }
+        const Ref<RailVehicleEnginePowerSource> power_source =
+                controller->get_rail_component(RailVehicleComponentType::COMPONENT_ENGINE_POWER_SOURCE);
+        const Ref<RailVehiclePantographs> pantographs =
+                controller->get_rail_component(RailVehicleComponentType::COMPONENT_PANTOGRAPHS);
+        if (power_source.is_null() || pantographs.is_null()) {
+            return;
+        }
+        const bool active[2] = {
+                power_source->get_collector_pantograph_first_active(),
+                power_source->get_collector_pantograph_second_active()};
+        const Transform3D frame = vehicle_get_transform(p_vehicle);
+        const double half_width = 0.5 * power_source->get_current_collector_sliding_width();
+        const int count = pantographs->get_pantograph_count();
+        placement->pantographs.resize(count);
+        for (int pantograph = 0; pantograph < count; ++pantograph) {
+            if (!pantographs->get_pantograph_has_geometry(pantograph) ||
+                !active[pantographs->get_pantograph_control(pantograph)]) {
+                continue;
+            }
+            const double wire_height = _find_pantograph_wire(
+                    p_vehicle, placement->pantographs[pantograph], pantograph,
+                    pantographs->get_pantograph_position(pantograph), frame, half_width)["height"];
+            pantographs->pantograph_fit(pantograph, wire_height);
         }
     }
 
@@ -2382,35 +2350,51 @@ namespace godot {
             const bool active[2] = {
                     power_source->get_collector_pantograph_first_active(),
                     power_source->get_collector_pantograph_second_active()};
-            for (int pantograph = 0; pantograph < 2; ++pantograph) {
-                Pantograph &collector = powered->pantographs[pantograph];
-                // a model without the arms samples the wire where it stands, reaching it
-                if (!collector.present) {
+            // the vehicle's own pantographs, each raised and fed through its channel of the source
+            const Ref<RailVehiclePantographs> pantographs =
+                    controller->get_rail_component(RailVehicleComponentType::COMPONENT_PANTOGRAPHS);
+            const int count = pantographs.is_valid() ? pantographs->get_pantograph_count() : 0;
+            powered->pantographs.resize(count);
+            for (int pantograph = 0; pantograph < count; ++pantograph) {
+                // a pantograph without geometry samples the wire where the vehicle stands, reaching it
+                if (!pantographs->get_pantograph_has_geometry(pantograph)) {
                     continue;
                 }
+                const bool raised = active[pantographs->get_pantograph_control(pantograph)];
                 // a lowered pantograph comes down whatever the wire, nothing searched
-                const double gap = active[pantograph]
-                                           ? static_cast<double>(_find_pantograph_wire(
-                                                     p_vehicle, collector, pantograph, frame, half_width)["height"]) -
-                                                     collector.height
-                                           : Math::INF;
-                collector.raise(gap, active[pantograph], speed_factor, p_delta);
+                const double gap = raised ? static_cast<double>(_find_pantograph_wire(
+                                                    p_vehicle, powered->pantographs[pantograph], pantograph,
+                                                    pantographs->get_pantograph_position(pantograph), frame,
+                                                    half_width)["height"]) -
+                                                    pantographs->get_pantograph_height(pantograph)
+                                          : Math::INF;
+                pantographs->pantograph_step(pantograph, gap, raised, speed_factor, p_delta);
             }
             const double assumed_voltage =
                     MAX(Math::abs(power_source->get_collector_pantograph_first_voltage()),
                         Math::abs(power_source->get_collector_pantograph_second_voltage()));
-            const int collecting = static_cast<int>(active[0] && powered->pantographs[0].reaches_wire) +
-                                   static_cast<int>(active[1] && powered->pantographs[1].reaches_wire);
+            int collecting = 0;
+            for (int pantograph = 0; pantograph < count; ++pantograph) {
+                collecting += static_cast<int>(
+                        active[pantographs->get_pantograph_control(pantograph)] &&
+                        pantographs->get_pantograph_reaches_wire(pantograph));
+            }
             // a car with no engine of its own (31WE B and C) draws nothing through its own pantographs
             const Ref<RailVehicleEngine> engine = controller->get_component(VehicleComponentType::COMPONENT_ENGINE);
             const double current = collecting > 0 && engine.is_valid() ? engine->get_current0() / collecting : 0.0;
             double fed = 0.0;
-            for (int pantograph = 0; pantograph < 2; ++pantograph) {
+            // what each channel feeds the source: the highest of its pantographs
+            float channel_voltages[2] = {0.0F, 0.0F};
+            for (int pantograph = 0; pantograph < count; ++pantograph) {
                 Pantograph &collector = powered->pantographs[pantograph];
+                const RailVehicleEnginePowerSource::PantographSelector channel =
+                        pantographs->get_pantograph_control(pantograph);
+                const bool reaches_wire = pantographs->get_pantograph_reaches_wire(pantograph);
+                const Vector3 position = pantographs->get_pantograph_position(pantograph);
                 /* The third way a raised pantograph reads no voltage, and the only one that is
                  * not about the wire: the arm has not reached it. Reported on
                  * the transition, like the other two - from the cab all three look the same. */
-                if (active[pantograph] && collector.touching && !collector.reaches_wire) {
+                if (active[channel] && collector.touching && !reaches_wire) {
                     UtilityFunctions::push_warning(vformat(
                             "Lost contact: %s pantograph %d is not reaching the wire - %s",
                             vehicle_server->vehicle_get_id(p_vehicle), pantograph, _track_position_text(p_vehicle)));
@@ -2420,12 +2404,12 @@ namespace godot {
                             collector.wire.is_valid() ? PANTOGRAPH_CONTACT_LOSS_NOT_REACHING
                                                       : PANTOGRAPH_CONTACT_LOSS_NO_WIRE);
                 }
-                collector.touching = active[pantograph] && collector.reaches_wire;
+                collector.touching = active[channel] && reaches_wire;
                 double voltage = 0.0;
-                // the arms found the span this step; a model without them searches it here
+                // the arms found the span this step; a pantograph without geometry searches it here
                 RID wire = collector.wire;
-                if (collector.touching && !collector.present) {
-                    wire = _find_pantograph_wire(p_vehicle, collector, pantograph, frame, half_width)["rid"];
+                if (collector.touching && !pantographs->get_pantograph_has_geometry(pantograph)) {
+                    wire = _find_pantograph_wire(p_vehicle, collector, pantograph, position, frame, half_width)["rid"];
                 }
                 if (collector.touching && wire.is_valid() && traction != nullptr) {
                     voltage = traction->wire_get_voltage(wire, assumed_voltage, current);
@@ -2437,18 +2421,22 @@ namespace godot {
                         UtilityFunctions::push_warning(
                                 vformat("Dead traction: %s has a wire under pantograph %d carrying no voltage - %s, %v",
                                         vehicle_server->vehicle_get_id(p_vehicle), pantograph,
-                                        _track_position_text(p_vehicle), frame.xform(collector.position)));
+                                        _track_position_text(p_vehicle), frame.xform(position)));
                         emit_signal(
                                 vehicle_pantograph_contact_lost_signal, p_vehicle, pantograph,
                                 PANTOGRAPH_CONTACT_LOSS_DEAD_WIRE);
                     }
                     collector.powered = !Math::is_zero_approx(voltage);
                 }
-                power_source->set_pantograph_wire_voltage(
-                        static_cast<RailVehicleEnginePowerSource::PantographSelector>(pantograph),
-                        static_cast<float>(voltage));
+                if (Math::abs(voltage) > Math::abs(channel_voltages[channel])) {
+                    channel_voltages[channel] = static_cast<float>(voltage);
+                }
                 fed = MAX(fed, Math::abs(voltage));
             }
+            power_source->set_pantograph_wire_voltage(
+                    RailVehicleEnginePowerSource::PANTOGRAPH_FIRST, channel_voltages[0]);
+            power_source->set_pantograph_wire_voltage(
+                    RailVehicleEnginePowerSource::PANTOGRAPH_SECOND, channel_voltages[1]);
             // a short loss keeps the last voltage (LIBMASZYNA_SPLIT_SPECS.md, 2)
             if (fed > 0.0) {
                 powered->no_voltage_time = 0.0;

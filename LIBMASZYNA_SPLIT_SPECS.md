@@ -26,13 +26,14 @@ Contents:
 
 ## 1. Pantograph arm and contact
 
-**Today:** `RailVehicleServer::Pantograph::raise` (`RailVehicleServer.cpp:400`), its rise rate in
-`vehicle_collect_current` (`:2041-2054`), constants `RailVehicleServer.hpp:142-153`.
+**Today:** `RailVehiclePantographs::pantograph_step()` and its constants
+(`RailVehiclePantographs.hpp`), its rise rate in `RailVehicleServer::vehicle_collect_current()`
+(`PANTOGRAPH_RAISE_RATE`, `RailVehicleServer.hpp`).
 
 A pantograph is two arms on a pivot. The lower arm stands at an angle `a` from its rest angle
-`a0`. The upper arm closes the linkage. The slider sits on top. The model gives the geometry
-(`vehicle_set_pantograph_geometry()`): lower and upper arm lengths `L1`, `L2`, horizontal offset
-`h`, slider height `s`, rest angles.
+`a0`. The upper arm closes the linkage. The slider sits on top. The vehicle's configuration gives
+the geometry (`RailVehiclePantographs.pantographs`, a `RailVehiclePantograph` each): lower and
+upper arm lengths `L1`, `L2`, horizontal offset `h`, slider height `s`, rest angles.
 
 **Rise rate.** It is computed once per vehicle per step, for both pantographs:
 
