@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LuaCabinTextureNode" inherits="LuaVehicleTextureNode" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A Lua script drawing a screen of a driver's cab.
+	</brief_description>
+	<description>
+		A [LuaTextureNode] that sits under a cab's [Cabin3D]. Its script gets the cab's vehicle and cabin after the drawing ([code]local drawing, vehicle, cabin = ...[/code]), nil outside a cab. With [member cabin_implementation] the script reaches the cab's controls through [code]reloaded.cabin[/code] too.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="cabin_implementation" type="ScenarioScriptCabinImplementation" setter="set_cabin_implementation" getter="get_cabin_implementation">
+			How the script reaches the cabs ([method ScenarioScriptServer.context_attach_cabin_implementation]); none leaves [code]reloaded.cabin[/code] without a cab layer.
+		</member>
+	</members>
+</class>

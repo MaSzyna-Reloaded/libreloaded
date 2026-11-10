@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LuaNode" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A Lua script running while the node is in the tree.
+	</brief_description>
+	<description>
+		Runs [member script_path], or its own code ([member source]), in a [ScenarioScriptServer] context of its own, made as the node enters the tree and freed, with everything the script made, as it leaves it. The script's directory is the context's base directory ([code]require[/code]); its fonts and images are read from [member data_dir]. Its script runs only in the game; a [LuaTextureNode] runs its script in the editor too, so what it draws is seen while the scene is made. A changed [member script_path], [member source] or [member data_dir] runs the script again at once.
+		A derived node hands the script what it works on as the arguments of its file ([code]local drawing = ...[/code]); a script of GDScript extending a node adds its own after them ([method _get_script_arguments]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_get_script_arguments" qualifiers="virtual const">
+			<return type="Array" />
+			<description>
+				What a GDScript subclass adds to the script's arguments, after the ones of the native node.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="data_dir" type="String" setter="set_data_dir" getter="get_data_dir" default="&quot;&quot;">
+			Where the script reads its fonts and images from; empty for the script's own directory.
+		</member>
+		<member name="script_path" type="String" setter="set_script_path" getter="get_script_path" default="&quot;&quot;">
+			The script's file: [code]res://[/code], [code]user://[/code] or a path of the file system.
+		</member>
+		<member name="script_variables" type="Dictionary" setter="set_script_variables" getter="get_script_variables" default="{}">
+			What the variables its script declares ([code]reloaded.export_var()[/code]) are set to, by their names. The inspector shows each as a property [code]script_variables/&lt;name&gt;[/code] of its default's type; a change runs the script again.
+		</member>
+		<member name="source" type="String" setter="set_source" getter="get_source" default="&quot;&quot;">
+			The script's own code, kept in the scene, run instead of a file: its [code]require[/code] and its data files are of the scene's directory. Set either it or [member script_path], never both.
+		</member>
+	</members>
+</class>

@@ -27,6 +27,10 @@ namespace godot {
             lua_State *state = nullptr;
             RID context;
             String base_dir;
+            /// Where data_file_path() finds the data files; the base directory until it is set
+            String data_dir;
+            /// The files _load_file() read, in the order it read them
+            PackedStringArray files;
             size_t memory_used = 0;
             int64_t instructions = 0;
             /// What math.random draws from - the script's own, so math.randomseed seeds nothing else
@@ -44,6 +48,9 @@ namespace godot {
             static int _require(lua_State *p_state);
             /// Pushes the file's chunk, or its error; true when the chunk was pushed
             bool _load_file(lua_State *p_state, const String &p_path);
+            /// The path of a file of the directory, as the data names it; empty for a path that leads
+            /// out of it (absolute, a drive, a way up)
+            static String _path_inside(const String &p_dir, const String &p_path);
             /// Calls what lies under the arguments on the stack; returns its error
             String _protected_call(int p_arguments);
 
@@ -56,9 +63,16 @@ namespace godot {
             RID get_rid() const;
             /// Keeps the function at p_index for a later call(); returns its id
             int64_t keep_function(lua_State *p_state, int p_index);
+            /// The path of a data file the script names (a font, an image); raises a script error for
+            /// a path that leads out of the data directory
+            String data_file_path(lua_State *p_state, const String &p_path) const;
 
-            String run_file(const String &p_path) override;
-            String run_source(const String &p_source, const String &p_chunk_name) override;
+            String run_file(const String &p_path, const Vector<ScriptArgument> &p_arguments) override;
+            void set_data_dir(const String &p_data_dir) override;
+            String run_source(
+                    const String &p_source, const String &p_chunk_name,
+                    const Vector<ScriptArgument> &p_arguments) override;
+            PackedStringArray get_files() const override;
             String check_source(const String &p_source, const String &p_chunk_name) override;
             String call(int64_t p_function, const Vector<ScriptArgument> &p_arguments) override;
             void release(int64_t p_function) override;

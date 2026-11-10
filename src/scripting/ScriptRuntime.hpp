@@ -1,5 +1,6 @@
 #pragma once
 #include <godot_cpp/templates/vector.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -19,6 +20,12 @@ namespace godot {
         SIGNALLING_SOURCE,
         SIGNALLING_ROUTE,
         SUBSCRIPTION,
+        DRAWING,
+        FONT,
+        IMAGE,
+        STATION,
+        TIMETABLE,
+        RUN,
         /// The first of the kinds the plugins register (ScenarioScriptServer::handle_kind_register())
         FIRST_REGISTERED,
     };
@@ -35,10 +42,15 @@ namespace godot {
     class ScriptRuntime {
         public:
             virtual ~ScriptRuntime() = default;
-            /// Runs a file of the runtime's base directory
-            virtual String run_file(const String &p_path) = 0;
-            /// Runs a piece of code, named p_chunk_name in its errors
-            virtual String run_source(const String &p_source, const String &p_chunk_name) = 0;
+            /// Runs a file of the runtime's base directory, handing it the arguments
+            virtual String run_file(const String &p_path, const Vector<ScriptArgument> &p_arguments) = 0;
+            /// The directory the scripts read their data files from (fonts, images)
+            virtual void set_data_dir(const String &p_data_dir) = 0;
+            /// Every file its code was loaded from, the ones it required too
+            virtual PackedStringArray get_files() const = 0;
+            /// Runs a piece of code, named p_chunk_name in its errors, handing it the arguments
+            virtual String run_source(
+                    const String &p_source, const String &p_chunk_name, const Vector<ScriptArgument> &p_arguments) = 0;
             /// Compiles a piece of code without running it
             virtual String check_source(const String &p_source, const String &p_chunk_name) = 0;
             /// Calls a function a script handed over, by the id the runtime gave it

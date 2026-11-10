@@ -68,6 +68,11 @@ namespace godot {
         return lua_isnoneornil(p_state, p_index) ? RID() : check(p_state, p_index, p_kind);
     }
 
+    RID LuaHandle::test(lua_State *p_state, const int p_index, const ScriptHandleKind p_kind) {
+        const auto *id = static_cast<int64_t *>(luaL_testudata(p_state, p_index, type_name(p_kind).get_data()));
+        return id == nullptr ? RID() : UtilityFunctions::rid_from_int64(*id);
+    }
+
     RID LuaHandle::to_rid(lua_State *p_state, const int p_index) {
         const int count =
                 static_cast<int>(ScriptHandleKind::FIRST_REGISTERED) + ScenarioScriptServer::handle_kind_get_count();

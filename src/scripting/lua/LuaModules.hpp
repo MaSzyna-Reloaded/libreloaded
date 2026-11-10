@@ -16,7 +16,7 @@ namespace godot {
                     const luaL_Reg *functions;
             };
 
-            /// reloaded.cancel()
+            /// reloaded.cancel(), reloaded.export_var()
             static const luaL_Reg ROOT[];
             static const luaL_Reg SIM[];
             static const luaL_Reg VEHICLE[];
@@ -29,6 +29,9 @@ namespace godot {
             static const luaL_Reg PLAYER[];
             static const luaL_Reg CAMERA[];
             static const luaL_Reg HUD[];
+            static const luaL_Reg DRAW[];
+            static const luaL_Reg TIME[];
+            static const luaL_Reg STATION[];
 
             static constexpr const char *ROOT_NAME = "reloaded";
             static const Module MODULES[];

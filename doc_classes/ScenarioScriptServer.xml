@@ -58,10 +58,31 @@
 				How the scripts of [param context] reach the cabs ([method context_attach_cabin_implementation]); null for none.
 			</description>
 		</method>
+		<method name="context_get_exports" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="context" type="RID" />
+			<description>
+				The variables the scripts of [param context] declared ([code]reloaded.export_var()[/code]), by their names, with their defaults.
+			</description>
+		</method>
+		<method name="context_get_files" qualifiers="const">
+			<return type="PackedStringArray" />
+			<param index="0" name="context" type="RID" />
+			<description>
+				Every file the code of [param context] was loaded from: the files it ran and the modules they required.
+			</description>
+		</method>
 		<method name="context_get_rids" qualifiers="const">
 			<return type="RID[]" />
 			<description>
 				Every script context.
+			</description>
+		</method>
+		<method name="context_reload">
+			<return type="void" />
+			<param index="0" name="context" type="RID" />
+			<description>
+				Runs the code of [param context] again, as it was first run and in that order, with the same arguments: what its scripts made is freed first, and the scripts run in a new Lua state, so a changed file - a required module too - is read again.
 			</description>
 		</method>
 		<method name="context_run_file">
@@ -72,8 +93,30 @@
 				Runs a file of the context's base directory as the unit named after it. Returns [code]false[/code] when it failed.
 			</description>
 		</method>
+		<method name="context_set_data_dir">
+			<return type="void" />
+			<param index="0" name="context" type="RID" />
+			<param index="1" name="data_dir" type="String" />
+			<description>
+				The directory the scripts of [param context] read their data files from - the fonts and images of [code]reloaded.draw[/code]. Until it is set it is the context's base directory.
+			</description>
+		</method>
+		<method name="context_set_variables">
+			<return type="void" />
+			<param index="0" name="context" type="RID" />
+			<param index="1" name="variables" type="Dictionary" />
+			<description>
+				What the scripts of [param context] get for the variables they declare ([code]reloaded.export_var()[/code]), by their names; set by the context's owner before its scripts run. A variable set to a value of another type than its default gets the default.
+			</description>
+		</method>
 	</methods>
 	<signals>
+		<signal name="context_reloaded">
+			<param index="0" name="context" type="RID" />
+			<description>
+				The code of [param context] ran again ([method context_reload]): its scripts may declare other variables now ([method context_get_exports]).
+			</description>
+		</signal>
 		<signal name="script_error">
 			<param index="0" name="context" type="RID" />
 			<param index="1" name="message" type="String" />

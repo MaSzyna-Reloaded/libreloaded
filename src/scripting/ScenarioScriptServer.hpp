@@ -5,6 +5,7 @@
 #include <functional>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/scene_tree_timer.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 
@@ -86,6 +87,9 @@ namespace godot {
 
             /// A script failed (context: RID, message: String) - it is logged as well
             static const char *script_error_signal;
+            /// The context's code ran again (context_reload()) - its scripts may declare other
+            /// variables now (context: RID)
+            static const char *context_reloaded_signal;
 
             static ScenarioScriptServer *get_instance() {
                 return singleton;
@@ -102,6 +106,9 @@ namespace godot {
                 HOOK_EVENT,
                 HOOK_TIMER_ONCE,
                 HOOK_TIMER_REPEATING,
+                /// A timer of the clock on the wall, not of the simulation
+                HOOK_CLOCK_TIMER_ONCE,
+                HOOK_CLOCK_TIMER_REPEATING,
                 HOOK_SUBSCRIPTION,
             };
 
@@ -112,19 +119,43 @@ namespace godot {
                     HookKind kind = HOOK_EVENT;
                     ScriptSignal signal = SIGNAL_FIRST_REGISTERED;
                     RID target;
-                    /// The ScenarioEventServer event that runs the function
+                    /// The ScenarioEventServer event that runs the function; none for a clock timer
                     RID event;
+                    /// A clock timer's: what runs the function, and how long it waits [s]
+                    Ref<SceneTreeTimer> clock_timer;
+                    double clock_seconds = 0.0;
                     int64_t function = NO_FUNCTION;
                     int64_t else_function = NO_FUNCTION;
                     /// What the servers reported for a subscription since its event last ran
                     Vector<Vector<ScriptArgument>> pending;
             };
 
+            /// Code a context ran, to run again as it was (context_reload()): a file of its base
+            /// directory, or a piece of code under its unit's name
+            struct Unit {
+                    StringName name;
+                    /// Empty for a piece of code
+                    String file;
+                    String source;
+                    Vector<ScriptArgument> arguments;
+            };
+
             struct Context {
                     /// Null in a build without a runtime
                     ScriptRuntime *runtime = nullptr;
+                    String base_dir;
+                    String data_dir;
+                    /// In the order they first ran
+                    Vector<Unit> units;
+                    /// What its owner set the scripts' variables to (context_set_variables())
+                    Dictionary variables;
+                    /// The variables its scripts declared, with their defaults (script_variable_export())
+                    Dictionary exports;
                     Ref<ScenarioScriptCabinImplementation> cabin;
                     Vector<RID> hooks;
+                    /// The DrawingServer drawings, fonts and images its scripts made, by the unit
+                    /// that made each
+                    RIDMap<StringName> drawing_resources;
                     /// The unit whose code is running, which owns what it makes
                     StringName active_unit;
             };
@@ -141,8 +172,17 @@ namespace godot {
 
             RID _create_hook(const RID &p_context, HookKind p_kind, int64_t p_function);
             void _free_hook(const RID &p_hook);
+            /// A clock timer's wait, from now
+            void _start_clock_timer(const RID &p_hook);
+            void _on_clock_timer_timeout(const RID &p_hook);
+            /// Frees the drawing resources of the context's unit, all of them for an empty unit
+            void _free_drawing_resources(Context &p_context, const StringName &p_unit);
             /// Called by ScenarioScriptAction when the hook's event runs
             void _run_hook(const RID &p_hook, const RID &p_event, const RID &p_activator, Branch p_branch);
+            /// The unit is run again as it is now, where it ran first
+            void _keep_unit(Context &p_context, const Unit &p_unit);
+            /// Runs the unit's file or code in the context
+            bool _run_unit(const RID &p_context, const Unit &p_unit);
             /// Runs code of the context as the unit, reports its error; false when it failed
             bool
             _enter(const RID &p_context, const StringName &p_unit,
@@ -186,11 +226,32 @@ namespace godot {
             TypedArray<RID> context_get_rids() const;
             /// Runs a file of the base directory as the unit named after it; false when it failed
             bool context_run_file(const RID &p_context, const String &p_path);
+            /// ...handing the file's chunk the arguments (`local drawing = ...`)
+            bool
+            context_run_file(const RID &p_context, const String &p_path, const Vector<ScriptArgument> &p_arguments);
+            /// The directory the scripts read their data files from - fonts, images; the base
+            /// directory until it is set
+            void context_set_data_dir(const RID &p_context, const String &p_data_dir);
             /// Compiles the code of the unit without running it; returns the error, empty when there
             /// is none
             String context_check_source(const RID &p_context, const StringName &p_unit, const String &p_source);
             /// Frees what the unit made, then runs the code as the unit; false when it failed
             bool context_apply_source(const RID &p_context, const StringName &p_unit, const String &p_source);
+            /// ...handing the code's chunk the arguments
+            bool context_apply_source(
+                    const RID &p_context, const StringName &p_unit, const String &p_source,
+                    const Vector<ScriptArgument> &p_arguments);
+            /// What the context's scripts get for the variables they declare (reloaded.export_var()) -
+            /// set by its owner before the scripts run (LuaNode's inspector)
+            void context_set_variables(const RID &p_context, const Dictionary &p_variables);
+            /// The variables the context's scripts declared, by their names, with their defaults
+            Dictionary context_get_exports(const RID &p_context) const;
+            /// Every file the context's code was loaded from, the ones it required too
+            PackedStringArray context_get_files(const RID &p_context) const;
+            /// Runs the context's code again, as it was first run and in that order: what its scripts
+            /// made goes, and the runtime is made anew, so a changed file - a module it required too -
+            /// is read again
+            void context_reload(const RID &p_context);
             void context_attach_cabin_implementation(
                     const RID &p_context, const Ref<ScenarioScriptCabinImplementation> &p_cabin);
             Ref<ScenarioScriptCabinImplementation> context_get_cabin_implementation(const RID &p_context) const;
@@ -203,13 +264,23 @@ namespace godot {
             bool script_event_free(const RID &p_context, const RID &p_event);
             /// Runs the function after p_seconds of simulation time, once or on and on
             RID script_timer_create(const RID &p_context, double p_seconds, int64_t p_function, Timer p_timer);
+            /// Runs the function after p_seconds of the clock on the wall, once or on and on - while
+            /// the simulation is paused, and in the editor too
+            RID script_clock_timer_create(const RID &p_context, double p_seconds, int64_t p_function, Timer p_timer);
             RID script_subscribe(const RID &p_context, ScriptSignal p_signal, const RID &p_target, int64_t p_function);
             /// Hands the arguments to the target's subscriptions of the signal and queues their
             /// events; only to the subscriptions of p_context when it is valid
             void script_deliver(
                     ScriptSignal p_signal, const RID &p_target, const Vector<ScriptArgument> &p_arguments,
                     const RID &p_activator, const RID &p_context = RID());
+            /// A variable the script declares, with its default: what the context's owner set it to,
+            /// the default when it set none or set a value of another type
+            Variant script_variable_export(const RID &p_context, const String &p_name, const Variant &p_default);
             /// Stops a timer or a subscription; false when it is not the script's
             bool script_cancel(const RID &p_context, const RID &p_subscription);
+            /// A DrawingServer drawing, font or image the running unit made: freed with it
+            void script_drawing_resource_keep(const RID &p_context, const RID &p_resource);
+            /// Frees one the script made; false when it did not make it
+            bool script_drawing_resource_free(const RID &p_context, const RID &p_resource);
     };
 } // namespace godot

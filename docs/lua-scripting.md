@@ -22,6 +22,54 @@ scenery declares them. The provider uses `ScenarioScriptServer.context_create()`
 `context_run_file()`. How a scenery declares a script depends on the plugin's file format. See the
 plugin's documentation.
 
+### In a node
+
+A scene can run a script with a node. The script runs while the node is in the scene tree, in a
+context of its own. Everything the script created is removed when the node leaves the tree. A
+`LuaNode`'s script runs only in the game; the scripts of the nodes that draw a texture run in the
+editor too, so what they draw can be seen while the scene is made.
+
+* `LuaNode` runs `script_path`, or the code in its own `source` - never both. The path may be
+  `res://`, `user://` or a path on disk. `require` loads files from the script's directory - for
+  code of the node's own, from the directory of its scene. Fonts and images are read from
+  `data_dir`, or from that directory when it is empty. A changed `script_path`, `source` or
+  `data_dir` runs the script again at once.
+* `LuaTextureNode` also owns a drawing (see `reloaded.draw`) and shows it in its `texture`, a
+  `DrawingTexture`. A material in the scene uses the same texture to show what the script draws.
+  The script gets the drawing as the first argument of its file: `local drawing = ...`.
+  With a `material` (a `canvas_item` shader), the drawing is drawn through the material into the
+  texture, at the texture's size. The script then draws at `drawing_size`. A texture with `flip_y`
+  holds the drawing upside down, for models whose texture coordinates count up from the bottom;
+  the script still draws from the top.
+* `LuaVehicleTextureNode` is a `LuaTextureNode` that draws for a vehicle, for example its
+  destination sign. Its script also gets the vehicle it is given (`set_vehicle()`), or `nil`:
+  `local drawing, vehicle = ...`.
+* `LuaCabinTextureNode` is a `LuaVehicleTextureNode` that sits under a cab's `Cabin3D`. Its script
+  gets the cab's vehicle and cabin: `local drawing, vehicle, cabin = ...`. With a
+  `cabin_implementation` the script can also use the cab's controls through `reloaded.cabin`.
+
+A script can declare variables set in the node's inspector:
+
+```lua
+local TEXT = reloaded.export_var("text", "Pociąg osobowy")
+local COLOUR = reloaded.export_var("colour", {255, 170, 0})
+```
+
+`export_var(name, default)` returns what the node sets the variable to, or the default. A variable
+is a boolean, an integer, a number, a string or a colour `{r, g, b[, a]}`, of its default's type.
+The node shows it as the property `script_variables/<name>`, saves it with the scene and runs the
+script again when it changes.
+
+A node written in GDScript that extends one of these can add its own arguments after them by
+defining `_get_script_arguments()`.
+
+### In the editor
+
+The editor plugin *Lua scripts* (`addons/libreloaded/editor/lua_scripts`) opens `.lua` files in the
+script editor as text and colours them as Lua. When a script is saved - in the editor or in another
+program - every script context that loaded it, through `require` as well, runs its code again in a
+fresh Lua state, so a texture node shows the saved script at once, with no reload of the scene.
+
 ### While playing
 
 *View > Lua scripts* opens an editor for the current scenario:
@@ -69,17 +117,19 @@ All times in the API are simulation time. If the simulation runs faster, timers 
 
 ### What a script owns
 
-The events, timers and subscriptions a script creates are freed together with the scenario, or
-when the editor applies new code. A script can free its own event with `reloaded.event.free()` and
-stop a timer or subscription with `reloaded.cancel()`.
+The events, timers, subscriptions, drawings, fonts and images a script creates are freed together
+with the scenario, or when the editor applies new code. A script can free its own event with
+`reloaded.event.free()`, stop a timer or subscription with `reloaded.cancel()`, and free a drawing,
+a font or an image with `reloaded.draw.free()`.
 
 ### The sandbox
 
 * Available libraries: `base`, `string`, `table`, `math`, `coroutine` and `utf8`.
 * Not available: `io`, `os`, `debug`, `package`, `dofile` and `loadfile`. `load` accepts only
   text.
-* `require("lib.util")` loads `lib/util.lua` from the scenery directory. Nothing outside that
-  directory can be loaded.
+* `require("lib.util")` loads `lib/util.lua` from the script's directory. Nothing outside that
+  directory can be loaded. Fonts and images are read only from the data directory, in the same
+  way.
 * `print` writes to the game log.
 * A call that runs too long, such as an endless loop, fails with an error. So does a script that
   uses too much memory. The game keeps running.
@@ -101,6 +151,17 @@ available through `require`. Command and state names are the same as in the cons
 | `every(seconds, fn)` | runs `fn()` every so many seconds; returns a subscription |
 
 `reloaded.cancel(subscription)` stops a timer or a subscription.
+
+### `reloaded.time` - the clock on the wall
+
+| Function | Returns / does |
+|---|---|
+| `after(seconds, fn)` | runs `fn()` once, after the seconds; returns a subscription |
+| `every(seconds, fn)` | runs `fn()` every so many seconds; returns a subscription |
+
+These timers follow real time, not the simulation's: they run while the simulation is paused or
+runs faster, and in the editor. A board or a screen that only animates uses them; anything that
+follows the simulation uses `reloaded.sim`. `reloaded.cancel()` stops them too.
 
 ### `reloaded.vehicle` - vehicles
 
@@ -134,7 +195,39 @@ available through `require`. Command and state names are the same as in the cons
 | Function | Returns / does |
 |---|---|
 | `send_command(v, command, value1, value2)` | an order to the driver, for example `"SetVelocity", 40, 40`; `false` when nobody drives |
-| `timetable(v)` | the driver's timetable and how far it got; `nil` when nobody drives |
+
+### `reloaded.station` - stations, timetables and the trains running them
+
+A timetable is a plan: the train and its entries, each a station with the times planned there. A
+run is a timetable run by a trainset: it knows which entry the train has got to, and when the train
+arrived at a station, left it or passed it. Entries are counted from 1. Times are hours since
+midnight (`13.5` is half past one); the planned ones are the timetable's, the run's are those
+shifted by its `offset`.
+
+| Function | Returns / does |
+|---|---|
+| `find(name)`, `name(station)` | the station of the name, `nil` when there is none; its name |
+| `run(v)` | the run of the vehicle's trainset, `nil` when it runs no timetable |
+| `timetable(run)`, `offset(run)` | the timetable it runs; the hours it shifts its times by |
+| `current_entry(run)` | the entry the train drives to or stands at; the entry count + 1 past the last |
+| `arrived(run, i)`, `departed(run, i)` | when the train arrived at the entry, and left or passed it; `nil` until it did |
+| `delay(run)` | how late the train is now, in minutes; early when negative |
+| `train(timetable)` | the train's name (its number), category and label - three values |
+| `origin(timetable)`, `destination(timetable)` | the station the train runs from and to, `nil` for none |
+| `entry_count(timetable)` | how many entries it has |
+| `entry(timetable, i)` | `{station =, arrival =, departure =, stop =, kilometre =, speed_limit =, track_count =}`; a time or a speed limit not given is `nil` |
+
+```lua
+local run = reloaded.station.run(vehicle)
+if run then
+    local timetable = reloaded.station.timetable(run)
+    local number = reloaded.station.train(timetable)
+    local destination = reloaded.station.destination(timetable)
+    if destination then
+        reloaded.log.info(number .. " to " .. reloaded.station.name(destination))
+    end
+end
+```
 
 ### `reloaded.event` - scenario events
 
@@ -214,11 +307,68 @@ one per control window (`general`, `engine`, `brakes`, ..., `mini_map`, `weather
 | `show(panel)`, `hide(panel)`, `toggle(panel)`, `is_visible(panel)` | |
 | `open_card(v)`, `close_card()`, `card()` | the vehicle card; `card()` is `nil` while it is closed |
 
+### `reloaded.draw` - drawing on a texture
+
+A drawing is a picture, for example a cab's screen or a station's board. It is drawn on the GPU. A
+`LuaTextureNode` shows its drawing in a texture. A drawing created with `create()` can be pasted
+into another drawing.
+
+Coordinates are pixels, and `y` points down. Colours are `{r, g, b}` or `{r, g, b, a}`, each from
+0 to 255. A colour with an alpha below 255 is mixed with what is under it. Points are a flat list
+`{x1, y1, x2, y2, ...}`. Lines, outlines and pixels go through the pixels their coordinates name.
+Rectangles and text start at their top left corner. Paths of fonts and images are relative to the
+data directory.
+
+| Function | Returns / does |
+|---|---|
+| `create(w, h[, transparent])` | a drawing, opaque black or transparent |
+| `size(d)` | its width and height |
+| `clear(d, colour)` | removes everything drawn and fills it with the colour |
+| `rect(d, x, y, w, h, colour)` | a filled rectangle |
+| `rect_outline(d, x, y, w, h, colour[, width])` | the edge of the rectangle, inside it |
+| `line(d, points, colour[, width])` | a line through the points |
+| `ellipse(d, x, y, w, h, colour)`, `ellipse_outline(...)` | the ellipse the rectangle bounds |
+| `polygon(d, points, colour)`, `polygon_outline(d, points, colour[, width])` | |
+| `pieslice(d, x, y, w, h, start, end, colour)` | a slice of the ellipse; angles in degrees, clockwise from three o'clock |
+| `pixel(d, x, y, colour)` | one pixel |
+| `load_font(path[, antialiasing])` | a TrueType or OpenType font; `"gray"` smooths its edges (the default), `"none"` draws it in whole pixels, as a LED board shows it |
+| `text(d, x, y, text, font, size, colour)` | the text at a size in pixels |
+| `text_size(font, text, size)` | the width and height the text takes |
+| `load_image(path)` | an image (png, bmp, tga, dds, ...) |
+| `load_mask(path)` | an image used as a mask: pasted with a `tint`, it is drawn in that colour. It is as opaque as the image's alpha, or as bright as the image when it has no alpha |
+| `image_size(img)` | its width and height |
+| `image_pixel(img, x, y)` | the colour of a pixel, `{r, g, b, a}` |
+| `paste(d, source, x, y[, options])` | pastes an image or another drawing, mixed by its alpha. Options: `w`, `h` (scales it), `source = {x, y, w, h}` (pastes a part of it), `filter = "nearest"` or `"linear"`, `flip_x`, `flip_y`, `tint = colour` |
+| `paste_rotated(d, source, cx, cy, angle[, filter])` | pastes it turned counter-clockwise by the angle in degrees, centred at `cx, cy` |
+| `free(handle)` | frees a drawing, a font or an image the script created; `false` if the script did not create it |
+
+A drawing is drawn again in the next frame after it changes, so a script redraws it only when its
+content changes, for example from `reloaded.time.every()` or `reloaded.sim.every()`.
+
 ### `reloaded.log`
 
 `debug(text)`, `info(text)`, `warning(text)` and `error(text)` write to the game log.
 
 ## Examples
+
+A board that scrolls its text, run by a `LuaTextureNode` with a texture of 256x32:
+
+```lua
+local board = ...
+local font = reloaded.draw.load_font("fonts/board.ttf")
+local text = "The train to the station will depart from track 1"
+local width = reloaded.draw.text_size(font, text, 20)
+local x = 256
+
+reloaded.time.every(0.05, function()
+    reloaded.draw.clear(board, {0, 0, 0})
+    reloaded.draw.text(board, x, 4, text, font, 20, {255, 180, 0})
+    x = x - 2
+    if x < -width then
+        x = 256
+    end
+end)
+```
 
 For examples, see the documentation of a plugin. It shows scripts for its own sceneries and the
 modules it adds.

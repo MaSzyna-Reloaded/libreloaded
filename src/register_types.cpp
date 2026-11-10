@@ -20,6 +20,8 @@
 #include "radio/RadioServer.hpp"
 #include "radio/SceneryVirtualRadio.hpp"
 #include "register_types.h"
+#include "rendering/DrawingServer.hpp"
+#include "rendering/DrawingTexture.hpp"
 #include "rendering/ModelRenderingBackend.hpp"
 #include "rendering/ModelRenderingServer.hpp"
 #include "rendering/PlanarMirror3D.hpp"
@@ -55,6 +57,10 @@
 #include "scenery/TrainsetData.hpp"
 #include "scenery/TrainsetMemberData.hpp"
 #include "scenery/VehicleData.hpp"
+#include "scripting/LuaCabinTextureNode.hpp"
+#include "scripting/LuaNode.hpp"
+#include "scripting/LuaTextureNode.hpp"
+#include "scripting/LuaVehicleTextureNode.hpp"
 #include "scripting/ScenarioScriptAction.hpp"
 #include "scripting/ScenarioScriptCabinImplementation.hpp"
 #include "scripting/ScenarioScriptServer.hpp"
@@ -187,6 +193,7 @@ StationServer *station_server_singleton = nullptr;
 RadioServer *radio_server_singleton = nullptr;
 PlayerCameraServer *player_camera_server_singleton = nullptr;
 HUDServer *hud_server_singleton = nullptr;
+DrawingServer *drawing_server_singleton = nullptr;
 Ref<OggVorbisFormatLoader> ogg_vorbis_format_loader;
 
 void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
@@ -278,6 +285,12 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(SceneryVirtualRadio);
         GDREGISTER_ABSTRACT_CLASS(PlayerCameraServer);
         GDREGISTER_ABSTRACT_CLASS(HUDServer);
+        GDREGISTER_ABSTRACT_CLASS(DrawingServer);
+        GDREGISTER_CLASS(DrawingTexture);
+        GDREGISTER_CLASS(LuaNode);
+        GDREGISTER_CLASS(LuaTextureNode);
+        GDREGISTER_CLASS(LuaVehicleTextureNode);
+        GDREGISTER_CLASS(LuaCabinTextureNode);
         GDREGISTER_INTERNAL_CLASS(ScenarioScriptAction);
         GDREGISTER_CLASS(WorkerTaskQueue);
         GDREGISTER_VIRTUAL_CLASS(SceneryStreamingProvider);
@@ -477,6 +490,9 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         Engine::get_singleton()->register_singleton("PlayerCameraServer", player_camera_server_singleton); // 20
         hud_server_singleton = memnew(HUDServer);
         Engine::get_singleton()->register_singleton("HUDServer", hud_server_singleton); // 21
+        // before ScenarioScriptServer, whose contexts free what their scripts drew
+        drawing_server_singleton = memnew(DrawingServer);
+        Engine::get_singleton()->register_singleton("DrawingServer", drawing_server_singleton); // 21a
         // last: the constructor follows what the servers above report to the scripts
         scenario_script_server_singleton = memnew(ScenarioScriptServer);
         Engine::get_singleton()->register_singleton("ScenarioScriptServer", scenario_script_server_singleton); // 22
@@ -506,6 +522,14 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     if (scenario_script_server_singleton != nullptr) {
         memdelete(scenario_script_server_singleton);
         scenario_script_server_singleton = nullptr;
+    }
+
+    if (Engine::get_singleton()->has_singleton("DrawingServer")) {
+        Engine::get_singleton()->unregister_singleton("DrawingServer"); // 21a
+    }
+    if (drawing_server_singleton != nullptr) {
+        memdelete(drawing_server_singleton);
+        drawing_server_singleton = nullptr;
     }
 
     if (Engine::get_singleton()->has_singleton("HUDServer")) {

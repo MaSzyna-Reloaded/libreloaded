@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LuaTextureNode" inherits="LuaNode" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A Lua script drawing a texture.
+	</brief_description>
+	<description>
+		While it is in the tree it owns a [DrawingServer] drawing shown by [member texture], and hands it to its script as the first argument of the file ([code]local drawing = ...[/code]). The script runs in the editor as well; [code]reloaded.time[/code] animates it there, as the simulation's clock does not run in the editor. A material in the scene names the same [DrawingTexture] and shows what the script draws.
+		With a [member material] the drawing is drawn through it into the texture - a [code]canvas_item[/code] shader that gives the picture a look of its kind (a LED matrix, a screen's glow) at the texture's size, while the script draws at [member drawing_size].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="drawing_size" type="Vector2i" setter="set_drawing_size" getter="get_drawing_size" default="Vector2i(0, 0)">
+			The size [lb]px[rb] the script draws at when [member material] draws it into the texture; without a material the texture's size is used.
+		</member>
+		<member name="material" type="Material" setter="set_material" getter="get_material">
+			A [code]canvas_item[/code] shader material the drawing is drawn through into [member texture]; none for the drawing as it is.
+		</member>
+		<member name="texture" type="DrawingTexture" setter="set_texture" getter="get_texture">
+			The texture the script's drawing is shown by; its size and transparency are the drawing's.
+		</member>
+	</members>
+</class>

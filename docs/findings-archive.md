@@ -28,6 +28,19 @@ and the rule. Headings keep their date and title, because comments in the code c
   macros' default, which already includes it); leaving it out is invisible until something
   `duplicate()`s or saves the resource.
 
+## 2026-11-11 - The LED board's letters that stayed smooth
+
+* **Symptom:** a font loaded for a LED board without antialiasing
+  (`DrawingServer.font_load(path, FONT_ANTIALIASING_NONE)`) drew its letters smoothed: their edges
+  lit the LEDs by halves.
+* **What proved it:** the drawing read back from the GPU under a headless sway had the same 67
+  levels of brightness with the antialiasing off as with it on; only 0 and 255 once the option
+  was set after loading. `FontFile::load_dynamic_font()` resets the font's state, its options
+  among them.
+* **Fix:** `DrawingServer::font_load()` sets the antialiasing and the subpixel positioning after
+  `load_dynamic_font()`.
+* **Rule:** a font's options are set after `load_dynamic_font()`.
+
 ## 2026-11-05 - The minimap that made a slideshow
 
 * **Symptom:** the Mini Map window turned the game into a slideshow on Wrzosy (EP07-1024,
