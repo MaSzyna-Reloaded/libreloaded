@@ -32,6 +32,12 @@ namespace godot {
         return get_source_type() == RailVehicleController::POWER_SOURCE_POWERCABLE;
     }
 
+    bool RailVehicleEnginePowerSource::is_power_available() const {
+        return get_source_type() != RailVehicleController::POWER_SOURCE_CURRENTCOLLECTOR ||
+               MAX(get_collector_trainset_high_voltage(), get_collector_voltage()) >
+                       get_collector_min_main_switch_voltage();
+    }
+
     void RailVehicleEnginePowerSource::_bind_methods() {
         const char *const sources =
                 "NotDefined,InternalSource,Transducer,Generator,Accumulator,CurrentCollector,PowerCable,Heater,Main";
@@ -99,6 +105,7 @@ namespace godot {
 
         ClassDB::bind_method(D_METHOD("has_accumulator"), &RailVehicleEnginePowerSource::has_accumulator);
         ClassDB::bind_method(D_METHOD("has_power_cable"), &RailVehicleEnginePowerSource::has_power_cable);
+        ClassDB::bind_method(D_METHOD("is_power_available"), &RailVehicleEnginePowerSource::is_power_available);
         ClassDB::bind_method(
                 D_METHOD("pantographs_valve", "enabled"), &RailVehicleEnginePowerSource::pantographs_valve);
         ClassDB::bind_method(

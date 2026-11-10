@@ -201,6 +201,14 @@
 				Whether the vehicle is fed by a power cable - whether its cable's values mean anything.
 			</description>
 		</method>
+		<method name="is_power_available" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Whether a vehicle fed from the catenary may be prepared: its own voltage or the
+				trainset's, whichever is higher, over its line breaker's lowest. Any other source
+				is always available.
+			</description>
+		</method>
 		<method name="pantograph">
 			<return type="void" />
 			<param index="0" name="selector" type="int" enum="RailVehicleEnginePowerSource.PantographSelector" />

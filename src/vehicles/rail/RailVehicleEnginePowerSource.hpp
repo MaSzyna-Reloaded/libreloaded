@@ -70,6 +70,10 @@ namespace godot {
              * anything at all, so the dump can leave their keys out */
             bool has_accumulator() const;
             bool has_power_cable() const;
+            /* A vehicle fed from the catenary is prepared only while the line's voltage - its own
+             * or the trainset's, whichever is higher - is over its line breaker's lowest; any
+             * other source is always available */
+            bool is_power_available() const;
 
             /* Live state, read straight from the backend - nothing is stored. */
             virtual double get_collector_max_voltage() const = 0;

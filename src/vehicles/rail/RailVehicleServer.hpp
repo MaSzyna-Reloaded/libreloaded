@@ -678,6 +678,10 @@ namespace godot {
             RID vehicle_get_trainset(const RID &p_vehicle) const;
             /* Whether the vehicle stands - as it stops and starts on its tracks (TrackServer) */
             bool vehicle_is_standing(const RID &p_vehicle) const;
+            /* Whether nothing keeps the vehicle from being prepared: its engine power source's
+             * own is_power_available() - a vehicle fed from the catenary needs a line voltage
+             * over its line breaker's lowest - or always, for a vehicle with no such component */
+            bool vehicle_is_preparable(const RID &p_vehicle) const;
             /* Stands the vehicles on the track one after another, each as long as it is, and couples
              * them (deserialize_dynamic(), simulationstateserializer.cpp:1062-1076, and endtrainset,
              * simulationstateserializer.cpp:818-837), each pair by its coupling mode of what both
