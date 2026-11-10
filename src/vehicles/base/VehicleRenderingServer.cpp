@@ -229,9 +229,14 @@ namespace godot {
         return vehicles.getptr(p_vehicle);
     }
 
+    /* Only a vehicle with its models built: one waiting for its build has its files loaded at the
+     * build's turn (_process_frame()), one beyond the draw distance none */
     void VehicleRenderingServer::_vehicle_preload(const RID &p_vehicle) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
+        if (!visual->model.is_valid()) {
+            return;
+        }
         visual->preload_task = -1;
         _preload(p_vehicle, *visual);
     }
@@ -401,7 +406,9 @@ namespace godot {
         visual->model_missing = false;
         // models of its own replace the ones built from the last appearance, built once the
         // vehicle is within the draw distance (_update_detail()); handed-over ones stay. Its files
-        // are registered at once and loaded on a worker (_preload())
+        // are registered at once and loaded on a worker only while it waits for that build
+        // (_process_frame()): loaded for every vehicle at once, the models and textures of a
+        // scenery's hundreds of vehicles nobody saw stayed in memory
         const bool own_models = p_appearance.is_valid() && !p_appearance->get_model_filename().is_empty();
         if (own_models) {
             _free_models(p_vehicle, *visual);
@@ -428,8 +435,8 @@ namespace godot {
         _vehicle_appearance_changed(p_vehicle);
         if (own_models) {
             visual->preloaded.clear();
+            visual->preloaded_materials.clear();
             visual->preload_task = -1;
-            _preload(p_vehicle, *visual);
         }
         _bind_parts(p_vehicle, *visual);
         _update_detail(p_vehicle, *visual);
@@ -812,11 +819,16 @@ namespace godot {
         UtilityFunctions::print("[VehicleRendering] built ", model_path);
     }
 
+    /* What its files' preload left goes with the build: a vehicle that left the draw distance
+     * before it was built holds nothing */
     void VehicleRenderingServer::_cancel_build(const RID &p_vehicle, Visual &p_visual) {
         if (!p_visual.build_pending) {
             return;
         }
         p_visual.build_pending = false;
+        p_visual.preloaded.clear();
+        p_visual.preloaded_materials.clear();
+        p_visual.preload_task = -1;
         for (int index = 0; index < pending_builds.size(); ++index) {
             if (pending_builds[index].vehicle == p_vehicle) {
                 pending_builds.remove_at(index);

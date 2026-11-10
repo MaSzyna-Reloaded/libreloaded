@@ -441,7 +441,7 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
   2425-2433`, CompartmentLights).
 * No test for `MaszynaE3DRailVehicleRenderingServer`'s low-poly cab lights, nor for the lamps drawn from the
   lighting (`_update_lights()`).
-* `MaszynaVehicleStructure` and `RailVehicleAppearance`/`MaszynaRailVehicleAppearance` - candidates for a better name.
+* `RailVehicleAppearance`/`MaszynaRailVehicleAppearance` - candidates for a better name.
 * `RailVehicleServer.trainset_move(vehicle, distance)` takes a vehicle RID - rename (e.g.
   `vehicle_move_coupled`).
 * A vehicle without a start track does not move by its own velocity (the KA car in `demo_3d`).
@@ -569,7 +569,7 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
   cache in local space, invalidate by dependency list.
 * `ResourceLazyLoader` shares only a held copy: a per-model load lock, and the loader holding the
   copy with a release for a dropped preload.
-* Lazy loading off (default): a vehicle's cargo (`_build_load()`) and coupler adapters
+* Lazy loading off: a vehicle's cargo (`_build_load()`) and coupler adapters
   (`_update_coupler_adapters()`) still load through `model_load()` at their build, outside
   `ResourceLazyLoader` - their files change while the game runs. After a data reload a resource
   resident by registration is loaded again only by its next use.
