@@ -131,6 +131,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("trainset_get_mass", "trainset"), &RailVehicleServer::trainset_get_mass);
         ClassDB::bind_method(D_METHOD("vehicle_get_trainset", "vehicle"), &RailVehicleServer::vehicle_get_trainset);
         ClassDB::bind_method(D_METHOD("vehicle_is_standing", "vehicle"), &RailVehicleServer::vehicle_is_standing);
+        ClassDB::bind_method(D_METHOD("vehicle_is_preparable", "vehicle"), &RailVehicleServer::vehicle_is_preparable);
         ClassDB::bind_method(D_METHOD("trainset_place", "trainset"), &RailVehicleServer::trainset_place);
         ClassDB::bind_method(D_METHOD("vehicle_attach", "vehicle"), &RailVehicleServer::vehicle_attach);
         ClassDB::bind_method(D_METHOD("vehicle_add_cabin", "vehicle", "kind"), &RailVehicleServer::vehicle_add_cabin);
@@ -612,6 +613,12 @@ namespace godot {
         const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
         const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
         return controller == nullptr || controller->get_speed() <= STANDING_SPEED;
+    }
+
+    bool RailVehicleServer::vehicle_is_preparable(const RID &p_vehicle) const {
+        const Ref<RailVehicleEnginePowerSource> power_source(
+                vehicle_component_get(p_vehicle, RailVehicleComponentType::COMPONENT_ENGINE_POWER_SOURCE));
+        return power_source.is_null() || power_source->is_power_available();
     }
 
     RID RailVehicleServer::vehicle_get_trainset(const RID &p_vehicle) const {
