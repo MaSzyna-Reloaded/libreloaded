@@ -287,34 +287,6 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 * EP07: round buttons get a rectangular outline. First dump the button's submodel (AABB, faces,
   alpha texture): a quad with an alpha-tested texture outlines as its quad.
 
-### Python integration
-
-* **Windows runtime tested under wine only** - `maszyna-python-host.64.exe` with Steam MaSzyna's
-  `python27.dll` and `python64/` starts and renders a PIL screen; not yet on a player's Windows.
-  `make python-runtime` builds only the Linux one.
-* **`maszyna-python-host` in an export** (`[dependencies]` of `libmaszyna.gdextension`): not yet
-  seen in an exported game; on Linux its executable bit must survive the export.
-* **Non-ASCII paths on Windows**: CPython 2.7 takes paths in the ANSI code page, the host hands
-  it UTF-8 (`maszyna/python/home` set to an absolute path, the game directory and the scripts'
-  paths). The default home is relative, so only a game directory outside the code page breaks.
-* **Keys with no source yet**: `off_from_dimmer` (no dimmer positions in the vendored Mover),
-  `lights_compartments` (`compartmentlights_sw` not ported), `doors_no_N` (MMD `animations:`
-  count, held by the model layer), lamps beyond the five carried in `lights_front`/`lights_rear`/
-  `lights_train_*`; powered cars are told by engine type where the original tests
-  eimc[eimc_p_Pmax] > 1 and fills `eimp_cN_*`/`diesel_param_N_*` in one shared count.
-* **Cab keys**: `universal10`..`29` are read, but only `universal0`..`9` have a catalog entry.
-* **AI/timetable keys**: `velocity_desired`, `velroad`, `vellimitlast`, `velsignallast`,
-  `velsignalnext`, `velnext`, `actualproximitydist`, `train_atpassengerstop`, `train_length`,
-  `trainnumber`, every `train_*` key (mtable.cpp:641), and `$timetable=` (dictionary.cpp:36).
-* **Tests**: `vehicle_get_coupled()` stopping at a coupling without the flags asked for;
-  `PythonScreenState.compose()` beyond the EIM row.
-* **Commands a script returns are not executed** (two scripts send `lightsset`); map
-  `simulation::commandMap` names onto vehicle commands (PyInt.cpp:138-194).
-* **Touch input** (`touches`, `screen_touch_list`, Train.cpp:10713) is always empty.
-* `pyrylandia` is referenced by an MMD and exists nowhere under `dynamic/`.
-* **Another game directory keeps the interpreter** and the runtime it was loaded from until a
-  restart.
-
 ### Other
 
 * The `horn_bt` lever holds `horn_low` at +1 and `horn_high` at -1; the original animates
@@ -462,9 +434,6 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
   * A vehicle coming within detail distance is built twice
     (`instance_attach_object_instance_id()` then `instance_set_instancer()`).
   * `compiled.nodes` still carries the Time/Config/Atmo nodes.
-  * "Edit FIZ" logs errors: `cabin_python_screen.gd` and `maszyna_dynamic_train_cabin.gd`
-    disconnect in `_exit_tree()` what they connected once; `!is_inside_tree()` transform reads -
-    count again.
 * A distant vehicle's low-poly interior keeps its baked emission:
   `instance_set_emission_energy()`/`instance_set_part_emission_energy()` reach only the NODES
   backend.
@@ -566,15 +535,6 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 * Skydome installs the sun shafts effect twice at start ("Installed sunshafts compositor effect"
   printed twice before `(Re)Initialized`); the earlier one is removed, but the install runs twice.
   The D3D12 crash fix (`FINDINGS.md`, 2026-10-06) is unconfirmed on Windows until a player reports.
-* **Windows: td.scn ends the game without a message** (RTX 4080 SUPER, Vulkan, build
-  20261007-1333). The `--verbose` log ends at starting the Python interpreter and `--no-python`
-  runs without fault (`docs/findings-archive.md`, 2026-10-09): Python now runs in
-  `maszyna-python-host`, so the game survives it. **Still open: why it failed for that player** -
-  the next build's `app.log` has the host's stderr and exit code; asked of the player meanwhile:
-  `--verbose 2> stderr.txt` from `cmd`, the event log's faulting module and exception code,
-  whether eu07.exe shows the Python screens, another Python 2.7 in the registry
-  (`PythonCore\2.7`) or on `PATH`. Also unguarded: a pending vehicle build whose appearance was
-  set to none - `_build_models()` reads the appearance without a check.
 * Normal maps: Godot's tangents not checked against the original's `f_tbn`.
 * Overexposure in the demo scenery unmeasured. Candidates, one at a time: `tonemap_mode`,
   `soft_shadow_filter_quality` 3 -> 1, `directional_shadow/size=8192` (`042b392`), `fog_enabled`,

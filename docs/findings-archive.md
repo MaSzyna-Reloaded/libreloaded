@@ -274,8 +274,7 @@ and the rule. Headings keep their date and title, because comments in the code c
 * **What proved it:** the stack of each error: `_exit_tree()` disconnected on every exit, while
   `_ready()` - where it connected - ran only the first time; Edit FIZ takes the vehicle out of the
   tree and puts it back.
-* **Fix:** it subscribes in `_enter_tree()`. The cabin scripts (`cabin_python_screen.gd`,
-  `maszyna_dynamic_train_cabin.gd`) have the same asymmetry - in `TODO.md`.
+* **Fix:** it subscribes in `_enter_tree()`.
 * **Rule:** subscribe where you unsubscribe - `_enter_tree()`/`_exit_tree()` run on every
   re-entry, `_ready()` once.
 
@@ -379,10 +378,9 @@ and the rule. Headings keep their date and title, because comments in the code c
   rightmost button under it (`universal1`), and then the button "did not work": the page stayed,
   or came back.
 * **What proved it:** a headless probe on the real E186 cab
-  (`MaszynaRailVehicle3D` + `show_cabin()`), printing per frame the widget's `pushed`,
-  `CabinState.get_value(&"universal1")` and `PythonScreenState.compose()["universal1"]`. A click
-  set all three; after `hide_cabin()`/`show_cabin()` the new widget read `pushed=false` while the
-  cab and the screen still held `true`, and the next press sent `true` again - no change.
+  (`MaszynaRailVehicle3D` + `show_cabin()`), printing per frame the widget's `pushed` and
+  `CabinState.get_value(&"universal1")`. A click set both; after `hide_cabin()`/`show_cabin()` the
+  new widget read `pushed=false` while the cab still held `true`, and the next press sent `true` again - no change.
   `CabinButton._update_state()` read a control with no `state_property` as `false`, not as what
   the cab holds. Before the fix of the same day (a cab built on a running train) that `false` was
   also sent, and turned the page off at every rebuild.
@@ -395,7 +393,7 @@ and the rule. Headings keep their date and title, because comments in the code c
 
 * **Symptom:** the kV bar of the E186 diagnostic screen stayed at 0 under the wire.
 * **What proved it:** the bar is `state['eimp_c1_uhv']` = `EngineVoltage` (Train.cpp:8723).
-  `PythonScreenState` never filled the EIM row, and `engine_voltage` was published by
+  `engine_voltage` was published by
   `RailVehicleElectricSeriesEngine` alone - the Mover computes `EngineVoltage` for every engine
   (Mover.cpp:4542), and an induction motor had no key for it. `Itot` and `eimv[]` were published
   nowhere.
@@ -1065,30 +1063,6 @@ and the rule. Headings keep their date and title, because comments in the code c
   falls through to a plain `TBrake`), so the fixture shows pipe pressure but never a cylinder.
 * **Rule:** a `Cntrl.` key belongs to the vehicle. A property placed on one engine class silently
   does not exist for the other engine types that read the same key.
-
-## 2026-09-24 - Python cab screens: what the original's scripts actually need
-
-Porting `pyscreen:` meant running the original's own Python 2 scripts. Four things were only
-visible that way.
-
-* **A missing key blanks the screen.** `state['hours']` on a missing key raises KeyError, so
-  `render()` fails and nothing is drawn. A harness fed `{}` and added each key a script asked for:
-  `timetable` needs 2, `etcs_180kmh` 8, and all 145 scripts together read ~250 of
-  `GetTrainState()`'s keys. `PythonScreenState` therefore always hands over the original's whole
-  key set, with its value types, and fills in only what the wrapper has.
-* **The parser ate the labels after a screen.** `pyscreen:` went through the generic instrument
-  branch, which reads five value tokens, but a screen has two (legacy form) or a `{...}` block. A
-  test now puts an ordinary instrument right after each form of screen.
-* **Scripts assume the game dir is the cwd** (`./fonts/`, `from scripts import`), and importing
-  writes a `.pyc`. The interpreter `chdir`s to the game dir and runs with `dont_write_bytecode`.
-* **A leaked screen with a GDScript lambda callback crashes the exit** ("corrupted size vs.
-  prev_size", `~Callable` in `PythonScreenServer`'s destructor at module de-init). Freeing the
-  screens and using a method callback exits cleanly, and `CabinPythonScreen` does both.
-* **Test trap:** the headless dummy renderer keeps no texture data, so an `ImageTexture` replaced
-  by `set_image()` reads back as the 1x1 placeholder. The test checks the size, and the fixture
-  script echoes the state it received.
-* **Rule:** when porting a data contract consumed by scripts nobody here maintains, run the real
-  scripts against it before designing it.
 
 ## 2026-09-24 - the E186 line breaker dropped at 17 km/h: the wire was a hundred times too resistive
 
@@ -2161,23 +2135,6 @@ lighting or the trainset.
   another owner may have replaced it meanwhile.
 
 
-## 2026-09-28 - cab Python screens could not open their images
-
-* **Symptom:** the EN57 cab screens (`rozklad_aksel.py`, `screen_en57al.py`) raised in the Python
-  worker: `image not found: "./dynamic/pkp/en71aks_v1/cab/ekran"` (reported as `NameError:
-  FileNotFoundError` - a Python 3 name in a Python 2 script) and `IOError ... WS_gotowosc.png`.
-* **Cause:** two traps in the data. `akl_ra.mmd:247` passes `parameters: tex="./dynamic/..."`:
-  the original's `cParser::findQuotes()` (parser.cpp:248, 479) glues quoted text to the token and
-  drops the quotes, `MaszynaParser` had no quote handling and kept them in the path. And the
-  scripts name `WS_gotowosc.png` for `ws_gotowosc.png` on disk - fine on Windows, whose file
-  names ignore case, not on Linux.
-* **Fix:** `MaszynaParser::_read_token()` reads quoted text as `readQuotes()` does (no stops or
-  comments inside, backslash escapes); `PythonScreenServer`'s worker resolves a missing path
-  letter case aside, one directory at a time, for `open()` and `os.path.isfile()`.
-* **Rule:** the game data is written against Windows and `cParser` - quoted text is one token
-  without quotes, and a file name matches letter case aside.
-
-
 ## 2026-09-28 - the ED72 could not be started, and the fix did not take
 
 * **Symptom:** zwierzyniec_ed72.scn, ED72 cab: no pantographs, no main switch, no lights; after the
@@ -2512,7 +2469,7 @@ lighting or the trainset.
   a type`, followed by `incomplete type GetTypeInfo<int*>` in `binder_common.hpp`.
 * **What proved it:** `scripts/style-fix` ran `clang-tidy --fix --fix-errors` file by file with
   `-line-filter` limited to that file, so `readability-identifier-naming` renamed declarations
-  (`PythonApi::PyErr_Occurred` -> `py_err_occurred`, `r_point` -> `p_r_point`) without their uses
+  (`r_point` -> `p_r_point`) without their uses
   in other files. The style-check database is configured `LIBMASZYNA_STYLE_CHECK` (single
   precision godot-cpp: `float Light3D::get_param()`), while the build is double
   (`double get_param()`), so `readability-redundant-casting` removed `static_cast<float>` casts
@@ -2520,8 +2477,8 @@ lighting or the trainset.
   and the header compiled only thanks to an earlier include.
 * **Fix:** `style-fix` runs clang-format only; `extension_api.json` (double) is versioned and
   style-check binds it like the build (`LIBMASZYNA_STYLE_CHECK` removed); the removed casts are
-  restored; `RailVehicle3D.hpp` forward-declares `RailVehicleController`; the Python C API names
-  are fenced with `NOLINTBEGIN/END(readability-identifier-naming)`.
+  restored; `RailVehicle3D.hpp` forward-declares `RailVehicleController`; ported C API names are
+  fenced with `NOLINTBEGIN/END(readability-identifier-naming)`.
 * **Rule:** clang-tidy findings are fixed by hand, across the tree; every header includes or
   forward-declares what it names; every touched C++ file is formatted before commit; the style
   check sees the same precision as the build.
@@ -4343,32 +4300,6 @@ lighting or the trainset.
   REQUIRED_CLEANING RC-124..RC-130 and `TODO.md`.
 * **Rule:** a source reference is written only after reading the original's line - its value and
   the inputs of its formula. What differs is a port error to report, not a value to name.
-
-
-## 2026-10-09 Python screens ended the game without a trace
-
-* **Symptom:** a player on Windows (RTX 4080 SUPER, Steam MaSzyna, the game installed in another
-  directory than MaSzyna) had the game close with no message and no entry in the Windows event
-  log, right after taking over EP07-424; the build with `--no-python` ran without fault.
-* **What proved it:** the `--verbose` `app.log` ends at `[PythonScreen] starting the interpreter`,
-  with `run/flush_stdout_on_print=true` - every line is in the file the moment it is printed - and
-  neither "cannot load" nor "missing from the library" before it: `LoadLibraryW()` and the symbols
-  were fine, and the process ended in `Py_SetPythonHome()`/`Py_InitializeEx()` on the worker
-  thread. A fatal error of CPython is a line on the C stderr of `python27.dll`'s own CRT, which a
-  windowed process does not have, and `abort()`; Godot's crash handler covers the main thread
-  only. Started the original's way, the same `python27.dll` and `python64/` run under wine:
-  `PIL` imports and a screen script renders. The started interpreter differs from eu07.exe's in
-  where it starts: eu07.exe sits in the game directory, which is its working directory and the
-  first place Windows looks for DLLs, and CPython adds the executable's directory to `sys.path`.
-  The player's actual error is not known yet.
-* **Fix:** CPython runs in `maszyna-python-host`, a program of its own beside the library
-  (`../libmaszyna/src/maszyna/cabin/python_host/`), started in the game directory with it on the DLL search path,
-  as eu07.exe is. When it ends, `PythonScreenServer` logs its stderr and exit code, emits
-  `python_runtime_failed` once and leaves the screens blank; the scripts' tracebacks reach the log
-  through a captured `sys.stderr` (PyInt.cpp:265).
-* **Rule:** a runtime from the player's game directory runs out of the game's process, and what
-  it says on its way out is read and logged - the game survives it and the next report carries
-  the reason.
 
 
 ## 2026-10-09 A test that fails only after another script
