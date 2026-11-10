@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RailVehiclePantograph" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		One pantograph of a vehicle as it is built.
+	</brief_description>
+	<description>
+		The configuration of one pantograph of a [RailVehiclePantographs]: the channel of the vehicle's [RailVehicleEnginePowerSource] it is raised by and feeds, and its geometry ([code]TAnimPant[/code] of the original) - where it stands and how its arms are built. How far it is raised is the component's state, not this resource's.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="control" type="int" setter="set_control" getter="get_control" enum="RailVehicleEnginePowerSource.PantographSelector" default="0">
+			The channel of the power source the pantograph is raised by and feeds the voltage it reads to: the first (front) or the second (rear).
+		</member>
+		<member name="has_geometry" type="bool" setter="set_has_geometry" getter="get_has_geometry" default="false">
+			Whether the geometry below is known. A pantograph without it is not moved: it samples the wire where the vehicle stands and always reaches it.
+		</member>
+		<member name="horizontal" type="float" setter="set_horizontal" getter="get_horizontal" default="0.0">
+			The horizontal offset between the arms' ends [lb]m[rb].
+		</member>
+		<member name="lower_length" type="float" setter="set_lower_length" getter="get_lower_length" default="0.0">
+			The lower arm's length [lb]m[rb].
+		</member>
+		<member name="lower_rest_angle" type="float" setter="set_lower_rest_angle" getter="get_lower_rest_angle" default="0.0">
+			The lower arm's angle lowered [lb]rad[rb].
+		</member>
+		<member name="position" type="Vector3" setter="set_position" getter="get_position" default="Vector3(0, 0, 0)">
+			Where the lower arm's pivot stands, in the vehicle's own space [lb]m[rb] - where the overhead wire is sampled.
+		</member>
+		<member name="slider_height" type="float" setter="set_slider_height" getter="get_slider_height" default="0.0">
+			The slider's top over its pivot [lb]m[rb].
+		</member>
+		<member name="upper_length" type="float" setter="set_upper_length" getter="get_upper_length" default="0.0">
+			The upper arm's length [lb]m[rb].
+		</member>
+		<member name="upper_rest_angle" type="float" setter="set_upper_rest_angle" getter="get_upper_rest_angle" default="0.0">
+			The upper arm's angle lowered [lb]rad[rb].
+		</member>
+	</members>
+</class>

@@ -120,6 +120,8 @@
 #include "vehicles/rail/RailVehicleLoadListItem.hpp"
 #include "vehicles/rail/RailVehicleMasterController.hpp"
 #include "vehicles/rail/RailVehicleNeighbour.hpp"
+#include "vehicles/rail/RailVehiclePantograph.hpp"
+#include "vehicles/rail/RailVehiclePantographs.hpp"
 #include "vehicles/rail/RailVehiclePhysicsNode.hpp"
 #include "vehicles/rail/RailVehiclePowerSupply.hpp"
 #include "vehicles/rail/RailVehicleRadio.hpp"
@@ -334,6 +336,8 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(RailVehicleMasterController);
         GDREGISTER_ABSTRACT_CLASS(RailVehiclePowerSupply);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleEnginePowerSource);
+        GDREGISTER_CLASS(RailVehiclePantograph);
+        GDREGISTER_CLASS(RailVehiclePantographs);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleWipers);
         GDREGISTER_CLASS(RailVehicleWiperListItem);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleSwitches);

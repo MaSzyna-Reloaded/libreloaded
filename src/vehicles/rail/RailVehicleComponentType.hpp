@@ -26,6 +26,7 @@ namespace godot {
                 COMPONENT_MASTER_CONTROLLER,
                 COMPONENT_POWER_SUPPLY,
                 COMPONENT_ENGINE_POWER_SOURCE,
+                COMPONENT_PANTOGRAPHS,
             };
     };
 } // namespace godot

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RailVehiclePantographs" inherits="RailVehicleComponent" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The pantographs of a rail vehicle: their geometry and how far they are raised.
+	</brief_description>
+	<description>
+		As many pantographs as the vehicle's data gives, each built as its [RailVehiclePantograph] of [member pantographs] says. [RailVehicleServer] steps them under the wire it finds over each one ([method pantograph_step]); whatever draws the vehicle poses their arms from [method get_pantograph_lower_raise] and [method get_pantograph_upper_raise]. Changing the configuration rebuilds them: a pantograph that gets its geometry only now starts lowered, and one raised already keeps its slider's height as far as the new arms allow it - no lower than at rest, no higher than they reach ([method pantograph_fit]); [RailVehicleServer] holds it under the wire over it.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_pantograph_control" qualifiers="const">
+			<return type="int" enum="RailVehicleEnginePowerSource.PantographSelector" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the channel of the power source pantograph [param index] is raised by.
+			</description>
+		</method>
+		<method name="get_pantograph_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns how many pantographs the vehicle has.
+			</description>
+		</method>
+		<method name="get_pantograph_has_geometry" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns whether pantograph [param index] has its geometry ([member RailVehiclePantograph.has_geometry]).
+			</description>
+		</method>
+		<method name="get_pantograph_height" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the height of the slider of pantograph [param index] over its position [lb]m[rb].
+			</description>
+		</method>
+		<method name="get_pantograph_lower_raise" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns how far the lower arm of pantograph [param index] is raised over lowered [lb]rad[rb].
+			</description>
+		</method>
+		<method name="get_pantograph_position" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns where pantograph [param index] stands in the vehicle's own space; zero for one without geometry.
+			</description>
+		</method>
+		<method name="get_pantograph_reaches_wire" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns whether the slider of pantograph [param index] reaches the wire; one without geometry always does.
+			</description>
+		</method>
+		<method name="get_pantograph_upper_raise" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns how far the upper arm of pantograph [param index] is raised over lowered [lb]rad[rb].
+			</description>
+		</method>
+		<method name="pantograph_fit">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="max_height" type="float" />
+			<description>
+				Keeps the slider's height of pantograph [param index] as far as its arms allow it: no lower than at rest, no higher than they reach nor than [param max_height] [lb]m[rb] - the wire over it.
+			</description>
+		</method>
+		<method name="pantograph_step">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="gap" type="float" />
+			<param index="2" name="active" type="bool" />
+			<param index="3" name="speed_factor" type="float" />
+			<param index="4" name="delta" type="float" />
+			<description>
+				One step of the arms of pantograph [param index], [param gap] [lb]m[rb] below the wire: towards it at [param speed_factor] while [param active], down while lowered, over [param delta] [lb]s[rb]. A pantograph without geometry is not moved.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="pantographs" type="RailVehiclePantograph[]" setter="set_pantographs" getter="get_pantographs" default="[]">
+			One [RailVehiclePantograph] a pantograph of the vehicle; empty for a vehicle without any. Applied with [method VehicleComponent.apply_config].
+		</member>
+	</members>
+</class>

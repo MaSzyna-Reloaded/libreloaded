@@ -178,7 +178,8 @@ namespace godot {
             /* The model of a registered file as the preload left it - never loaded here, on the
              * main thread */
             static Ref<Resource> _get_model(const Visual &p_visual, const RID &p_resource);
-            /* The vehicle's model files loaded again - one more was registered */
+            /* The model files of a vehicle with its models built loaded again - one more was
+             * registered */
             void _vehicle_preload(const RID &p_vehicle);
             /* Every vehicle detached; a renderer that derives calls it from its own destructor,
              * while its hooks still answer */
