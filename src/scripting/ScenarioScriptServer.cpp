@@ -1,10 +1,12 @@
 #include "ScenarioScriptAction.hpp"
 #include "ScenarioScriptServer.hpp"
 #include "logging/GameLogger.hpp"
+#include "rendering/DrawingServer.hpp"
 #include "scenario/ScenarioEventServer.hpp"
 #include "signalling/SignallingServer.hpp"
 #include "tracks/TrackServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <iterator>
@@ -14,19 +16,35 @@
 #endif
 
 namespace godot {
+    /// SceneTreeTimer's signal, which godot-cpp names no constant for
+    static constexpr const char *SCENE_TREE_TIMER_TIMEOUT_SIGNAL = "timeout";
+
     const char *ScenarioScriptServer::script_error_signal = "script_error";
+    const char *ScenarioScriptServer::context_reloaded_signal = "context_reloaded";
 
     void ScenarioScriptServer::_bind_methods() {
         ClassDB::bind_method(D_METHOD("context_create", "base_dir"), &ScenarioScriptServer::context_create);
         ClassDB::bind_method(D_METHOD("context_free", "context"), &ScenarioScriptServer::context_free);
         ClassDB::bind_method(D_METHOD("context_get_rids"), &ScenarioScriptServer::context_get_rids);
-        ClassDB::bind_method(D_METHOD("context_run_file", "context", "path"), &ScenarioScriptServer::context_run_file);
+        ClassDB::bind_method(
+                D_METHOD("context_run_file", "context", "path"),
+                static_cast<bool (ScenarioScriptServer::*)(const RID &, const String &)>(
+                        &ScenarioScriptServer::context_run_file));
+        ClassDB::bind_method(
+                D_METHOD("context_set_data_dir", "context", "data_dir"), &ScenarioScriptServer::context_set_data_dir);
+        ClassDB::bind_method(D_METHOD("context_get_files", "context"), &ScenarioScriptServer::context_get_files);
+        ClassDB::bind_method(
+                D_METHOD("context_set_variables", "context", "variables"),
+                &ScenarioScriptServer::context_set_variables);
+        ClassDB::bind_method(D_METHOD("context_get_exports", "context"), &ScenarioScriptServer::context_get_exports);
+        ClassDB::bind_method(D_METHOD("context_reload", "context"), &ScenarioScriptServer::context_reload);
         ClassDB::bind_method(
                 D_METHOD("context_check_source", "context", "unit", "source"),
                 &ScenarioScriptServer::context_check_source);
         ClassDB::bind_method(
                 D_METHOD("context_apply_source", "context", "unit", "source"),
-                &ScenarioScriptServer::context_apply_source);
+                static_cast<bool (ScenarioScriptServer::*)(const RID &, const StringName &, const String &)>(
+                        &ScenarioScriptServer::context_apply_source));
         ClassDB::bind_method(
                 D_METHOD("context_attach_cabin_implementation", "context", "cabin"),
                 &ScenarioScriptServer::context_attach_cabin_implementation);
@@ -36,6 +54,7 @@ namespace godot {
 
         ADD_SIGNAL(MethodInfo(
                 script_error_signal, PropertyInfo(Variant::RID, "context"), PropertyInfo(Variant::STRING, "message")));
+        ADD_SIGNAL(MethodInfo(context_reloaded_signal, PropertyInfo(Variant::RID, "context")));
     }
 
     /// No explicit disconnect: callable_mp reports this instance as the callable's object, so the
@@ -123,6 +142,8 @@ namespace godot {
     RID ScenarioScriptServer::context_create(const String &p_base_dir) {
         const RID rid = UtilityFunctions::rid_from_int64(UtilityFunctions::rid_allocate_id());
         Context context;
+        context.base_dir = p_base_dir;
+        context.data_dir = p_base_dir;
 #ifdef LIBRELOADED_LUA
         context.runtime = memnew(LuaScriptContext(rid, p_base_dir));
 #endif
@@ -138,6 +159,7 @@ namespace godot {
         for (const RID &hook: owned) {
             _free_hook(hook);
         }
+        _free_drawing_resources(*context, StringName());
         if (context->cabin.is_valid()) {
             context->cabin->disconnect(
                     ScenarioScriptCabinImplementation::control_changed_signal,
@@ -158,7 +180,97 @@ namespace godot {
     }
 
     bool ScenarioScriptServer::context_run_file(const RID &p_context, const String &p_path) {
-        return _enter(p_context, p_path, [&p_path](ScriptRuntime *p_runtime) { return p_runtime->run_file(p_path); });
+        return context_run_file(p_context, p_path, Vector<ScriptArgument>());
+    }
+
+    bool ScenarioScriptServer::context_run_file(
+            const RID &p_context, const String &p_path, const Vector<ScriptArgument> &p_arguments) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL_V(context, false);
+        Unit unit;
+        unit.name = p_path;
+        unit.file = p_path;
+        unit.arguments = p_arguments;
+        _keep_unit(*context, unit);
+        return _run_unit(p_context, unit);
+    }
+
+    void ScenarioScriptServer::_keep_unit(Context &p_context, const Unit &p_unit) {
+        for (int64_t i = 0; i < p_context.units.size(); i++) {
+            if (p_context.units[i].name == p_unit.name) {
+                p_context.units.set(i, p_unit);
+                return;
+            }
+        }
+        p_context.units.push_back(p_unit);
+    }
+
+    bool ScenarioScriptServer::_run_unit(const RID &p_context, const Unit &p_unit) {
+        return _enter(p_context, p_unit.name, [&p_unit](ScriptRuntime *p_runtime) {
+            return p_unit.file.is_empty() ? p_runtime->run_source(p_unit.source, p_unit.name, p_unit.arguments)
+                                          : p_runtime->run_file(p_unit.file, p_unit.arguments);
+        });
+    }
+
+    void ScenarioScriptServer::context_set_variables(const RID &p_context, const Dictionary &p_variables) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL(context);
+        context->variables = p_variables.duplicate();
+    }
+
+    Dictionary ScenarioScriptServer::context_get_exports(const RID &p_context) const {
+        const Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL_V(context, Dictionary());
+        return context->exports.duplicate();
+    }
+
+    Variant
+    ScenarioScriptServer::script_variable_export(const RID &p_context, const String &p_name, const Variant &p_default) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL_V(context, p_default);
+        context->exports[p_name] = p_default;
+        const Variant value = context->variables.get(p_name, p_default);
+        return value.get_type() == p_default.get_type() ? value : p_default;
+    }
+
+    PackedStringArray ScenarioScriptServer::context_get_files(const RID &p_context) const {
+        const Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL_V(context, PackedStringArray());
+        return context->runtime == nullptr ? PackedStringArray() : context->runtime->get_files();
+    }
+
+    /// The units are run in a runtime of their own, not the one being let go
+    void ScenarioScriptServer::context_reload(const RID &p_context) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL(context);
+        const Vector<RID> owned = context->hooks;
+        for (const RID &hook: owned) {
+            _free_hook(hook);
+        }
+        _free_drawing_resources(*context, StringName());
+        context->exports.clear();
+        if (context->runtime != nullptr) {
+            memdelete(context->runtime);
+            context->runtime = nullptr;
+        }
+#ifdef LIBRELOADED_LUA
+        context->runtime = memnew(LuaScriptContext(p_context, context->base_dir));
+        context->runtime->set_data_dir(context->data_dir);
+#endif
+        const Vector<Unit> units = context->units;
+        for (const Unit &unit: units) {
+            _run_unit(p_context, unit);
+        }
+        emit_signal(context_reloaded_signal, p_context);
+    }
+
+    void ScenarioScriptServer::context_set_data_dir(const RID &p_context, const String &p_data_dir) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL(context);
+        context->data_dir = p_data_dir;
+        if (context->runtime != nullptr) {
+            context->runtime->set_data_dir(p_data_dir);
+        }
     }
 
     String
@@ -173,6 +285,12 @@ namespace godot {
 
     bool
     ScenarioScriptServer::context_apply_source(const RID &p_context, const StringName &p_unit, const String &p_source) {
+        return context_apply_source(p_context, p_unit, p_source, Vector<ScriptArgument>());
+    }
+
+    bool ScenarioScriptServer::context_apply_source(
+            const RID &p_context, const StringName &p_unit, const String &p_source,
+            const Vector<ScriptArgument> &p_arguments) {
         Context *context = contexts.getptr(p_context);
         ERR_FAIL_NULL_V(context, false);
         const Vector<RID> owned = context->hooks;
@@ -181,9 +299,13 @@ namespace godot {
                 _free_hook(hook);
             }
         }
-        return _enter(p_context, p_unit, [&p_source, &p_unit](ScriptRuntime *p_runtime) {
-            return p_runtime->run_source(p_source, p_unit);
-        });
+        _free_drawing_resources(*context, p_unit);
+        Unit unit;
+        unit.name = p_unit;
+        unit.source = p_source;
+        unit.arguments = p_arguments;
+        _keep_unit(*context, unit);
+        return _run_unit(p_context, unit);
     }
 
     void ScenarioScriptServer::context_attach_cabin_implementation(
@@ -243,6 +365,50 @@ namespace godot {
         return hook;
     }
 
+    RID ScenarioScriptServer::script_clock_timer_create(
+            const RID &p_context, const double p_seconds, const int64_t p_function, const Timer p_timer) {
+        RID hook = _create_hook(
+                p_context, p_timer == TIMER_ONCE ? HOOK_CLOCK_TIMER_ONCE : HOOK_CLOCK_TIMER_REPEATING, p_function);
+        ERR_FAIL_COND_V(!hook.is_valid(), RID());
+        hooks[hook].clock_seconds = p_seconds;
+        _start_clock_timer(hook);
+        return hook;
+    }
+
+    /// The scene tree's timer, which runs while the tree is paused and in the editor, at the real
+    /// time whatever the engine's time scale
+    void ScenarioScriptServer::_start_clock_timer(const RID &p_hook) {
+        auto *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+        ERR_FAIL_NULL(tree);
+        Hook &hook = hooks[p_hook];
+        hook.clock_timer = tree->create_timer(hook.clock_seconds, true, false, true);
+        hook.clock_timer->connect(
+                SCENE_TREE_TIMER_TIMEOUT_SIGNAL,
+                callable_mp(this, &ScenarioScriptServer::_on_clock_timer_timeout).bind(p_hook));
+    }
+
+    /// The hook may be gone after the call, as in _run_hook()
+    void ScenarioScriptServer::_on_clock_timer_timeout(const RID &p_hook) {
+        const Hook *hook = hooks.getptr(p_hook);
+        if (hook == nullptr) {
+            return;
+        }
+        const RID context = hook->context;
+        const StringName unit = hook->unit;
+        const HookKind kind = hook->kind;
+        const int64_t function = hook->function;
+        _enter(context, unit,
+               [function](ScriptRuntime *p_runtime) { return p_runtime->call(function, Vector<ScriptArgument>()); });
+        if (!hooks.has(p_hook)) {
+            return;
+        }
+        if (kind == HOOK_CLOCK_TIMER_ONCE) {
+            _free_hook(p_hook);
+            return;
+        }
+        _start_clock_timer(p_hook);
+    }
+
     RID ScenarioScriptServer::script_subscribe(
             const RID &p_context, const ScriptSignal p_signal, const RID &p_target, const int64_t p_function) {
         ERR_FAIL_INDEX_V(p_signal, SIGNAL_FIRST_REGISTERED + registered_signals().size(), RID());
@@ -263,6 +429,39 @@ namespace godot {
         return true;
     }
 
+    void ScenarioScriptServer::script_drawing_resource_keep(const RID &p_context, const RID &p_resource) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL(context);
+        context->drawing_resources.insert(p_resource, context->active_unit);
+    }
+
+    bool ScenarioScriptServer::script_drawing_resource_free(const RID &p_context, const RID &p_resource) {
+        Context *context = contexts.getptr(p_context);
+        ERR_FAIL_NULL_V(context, false);
+        if (!context->drawing_resources.erase(p_resource)) {
+            return false;
+        }
+        DrawingServer *drawings = DrawingServer::get_instance();
+        ERR_FAIL_NULL_V(drawings, false);
+        drawings->free_rid(p_resource);
+        return true;
+    }
+
+    void ScenarioScriptServer::_free_drawing_resources(Context &p_context, const StringName &p_unit) {
+        DrawingServer *drawings = DrawingServer::get_instance();
+        ERR_FAIL_NULL(drawings);
+        Vector<RID> owned;
+        for (const KeyValue<RID, StringName> &resource: p_context.drawing_resources) {
+            if (p_unit.is_empty() || resource.value == p_unit) {
+                owned.push_back(resource.key);
+            }
+        }
+        for (const RID &resource: owned) {
+            p_context.drawing_resources.erase(resource);
+            drawings->free_rid(resource);
+        }
+    }
+
     // --- hooks ---
 
     RID ScenarioScriptServer::_create_hook(const RID &p_context, const HookKind p_kind, const int64_t p_function) {
@@ -276,11 +475,14 @@ namespace godot {
         hook.unit = context->active_unit;
         hook.kind = p_kind;
         hook.function = p_function;
-        hook.event = events->event_create();
-        Ref<ScenarioScriptAction> action;
-        action.instantiate();
-        action->set_hook(rid);
-        events->event_attach_action(hook.event, action);
+        const bool clock_timer = p_kind == HOOK_CLOCK_TIMER_ONCE || p_kind == HOOK_CLOCK_TIMER_REPEATING;
+        if (!clock_timer) {
+            hook.event = events->event_create();
+            Ref<ScenarioScriptAction> action;
+            action.instantiate();
+            action->set_hook(rid);
+            events->event_attach_action(hook.event, action);
+        }
         hooks.insert(rid, hook);
         context->hooks.push_back(rid);
         return rid;
@@ -298,7 +500,14 @@ namespace godot {
                 subscriptions[hook->signal].erase(hook->target);
             }
         }
-        events->event_free(hook->event);
+        if (hook->event.is_valid()) {
+            events->event_free(hook->event);
+        }
+        if (hook->clock_timer.is_valid()) {
+            hook->clock_timer->disconnect(
+                    SCENE_TREE_TIMER_TIMEOUT_SIGNAL,
+                    callable_mp(this, &ScenarioScriptServer::_on_clock_timer_timeout).bind(p_hook));
+        }
         if (Context *context = contexts.getptr(hook->context); context != nullptr) {
             if (context->runtime != nullptr) {
                 for (const int64_t function: {hook->function, hook->else_function}) {

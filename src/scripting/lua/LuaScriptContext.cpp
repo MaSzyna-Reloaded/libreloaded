@@ -18,27 +18,42 @@ namespace godot {
             {LUA_STRLIBNAME, luaopen_string}, {LUA_MATHLIBNAME, luaopen_math},    {LUA_UTF8LIBNAME, luaopen_utf8},
     };
 
-    /// Runs the function a call() pushed, with its arguments - inside the protected call, so
-    /// that running out of memory while pushing them is a script error too
-    static int call_with_arguments(lua_State *p_state) {
-        const auto *arguments = static_cast<const Vector<ScriptArgument> *>(lua_touserdata(p_state, 1));
-        const lua_Integer function = lua_tointeger(p_state, 2);
-        lua_settop(p_state, 0);
-        luaL_checkstack(p_state, static_cast<int>(arguments->size()) + 1, nullptr);
-        lua_rawgeti(p_state, LUA_REGISTRYINDEX, function);
-        for (const ScriptArgument &argument: *arguments) {
+    /// Pushes the arguments, each RID as a handle of its kind
+    static void push_arguments(lua_State *p_state, const Vector<ScriptArgument> &p_arguments) {
+        luaL_checkstack(p_state, static_cast<int>(p_arguments.size()), nullptr);
+        for (const ScriptArgument &argument: p_arguments) {
             if (argument.handle == ScriptHandleKind::NONE) {
                 LuaVariant::push(p_state, argument.value);
             } else {
                 LuaHandle::push(p_state, argument.value, argument.handle);
             }
         }
+    }
+
+    /// Runs the function a call() pushed, with its arguments - inside the protected call, so
+    /// that running out of memory while pushing them is a script error too
+    static int call_with_arguments(lua_State *p_state) {
+        const auto *arguments = static_cast<const Vector<ScriptArgument> *>(lua_touserdata(p_state, 1));
+        const lua_Integer function = lua_tointeger(p_state, 2);
+        lua_settop(p_state, 0);
+        luaL_checkstack(p_state, 1, nullptr);
+        lua_rawgeti(p_state, LUA_REGISTRYINDEX, function);
+        push_arguments(p_state, *arguments);
+        lua_call(p_state, static_cast<int>(arguments->size()), 0);
+        return 0;
+    }
+
+    /// Runs the chunk run_file() pushed with its arguments, inside the protected call as above
+    static int run_with_arguments(lua_State *p_state) {
+        const auto *arguments = static_cast<const Vector<ScriptArgument> *>(lua_touserdata(p_state, 2));
+        lua_settop(p_state, 1);
+        push_arguments(p_state, *arguments);
         lua_call(p_state, static_cast<int>(arguments->size()), 0);
         return 0;
     }
 
     LuaScriptContext::LuaScriptContext(const RID &p_context, const String &p_base_dir) :
-        context(p_context), base_dir(p_base_dir) {
+        context(p_context), base_dir(p_base_dir), data_dir(p_base_dir) {
         random_generator.instantiate();
         random_generator->randomize();
         // not in the initializer: the allocator counts into memory_used, which is declared (and so
@@ -76,24 +91,47 @@ namespace godot {
         return luaL_ref(p_state, LUA_REGISTRYINDEX);
     }
 
-    String LuaScriptContext::run_file(const String &p_path) {
+    String LuaScriptContext::run_file(const String &p_path, const Vector<ScriptArgument> &p_arguments) {
+        lua_pushcfunction(state, run_with_arguments);
         if (!_load_file(state, p_path)) {
             const String error = String::utf8(lua_tostring(state, -1));
-            lua_pop(state, 1);
+            lua_pop(state, 2);
             return error;
         }
-        return _protected_call(0);
+        lua_pushlightuserdata(state, const_cast<Vector<ScriptArgument> *>(&p_arguments));
+        return _protected_call(2);
     }
 
-    String LuaScriptContext::run_source(const String &p_source, const String &p_chunk_name) {
+    void LuaScriptContext::set_data_dir(const String &p_data_dir) {
+        data_dir = p_data_dir;
+    }
+
+    String LuaScriptContext::data_file_path(lua_State *p_state, const String &p_path) const {
+        const String path = _path_inside(data_dir, p_path);
+        if (path.is_empty()) {
+            // luaL_error is the Lua C API's vararg error call
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
+            luaL_error(p_state, "cannot open %s: outside the data directory", p_path.utf8().get_data());
+        }
+        return path;
+    }
+
+    String LuaScriptContext::run_source(
+            const String &p_source, const String &p_chunk_name, const Vector<ScriptArgument> &p_arguments) {
         const CharString source = p_source.utf8();
         const CharString chunk_name = ("=" + p_chunk_name).utf8();
+        lua_pushcfunction(state, run_with_arguments);
         if (!(luaL_loadbufferx(state, source.get_data(), source.length(), chunk_name.get_data(), "t") == LUA_OK)) {
             const String error = String::utf8(lua_tostring(state, -1));
-            lua_pop(state, 1);
+            lua_pop(state, 2);
             return error;
         }
-        return _protected_call(0);
+        lua_pushlightuserdata(state, const_cast<Vector<ScriptArgument> *>(&p_arguments));
+        return _protected_call(2);
+    }
+
+    PackedStringArray LuaScriptContext::get_files() const {
+        return files;
     }
 
     String LuaScriptContext::check_source(const String &p_source, const String &p_chunk_name) {
@@ -318,8 +356,8 @@ namespace godot {
         return 1;
     }
 
-    /// Only a file of the base directory: no absolute path, no drive, no way up
-    bool LuaScriptContext::_load_file(lua_State *p_state, const String &p_path) {
+    /// No absolute path, no drive, no way up; the case as the data's resolver finds it
+    String LuaScriptContext::_path_inside(const String &p_dir, const String &p_path) {
         const String relative = p_path.replace("\\", "/");
         const PackedStringArray parts = relative.split("/");
         bool inside = !relative.is_absolute_path() && !relative.contains(":");
@@ -327,14 +365,24 @@ namespace godot {
             inside = inside && !parts[i].is_empty() && !(parts[i] == "..");
         }
         if (!inside) {
-            lua_pushstring(p_state, ("cannot open " + p_path + ": outside the scenery directory").utf8().get_data());
+            return String();
+        }
+        return p_dir.path_join(ReloadedPluginServer::get_instance()->data_path_resolve(p_dir, relative));
+    }
+
+    /// Only a file of the base directory
+    bool LuaScriptContext::_load_file(lua_State *p_state, const String &p_path) {
+        const String path = _path_inside(base_dir, p_path);
+        if (path.is_empty()) {
+            lua_pushstring(p_state, ("cannot open " + p_path + ": outside the script directory").utf8().get_data());
             return false;
         }
-        const String path =
-                base_dir.path_join(ReloadedPluginServer::get_instance()->data_path_resolve(base_dir, relative));
         if (!FileAccess::file_exists(path)) {
             lua_pushstring(p_state, ("cannot open " + p_path).utf8().get_data());
             return false;
+        }
+        if (!files.has(path)) {
+            files.push_back(path);
         }
         const PackedByteArray code = FileAccess::get_file_as_bytes(path);
         const CharString chunk_name = ("@" + p_path).utf8();

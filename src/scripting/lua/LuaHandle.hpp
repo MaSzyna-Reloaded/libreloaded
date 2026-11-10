@@ -25,6 +25,12 @@ namespace godot {
                     "maszyna.SignallingSource",
                     "maszyna.SignallingRoute",
                     "maszyna.Subscription",
+                    "reloaded.Drawing",
+                    "reloaded.Font",
+                    "reloaded.Image",
+                    "reloaded.Station",
+                    "reloaded.Timetable",
+                    "reloaded.Run",
             };
 
             static void register_types(lua_State *p_state);
@@ -36,6 +42,8 @@ namespace godot {
             static RID check(lua_State *p_state, int p_index, ScriptHandleKind p_kind);
             /// ...or an invalid RID for nil and none
             static RID optional(lua_State *p_state, int p_index, ScriptHandleKind p_kind);
+            /// The RID of the handle at p_index when it is of the kind; an invalid RID otherwise
+            static RID test(lua_State *p_state, int p_index, ScriptHandleKind p_kind);
             /// The RID of a handle of any kind at p_index; an invalid RID when it is no handle
             static RID to_rid(lua_State *p_state, int p_index);
     };

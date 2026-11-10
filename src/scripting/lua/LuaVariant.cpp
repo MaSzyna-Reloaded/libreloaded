@@ -171,4 +171,49 @@ namespace godot {
         }
         return dictionary;
     }
+
+    /// The channels of a colour
+    static constexpr int RGB_CHANNELS = 3;
+    static constexpr int ALPHA_CHANNEL = 4;
+
+    static double check_channel(lua_State *p_state, const int p_index, const int p_channel) {
+        lua_rawgeti(p_state, p_index, p_channel);
+        const double value = lua_isnil(p_state, -1) ? LuaVariant::CHANNEL_MAX : luaL_checknumber(p_state, -1);
+        lua_pop(p_state, 1);
+        return value / LuaVariant::CHANNEL_MAX;
+    }
+
+    bool LuaVariant::is_color(lua_State *p_state, const int p_index) {
+        if (!lua_istable(p_state, p_index)) {
+            return false;
+        }
+        const lua_Unsigned length = lua_rawlen(p_state, p_index);
+        if (length < RGB_CHANNELS || length > ALPHA_CHANNEL) {
+            return false;
+        }
+        bool numbers = true;
+        for (lua_Unsigned i = 1; i <= length; i++) {
+            lua_rawgeti(p_state, p_index, static_cast<lua_Integer>(i));
+            numbers = numbers && lua_type(p_state, -1) == LUA_TNUMBER;
+            lua_pop(p_state, 1);
+        }
+        return numbers;
+    }
+
+    Color LuaVariant::check_color(lua_State *p_state, const int p_index) {
+        luaL_argcheck(p_state, is_color(p_state, p_index), p_index, "a colour is {r, g, b[, a]}");
+        return {static_cast<float>(check_channel(p_state, p_index, 1)),
+                static_cast<float>(check_channel(p_state, p_index, 2)),
+                static_cast<float>(check_channel(p_state, p_index, RGB_CHANNELS)),
+                static_cast<float>(check_channel(p_state, p_index, ALPHA_CHANNEL))};
+    }
+
+    void LuaVariant::push_color(lua_State *p_state, const Color &p_color) {
+        lua_createtable(p_state, ALPHA_CHANNEL, 0);
+        const float channels[] = {p_color.r, p_color.g, p_color.b, p_color.a};
+        for (int i = 0; i < ALPHA_CHANNEL; i++) {
+            lua_pushinteger(p_state, static_cast<lua_Integer>(Math::round(channels[i] * CHANNEL_MAX)));
+            lua_rawseti(p_state, -2, i + 1);
+        }
+    }
 } // namespace godot

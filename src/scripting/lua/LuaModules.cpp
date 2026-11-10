@@ -1,6 +1,7 @@
 #include "LuaHandle.hpp"
 #include "LuaModules.hpp"
 #include "LuaScriptContext.hpp"
+#include "LuaVariant.hpp"
 #include "scripting/ScenarioScriptServer.hpp"
 
 namespace godot {
@@ -26,17 +27,41 @@ namespace godot {
         return 1;
     }
 
+    /// export_var(name, default) - a variable of the script its owner sets (a LuaNode in the
+    /// inspector): its value, or the default. A boolean, an integer, a number, a string or a colour
+    /// {r, g, b[, a]} - its type is the default's
+    static int export_var(lua_State *p_state) {
+        const String name = String::utf8(luaL_checkstring(p_state, 1));
+        luaL_checkany(p_state, 2);
+        const bool color = LuaVariant::is_color(p_state, 2);
+        const int type = lua_type(p_state, 2);
+        luaL_argcheck(
+                p_state, color || type == LUA_TBOOLEAN || type == LUA_TNUMBER || type == LUA_TSTRING, 2,
+                "a boolean, a number, a string or a colour");
+        const Variant fallback =
+                color ? Variant(LuaVariant::check_color(p_state, 2)) : LuaVariant::to_variant(p_state, 2);
+        const Variant value = LuaModules::server<ScenarioScriptServer>(p_state)->script_variable_export(
+                LuaScriptContext::from_state(p_state)->get_rid(), name, fallback);
+        if (color) {
+            LuaVariant::push_color(p_state, value);
+        } else {
+            LuaVariant::push(p_state, value);
+        }
+        return 1;
+    }
+
     const luaL_Reg LuaModules::ROOT[] = {
             {"cancel", cancel},
+            {"export_var", export_var},
             {nullptr, nullptr},
     };
 
     // Only the addresses of the module tables are taken, which is a constant initialization
     // NOLINTNEXTLINE(cppcoreguidelines-interfaces-global-init)
     const LuaModules::Module LuaModules::MODULES[] = {
-            {"sim", SIM},       {"vehicle", VEHICLE}, {"cabin", CABIN},   {"driver", DRIVER},
-            {"event", EVENT},   {"track", TRACK},     {"signal", SIGNAL}, {"log", LOG},
-            {"player", PLAYER}, {"camera", CAMERA},   {"hud", HUD},       {nullptr, nullptr},
+            {"sim", SIM},     {"vehicle", VEHICLE}, {"cabin", CABIN}, {"driver", DRIVER},   {"event", EVENT},
+            {"track", TRACK}, {"signal", SIGNAL},   {"log", LOG},     {"player", PLAYER},   {"camera", CAMERA},
+            {"hud", HUD},     {"draw", DRAW},       {"time", TIME},   {"station", STATION}, {nullptr, nullptr},
     };
 
     /// The plugins' modules (LuaModules::opener_register())

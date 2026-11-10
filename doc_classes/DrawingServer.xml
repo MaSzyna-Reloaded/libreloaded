@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DrawingServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Pictures drawn on the GPU, by RID, and the fonts and images they are drawn with.
+	</brief_description>
+	<description>
+		A drawing is a picture a script or a node draws - a cab's screen, a station's board - made of shapes, text and pasted images. Each drawing is drawn on the GPU into a texture; after a change it is drawn again once, in the next frame, so nothing runs while nothing changes and nothing is copied through the CPU. Its texture ([method drawing_get_texture]) is shown by a [DrawingTexture].
+		Coordinates are pixels, the y axis pointing down. A line, an outline and a pixel are drawn through the middle of the pixels their points name; a rectangle and a text start at their top left corner. Colours with an alpha below 1 are mixed with what is drawn under them.
+		The owner of a drawing may pass its picture through a material of its own ([method drawing_set_material]) - a [code]canvas_item[/code] shader that gives the picture a look of its kind at another size. The server itself brings no such look.
+		Fonts and images are read from files the caller names; a script reads them through [code]reloaded.draw[/code], from its data directory ([method ScenarioScriptServer.context_set_data_dir]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="drawing_add_ellipse">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="rect" type="Rect2" />
+			<param index="2" name="color" type="Color" />
+			<description>
+				Fills the ellipse [param rect] bounds.
+			</description>
+		</method>
+		<method name="drawing_add_ellipse_outline">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="rect" type="Rect2" />
+			<param index="2" name="color" type="Color" />
+			<param index="3" name="width" type="float" />
+			<description>
+				Draws the edge of the ellipse [param rect] bounds, [param width] [lb]px[rb] wide, inside it.
+			</description>
+		</method>
+		<method name="drawing_add_line">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="points" type="PackedVector2Array" />
+			<param index="2" name="color" type="Color" />
+			<param index="3" name="width" type="float" />
+			<description>
+				Draws a line through [param points], [param width] [lb]px[rb] wide.
+			</description>
+		</method>
+		<method name="drawing_add_pieslice">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="rect" type="Rect2" />
+			<param index="2" name="start" type="float" />
+			<param index="3" name="end" type="float" />
+			<param index="4" name="color" type="Color" />
+			<description>
+				Fills the slice of the ellipse [param rect] bounds from [param start] to [param end] [lb]deg[rb], measured clockwise from three o'clock.
+			</description>
+		</method>
+		<method name="drawing_add_pixel">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="position" type="Vector2i" />
+			<param index="2" name="color" type="Color" />
+			<description>
+				Sets the pixel at [param position] to [param color].
+			</description>
+		</method>
+		<method name="drawing_add_polygon">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="points" type="PackedVector2Array" />
+			<param index="2" name="color" type="Color" />
+			<description>
+				Fills the polygon of [param points].
+			</description>
+		</method>
+		<method name="drawing_add_polygon_outline">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="points" type="PackedVector2Array" />
+			<param index="2" name="color" type="Color" />
+			<param index="3" name="width" type="float" />
+			<description>
+				Draws the closed edge of the polygon of [param points], [param width] [lb]px[rb] wide.
+			</description>
+		</method>
+		<method name="drawing_add_rect">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="rect" type="Rect2" />
+			<param index="2" name="color" type="Color" />
+			<description>
+				Fills [param rect] with [param color].
+			</description>
+		</method>
+		<method name="drawing_add_rect_outline">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="rect" type="Rect2" />
+			<param index="2" name="color" type="Color" />
+			<param index="3" name="width" type="float" />
+			<description>
+				Draws the edge of [param rect], [param width] [lb]px[rb] wide, inside the rectangle.
+			</description>
+		</method>
+		<method name="drawing_add_text">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="position" type="Vector2" />
+			<param index="2" name="text" type="String" />
+			<param index="3" name="font" type="RID" />
+			<param index="4" name="size" type="int" />
+			<param index="5" name="color" type="Color" />
+			<description>
+				Draws [param text] in [param font] of [param size] [lb]px[rb], its top left corner at [param position].
+			</description>
+		</method>
+		<method name="drawing_add_texture">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="source" type="RID" />
+			<param index="2" name="source_rect" type="Rect2" />
+			<param index="3" name="rect" type="Rect2" />
+			<param index="4" name="modulate" type="Color" />
+			<param index="5" name="filter" type="int" enum="DrawingServer.Filter" />
+			<description>
+				Pastes the part [param source_rect] of an image or of another drawing [param source] into [param rect], scaled to it, tinted with [param modulate] and mixed by its alpha. A negative size of [param rect] flips it where it stands. [param filter] says how it is sampled when scaled.
+			</description>
+		</method>
+		<method name="drawing_add_texture_rotated">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="source" type="RID" />
+			<param index="2" name="center" type="Vector2" />
+			<param index="3" name="angle" type="float" />
+			<param index="4" name="filter" type="int" enum="DrawingServer.Filter" />
+			<description>
+				Pastes an image or another drawing [param source] turned by [param angle] [lb]deg[rb] counter-clockwise about its middle, its middle at [param center].
+			</description>
+		</method>
+		<method name="drawing_clear">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="color" type="Color" />
+			<description>
+				Everything drawn on [param drawing] goes and it is filled with [param color], opaque in an opaque drawing.
+			</description>
+		</method>
+		<method name="drawing_create">
+			<return type="RID" />
+			<param index="0" name="size" type="Vector2i" />
+			<param index="1" name="transparent" type="bool" />
+			<description>
+				Makes a drawing of [param size] [lb]px[rb]: transparent when [param transparent], opaque black otherwise. An opaque drawing stays opaque whatever is drawn on it.
+			</description>
+		</method>
+		<method name="drawing_get_size" qualifiers="const">
+			<return type="Vector2i" />
+			<param index="0" name="drawing" type="RID" />
+			<description>
+				The size of [param drawing] [lb]px[rb].
+			</description>
+		</method>
+		<method name="drawing_get_texture" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="drawing" type="RID" />
+			<description>
+				The RenderingServer texture [param drawing] ends in: its picture, or the picture through its material. It keeps its RID until [method drawing_set_material] is called. Empty in a run without a renderer.
+			</description>
+		</method>
+		<method name="drawing_set_flip_y">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="flip_y" type="bool" />
+			<description>
+				The drawing's texture holds the picture upside down: its first row is the picture's bottom, as models whose texture coordinates count up from the bottom (OpenGL's) take a texture. The drawing is drawn as ever, from its top; with a material ([method drawing_set_material]) the picture passes through it the right way up and the result is turned over.
+			</description>
+		</method>
+		<method name="drawing_set_material">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<param index="1" name="material" type="RID" />
+			<param index="2" name="output_size" type="Vector2i" />
+			<description>
+				Passes the picture of [param drawing] through [param material], a [code]canvas_item[/code] shader, into a texture of [param output_size] [lb]px[rb]. An invalid [param material] takes the pass away. [method drawing_get_texture] returns another RID after it, so a [DrawingTexture] showing the drawing is attached again.
+			</description>
+		</method>
+		<method name="font_get_text_size" qualifiers="const">
+			<return type="Vector2" />
+			<param index="0" name="font" type="RID" />
+			<param index="1" name="text" type="String" />
+			<param index="2" name="size" type="int" />
+			<description>
+				The width and height [lb]px[rb] [param text] takes in [param font] of [param size].
+			</description>
+		</method>
+		<method name="font_load">
+			<return type="RID" />
+			<param index="0" name="path" type="String" />
+			<param index="1" name="antialiasing" type="int" enum="TextServer.FontAntialiasing" default="1" />
+			<description>
+				Reads a TrueType or OpenType font from [param path], its edges smoothed as [param antialiasing] says: [constant TextServer.FONT_ANTIALIASING_NONE] draws its glyphs in whole pixels, as a LED board shows them. Returns an empty RID when it cannot be read.
+			</description>
+		</method>
+		<method name="free_rid">
+			<return type="void" />
+			<param index="0" name="rid" type="RID" />
+			<description>
+				Frees a drawing, a font or an image.
+			</description>
+		</method>
+		<method name="image_get_pixel" qualifiers="const">
+			<return type="Color" />
+			<param index="0" name="image" type="RID" />
+			<param index="1" name="position" type="Vector2i" />
+			<description>
+				The colour of the pixel of [param image] at [param position].
+			</description>
+		</method>
+		<method name="image_get_size" qualifiers="const">
+			<return type="Vector2i" />
+			<param index="0" name="image" type="RID" />
+			<description>
+				The size of [param image] [lb]px[rb].
+			</description>
+		</method>
+		<method name="image_load">
+			<return type="RID" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Reads an image from [param path] (png, bmp, tga, dds and the other formats [Image] reads). Returns an empty RID when it cannot be read.
+			</description>
+		</method>
+		<method name="image_load_mask">
+			<return type="RID" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Reads an image from [param path] as a mask: white, as opaque as the image's alpha, or as its brightness when it has no alpha. Pasted with a tint ([method drawing_add_texture]), it is drawn in the tint's colour.
+			</description>
+		</method>
+		<method name="owns" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="rid" type="RID" />
+			<description>
+				Whether [param rid] is a drawing, a font or an image of the server.
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="FILTER_NEAREST" value="0" enum="Filter">
+			Each pixel of the source taken as it is.
+		</constant>
+		<constant name="FILTER_LINEAR" value="1" enum="Filter">
+			Smoothed, with mipmaps when it is made smaller.
+		</constant>
+	</constants>
+</class>

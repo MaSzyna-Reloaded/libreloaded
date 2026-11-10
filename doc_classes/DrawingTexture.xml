@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DrawingTexture" inherits="Texture2D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A texture showing a [DrawingServer] drawing.
+	</brief_description>
+	<description>
+		Shows a drawing of [DrawingServer] as a [ViewportTexture] shows a viewport. A material names it like any other texture, in a scene or in code; whoever owns the drawing attaches it ([method attach_drawing]), as [LuaTextureNode] does. Its RID stays the same whether a drawing is attached or not, so a material showing it follows the drawing without being told.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="attach_drawing">
+			<return type="void" />
+			<param index="0" name="drawing" type="RID" />
+			<description>
+				Shows [param drawing]; an empty RID shows nothing again. Called again after the drawing's material changed ([method DrawingServer.drawing_set_material]).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="flip_y" type="bool" setter="set_flip_y" getter="get_flip_y" default="false">
+			It holds its drawing upside down ([method DrawingServer.drawing_set_flip_y]) - for models whose texture coordinates count up from the bottom. A [LuaTextureNode] sets it on the drawing it creates.
+		</member>
+		<member name="resource_local_to_scene" type="bool" setter="set_local_to_scene" getter="is_local_to_scene" overrides="Resource" default="false" />
+		<member name="texture_size" type="Vector2i" setter="set_texture_size" getter="get_texture_size" default="Vector2i(256, 256)">
+			The texture's size [lb]px[rb] - the size its owner draws at.
+		</member>
+		<member name="transparent" type="bool" setter="set_transparent" getter="get_transparent" default="false">
+			Whether the drawing it shows is transparent.
+		</member>
+	</members>
+</class>

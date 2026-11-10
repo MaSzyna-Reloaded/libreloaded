@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LuaVehicleTextureNode" inherits="LuaTextureNode" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A Lua script drawing a texture for a vehicle.
+	</brief_description>
+	<description>
+		A [LuaTextureNode] whose script gets, after the drawing, the vehicle it draws for - its destination sign, a screen of its cab: [code]local drawing, vehicle = ...[/code], [code]nil[/code] for none. The vehicle is handed to the script as it starts.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_vehicle" qualifiers="const">
+			<return type="RID" />
+			<description>
+				The vehicle the script is handed; an empty RID for none.
+			</description>
+		</method>
+		<method name="set_vehicle">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The vehicle the script is handed as it starts - set before the node enters the tree.
+			</description>
+		</method>
+	</methods>
+</class>
