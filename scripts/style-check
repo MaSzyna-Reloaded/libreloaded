@@ -41,8 +41,14 @@ is_header_tidy_file() {
     [[ "$1" == *.hpp || "$1" == *.h ]]
 }
 
+# Vendored code - under the core's or a plugin's vendor/ - is styled by its own repository, never here
 is_excluded_file() {
-    [[ "$1" == */maszyna-mover/* || "$1" == "${ROOT_DIR}/src/gen/"* ]]
+    [[ "$1" == */maszyna-mover/* || "$1" == "${ROOT_DIR}/src/gen/"* || "$1" == "${ROOT_DIR}/vendor/"* ]] && return 0
+    local dir
+    while read -r dir; do
+        [[ "$1" == "${dir}/vendor/"* ]] && return 0
+    done < <(plugin_dirs)
+    return 1
 }
 
 # The plugins built with the library (LIBRELOADED_PLUGINS, ;-separated, relative to this checkout
@@ -57,10 +63,20 @@ plugin_dirs() {
     done
 }
 
-# Where the C++ sources are: the core's and each plugin's
+# Where the C++ sources are: each plugin's src/ (its plugin.cmake builds them) when the check is a
+# plugin's, the core's own otherwise - a plugin's check never goes through the core it vendors, its
+# vendor/ or its build directories
 source_dirs() {
-    echo "${ROOT_DIR}/src"
-    plugin_dirs
+    local dirs
+    mapfile -t dirs < <(plugin_dirs)
+    if [ "${#dirs[@]}" -eq 0 ]; then
+        echo "${ROOT_DIR}/src"
+        return
+    fi
+    local dir
+    for dir in "${dirs[@]}"; do
+        echo "${dir}/src"
+    done
 }
 
 resolve_target_file() {
