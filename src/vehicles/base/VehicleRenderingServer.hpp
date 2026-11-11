@@ -115,7 +115,6 @@ namespace godot {
                     Vector<Part> wheels[3];
                     /* Every pose of the exterior, sent to it in one call */
                     Dictionary poses;
-                    Ref<Material> head_display_material;
                     /* Born optimized: a scenery's vehicles built as node hierarchies (cars,
                      * interiors) filled the load; _update_detail() details the near ones */
                     bool detailed = false;
@@ -284,7 +283,6 @@ namespace godot {
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
-            void vehicle_set_head_display_material(const RID &p_vehicle, const Ref<Material> &p_material);
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
              * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
              * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every

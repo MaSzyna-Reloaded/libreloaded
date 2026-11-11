@@ -15,9 +15,6 @@
 		<member name="data_path" type="String" setter="set_data_path" getter="get_data_path" default="&quot;&quot;">
 			Where the model files are.
 		</member>
-		<member name="head_display_submodel" type="String" setter="set_head_display_submodel" getter="get_head_display_submodel" default="&quot;tablice_relacyjne&quot;">
-			The submodel the head display material is drawn on.
-		</member>
 		<member name="low_poly_model_filename" type="String" setter="set_low_poly_model_filename" getter="get_low_poly_model_filename" default="&quot;&quot;">
 			The low-poly interior seen through the windows.
 		</member>

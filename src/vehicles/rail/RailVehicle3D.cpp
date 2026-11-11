@@ -64,11 +64,6 @@ namespace godot {
                         RailVehicleController::coupling_mode_hint(),
                         PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_ENUM, "RailVehicleController.CouplingMode"),
                 "set_trainset_coupling_mode", "get_trainset_coupling_mode");
-        ClassDB::bind_method(D_METHOD("set_head_display_material", "value"), &RailVehicle3D::set_head_display_material);
-        ClassDB::bind_method(D_METHOD("get_head_display_material"), &RailVehicle3D::get_head_display_material);
-        ADD_PROPERTY(
-                PropertyInfo(Variant::OBJECT, "head_display_material", PROPERTY_HINT_RESOURCE_TYPE, "Material"),
-                "set_head_display_material", "get_head_display_material");
 
         ClassDB::bind_method(D_METHOD("set_vehicle", "vehicle"), &RailVehicle3D::set_vehicle);
         ClassDB::bind_method(D_METHOD("set_editable_in_editor", "editable"), &RailVehicle3D::set_editable_in_editor);
@@ -208,9 +203,6 @@ namespace godot {
             drawing->vehicle_set_transform(rid, get_global_transform());
             drawing->vehicle_mount_node(rid, get_instance_id());
             _hand_over_assembly();
-            if (head_display_material.is_valid()) {
-                drawing->vehicle_set_head_display_material(rid, head_display_material);
-            }
             drawing->vehicle_set_editable(rid, editable_in_editor);
             start_track_pending = !start_track_name.is_empty();
             _place_on_start_track();
@@ -395,17 +387,5 @@ namespace godot {
 
     RailVehicleController::CouplingMode RailVehicle3D::get_trainset_coupling_mode() const {
         return trainset_coupling_mode;
-    }
-
-    void RailVehicle3D::set_head_display_material(const Ref<Material> &p_value) {
-        head_display_material = p_value;
-        if (RailVehicleRenderingServer *drawing = RailVehicleRenderingServer::get_instance();
-            drawing != nullptr && drawing->vehicle_is_attached(rid)) {
-            drawing->vehicle_set_head_display_material(rid, head_display_material);
-        }
-    }
-
-    Ref<Material> RailVehicle3D::get_head_display_material() const {
-        return head_display_material;
     }
 } // namespace godot

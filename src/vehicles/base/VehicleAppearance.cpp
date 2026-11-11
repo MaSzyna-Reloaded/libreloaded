@@ -36,12 +36,6 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_model_transform"), &VehicleAppearance::get_model_transform);
         ADD_PROPERTY(
                 PropertyInfo(Variant::TRANSFORM3D, "model_transform"), "set_model_transform", "get_model_transform");
-        ClassDB::bind_method(
-                D_METHOD("set_head_display_submodel", "value"), &VehicleAppearance::set_head_display_submodel);
-        ClassDB::bind_method(D_METHOD("get_head_display_submodel"), &VehicleAppearance::get_head_display_submodel);
-        ADD_PROPERTY(
-                PropertyInfo(Variant::STRING, "head_display_submodel"), "set_head_display_submodel",
-                "get_head_display_submodel");
     }
 
     void VehicleAppearance::set_data_path(const String &p_value) {
@@ -98,13 +92,5 @@ namespace godot {
 
     Transform3D VehicleAppearance::get_model_transform() const {
         return model_transform;
-    }
-
-    void VehicleAppearance::set_head_display_submodel(const String &p_value) {
-        head_display_submodel = p_value;
-    }
-
-    String VehicleAppearance::get_head_display_submodel() const {
-        return head_display_submodel;
     }
 } // namespace godot

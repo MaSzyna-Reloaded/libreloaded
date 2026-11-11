@@ -109,14 +109,6 @@
 				Whether the vehicle's models stand as nodes the editor shows and edits ("Edit FIZ"): drawn in detail wherever the camera is, under a holder node of the scene, owned by the scene node's owner. Whoever saves the scene takes them off first.
 			</description>
 		</method>
-		<method name="vehicle_set_head_display_material">
-			<return type="void" />
-			<param index="0" name="vehicle" type="RID" />
-			<param index="1" name="material" type="Material" />
-			<description>
-				The material the vehicle's head display is drawn with.
-			</description>
-		</method>
 		<method name="vehicle_set_models">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
