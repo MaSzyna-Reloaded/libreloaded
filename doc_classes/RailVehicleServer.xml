@@ -516,6 +516,18 @@
 				Walks [param vehicle] the distance its own simulation asked for. The step does this for every vehicle; on its own it is how a single vehicle is advanced deliberately.
 			</description>
 		</method>
+		<method name="vehicle_send_line_command">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="end" type="int" enum="RailVehicleController.CouplerEnd" />
+			<param index="2" name="flags" type="int" enum="RailVehicleController.CouplingFlags" is_bitfield="true" />
+			<param index="3" name="command" type="StringName" />
+			<param index="4" name="p1" type="Variant" default="null" />
+			<param index="5" name="p2" type="Variant" default="null" />
+			<description>
+				Sends [param command] along a line of couplings: out of [param vehicle] through [param end], to every vehicle joined on by a coupling of [param flags] - as far as a coupling without them, whichever way round each vehicle stands. Each takes it as its own ([method VehicleServer.vehicle_send_command]: its state renewed, [signal VehicleServer.command_received]), told first where it came from by [signal vehicle_line_command_received]; a vehicle that carries no such command passes it on untaken. A plugin registers the commands it carries, as its other commands. Both ways are two calls, one an end.
+			</description>
+		</method>
 		<method name="vehicle_set_destination">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
@@ -646,6 +658,15 @@
 			<param index="0" name="vehicle" type="RID" />
 			<description>
 				A Radio-Stop reached [param vehicle] and braked it ([code]TDynamicObject::RadioStop[/code], [code]DynObj.cpp:7229[/code]).
+			</description>
+		</signal>
+		<signal name="vehicle_line_command_received">
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="sender" type="RID" />
+			<param index="2" name="end" type="int" />
+			<param index="3" name="command" type="StringName" />
+			<description>
+				[param command] came to [param vehicle] along a line of couplings ([method vehicle_send_line_command]), sent by [param sender], in by the vehicle's [param end] ([enum RailVehicleController.CouplerEnd]) - emitted just before the vehicle takes it.
 			</description>
 		</signal>
 		<signal name="vehicle_placed">

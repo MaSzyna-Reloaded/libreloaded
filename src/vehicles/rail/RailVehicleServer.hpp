@@ -483,6 +483,10 @@ namespace godot {
              * RID() when nobody drives it) - vehicle_get_driver_cabin() */
             static const char *vehicle_driver_cabin_changed_signal;
             static const char *coupler_attached_signal;
+            /* A command came to the vehicle along a line of couplings (vehicle_send_line_command()),
+             * sent by `sender`, in by the vehicle's `end` - just before the vehicle takes it
+             * (vehicle, sender, end, command) */
+            static const char *vehicle_line_command_received_signal;
             static const char *coupler_detached_signal;
             /* A coupler adapter fitted to / taken off an end of the vehicle (its controller's) */
             static const char *coupler_adapter_attached_signal;
@@ -597,6 +601,16 @@ namespace godot {
             coupler_get_joinable_flags(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
             double coupler_get_adapter_length(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
             double coupler_get_adapter_height(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            /* A line of couplings: the command goes out of the vehicle through p_end, and every vehicle
+             * joined on by p_flags - as far as a coupling without them, whichever way round each
+             * stands - takes it as its own (VehicleServer::vehicle_send_command()), told first where
+             * it came from (vehicle_line_command_received); one without the command passes it on. A
+             * plugin registers the commands it carries, as its other commands; both ways are two
+             * calls. */
+            void vehicle_send_line_command(
+                    const RID &p_vehicle, RailVehicleController::CouplerEnd p_end,
+                    BitField<RailVehicleController::CouplingFlags> p_flags, const StringName &p_command,
+                    const Variant &p_p1 = Variant(), const Variant &p_p2 = Variant());
             TypedArray<RID> vehicle_get_coupled(
                     const RID &p_vehicle, RailVehicleController::CouplerEnd p_end,
                     BitField<RailVehicleController::CouplingFlags> p_flags) const;

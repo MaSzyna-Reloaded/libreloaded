@@ -40,6 +40,7 @@ namespace godot {
     const char *RailVehicleServer::vehicle_derailed_signal = "vehicle_derailed";
     const char *RailVehicleServer::vehicle_driver_cabin_changed_signal = "vehicle_driver_cabin_changed";
     const char *RailVehicleServer::coupler_attached_signal = "coupler_attached";
+    const char *RailVehicleServer::vehicle_line_command_received_signal = "vehicle_line_command_received";
     const char *RailVehicleServer::coupler_detached_signal = "coupler_detached";
     const char *RailVehicleServer::coupler_adapter_attached_signal = "coupler_adapter_attached";
     const char *RailVehicleServer::coupler_adapter_removed_signal = "coupler_adapter_removed";
@@ -174,6 +175,9 @@ namespace godot {
                 &RailVehicleServer::coupler_attach);
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_coupled", "vehicle", "end", "flags"), &RailVehicleServer::vehicle_get_coupled);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_send_line_command", "vehicle", "end", "flags", "command", "p1", "p2"),
+                &RailVehicleServer::vehicle_send_line_command, DEFVAL(Variant()), DEFVAL(Variant()));
         ClassDB::bind_method(D_METHOD("vehicle_find_powered", "vehicle"), &RailVehicleServer::vehicle_find_powered);
         ClassDB::bind_method(
                 D_METHOD("vehicle_find_pantograph_carrier", "vehicle"),
@@ -276,6 +280,10 @@ namespace godot {
                 Variant::INT, "flag", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_BITFIELD,
                 "RailVehicleController.CouplingFlags");
         ADD_SIGNAL(MethodInfo(coupler_attached_signal, PropertyInfo(Variant::RID, "vehicle"), coupling_flag));
+        ADD_SIGNAL(MethodInfo(
+                vehicle_line_command_received_signal, PropertyInfo(Variant::RID, "vehicle"),
+                PropertyInfo(Variant::RID, "sender"), PropertyInfo(Variant::INT, "end"),
+                PropertyInfo(Variant::STRING_NAME, "command")));
         ADD_SIGNAL(MethodInfo(coupler_detached_signal, PropertyInfo(Variant::RID, "vehicle"), coupling_flag));
         ADD_SIGNAL(MethodInfo(
                 coupler_adapter_attached_signal, PropertyInfo(Variant::RID, "vehicle"),
@@ -1046,6 +1054,37 @@ namespace godot {
                     static_cast<RadioServer::Kind>(p_kind), static_cast<int>(p_channel), p_payload, driven) &&
             p_kind == RadioServer::KIND_RADIO_STOP) {
             emit_signal(vehicle_emergency_signal_received_signal, p_vehicle);
+        }
+    }
+
+    void RailVehicleServer::vehicle_send_line_command(
+            const RID &p_vehicle, const RailVehicleController::CouplerEnd p_end,
+            const BitField<RailVehicleController::CouplingFlags> p_flags, const StringName &p_command,
+            const Variant &p_p1, const Variant &p_p2) {
+        ERR_FAIL_COND_MSG(static_cast<int64_t>(p_flags) == 0, "No coupling to send along.");
+        VehicleServer *vehicle_server = VehicleServer::get_instance();
+        ERR_FAIL_NULL(vehicle_server);
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        RailVehicleController *vehicle = placement != nullptr ? _get_controller(*placement) : nullptr;
+        // the vehicles along the line with the end it enters each by, all found before any takes the
+        // command: a command may change the couplings
+        Vector<RID> receivers;
+        Vector<RailVehicleController::CouplerEnd> entered_ends;
+        RailVehicleController::CouplerEnd end = p_end;
+        while (vehicle != nullptr && vehicle->is_coupled_by(end, p_flags)) {
+            const RailVehicleController::CouplerEnd entered = vehicle->get_coupled_end(end);
+            vehicle = vehicle->get_coupled_controller(end).ptr();
+            // a vehicle that carries no such command passes it on, untaken
+            if (vehicle->get_commands().has(p_command)) {
+                receivers.push_back(vehicle->get_rid());
+                entered_ends.push_back(entered);
+            }
+            end = RailVehicleController::opposite_end(entered);
+        }
+        for (int index = 0; index < receivers.size(); ++index) {
+            emit_signal(
+                    vehicle_line_command_received_signal, receivers[index], p_vehicle, entered_ends[index], p_command);
+            vehicle_server->vehicle_send_command(receivers[index], p_command, p_p1, p_p2);
         }
     }
 
