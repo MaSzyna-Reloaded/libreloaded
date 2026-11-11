@@ -96,7 +96,10 @@ func _on_transmission_received(kind:RadioServer.Kind, channel:int, payload:Varia
     gain.parameter_name = GAIN_PARAMETER
     gain.target = SfxParameterModulation.Target.GAIN
     gain.default_value = 0.0
-    played.parameter_modulations.append(gain)
+    # assigned, not appended: a player plays only what the list's setter was given
+    var modulations:Array[SfxParameterModulation] = played.parameter_modulations.duplicate()
+    modulations.append(gain)
+    played.parameter_modulations = modulations
     var player:SfxPlayer3D = _new_player()
     var bank := SfxBank.new()
     var events:Array[SfxEvent] = [played]
@@ -107,8 +110,10 @@ func _on_transmission_received(kind:RadioServer.Kind, channel:int, payload:Varia
     player.play(RADIO_MESSAGE, {GAIN_PARAMETER: start_gain})
     _messages.append([channel, player])
     set_process(true)
-    # its transcript is shown when it is heard at all (sound_source::update_counter(), sound.cpp:955)
-    if transcript and start_gain > 0.0:
+    # its transcript is shown when the radio receives it as it starts, however loud it is set: the
+    # message starts at full gain then (TTrain::radio_message(), Train.cpp:11047-11048;
+    # sound_source::update_counter(), sound.cpp:955)
+    if transcript and _radio and _radio.get_powered() and _radio.get_channel() == channel:
         TranscriptSystem.add(transcript)
 
 

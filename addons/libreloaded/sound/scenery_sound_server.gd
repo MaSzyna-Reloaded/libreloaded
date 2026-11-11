@@ -7,7 +7,10 @@ extends Node
 ##
 ## A sound with a range is streamed (SceneryStreamingServer) as far as it is heard: a loop plays
 ## only while the camera is in reach of it, and resumes when it comes back. A sound heard
-## everywhere (range -1) is always in reach.
+## everywhere (range -1) is always in reach. A sound played once further from the camera than its
+## start reach is not heard. While a sound with a range plays, its events read the camera's distance
+## from its place [m] in DISTANCE_PARAMETER - how loud it is there is what their own
+## SfxParameterModulation of it says.
 
 enum Playback {
     ## played once (sound event mode 1)
@@ -16,11 +19,16 @@ enum Playback {
     LOOP,
 }
 
+## The parameter a sound's events read the camera's distance from the sound's place in [m]
+const DISTANCE_PARAMETER:StringName = &"distance"
+
 class SoundState:
     var play_event:SfxEvent
     var loop_event:SfxEvent
     var position:Vector3
     var stream_rid:RID = RID()
+    ## How far from the camera a sound played once is still heard [m]; 0 or less for any distance
+    var start_reach:float = 0.0
     ## In reach of the camera: its events may play
     var streamed:bool = true
     ## Asked to loop; a loop out of reach starts when the sound comes into reach
@@ -31,6 +39,8 @@ var _next_sound_id:int = 0
 var _stream_owner:int = -1
 var _bank:SfxBank = SfxBank.new()
 var _player:SfxPlayer3D = SfxPlayer3D.new()
+## The sounds in reach of the camera, their events told how far it is on every frame
+var _streamed:Dictionary[RID, bool] = {}
 
 
 func _ready() -> void:
@@ -38,6 +48,7 @@ func _ready() -> void:
     _player.bank = _bank
     _player.hard_cut_enabled = false
     add_child(_player)
+    set_process(false)
     SceneryStreamingServer.content_set_consumer(SceneryStreamingProvider.CONTENT_SOUNDS, adopt_sound, sound_free)
 
 
@@ -69,14 +80,17 @@ func adopt_sound(placement:ScenerySoundPlacement, _scenario:RID) -> RID:
 
 ## A sound at `position`, with its once and looped events (their names are the server's; their
 ## SfxSpatialConfig.position is the sound's place), heard as far as `reach` [m]; 0 or less for one
-## heard everywhere
-func sound_create(play_event:SfxEvent, loop_event:SfxEvent, position:Vector3, reach:float) -> RID:
+## heard everywhere. Played once, it is heard only within `start_reach` [m] of the camera; 0 or less
+## for as far as it is heard.
+func sound_create(play_event:SfxEvent, loop_event:SfxEvent, position:Vector3, reach:float,
+        start_reach:float = 0.0) -> RID:
     _next_sound_id += 1
     var sound_rid:RID = rid_from_int64(_next_sound_id)
     var state:SoundState = SoundState.new()
     state.play_event = play_event
     state.loop_event = loop_event
     state.position = position
+    state.start_reach = start_reach
     play_event.name = StringName("%d/play" % _next_sound_id)
     loop_event.name = StringName("%d/loop" % _next_sound_id)
     _sounds[sound_rid] = state
@@ -102,17 +116,18 @@ func sound_free(sound_rid:RID) -> void:
     _player.stop(state.play_event.name)
     _player.stop(state.loop_event.name)
     _sounds.erase(sound_rid)
+    _streamed.erase(sound_rid)
     var events:Array[SfxEvent] = _bank.events
     events.erase(state.play_event)
     events.erase(state.loop_event)
     _bank.events = events
 
 
-## Plays the sound once or loops it; false when it is playing already, which it goes on doing
-## (exclusive, sound_source::play_basic(), sound.cpp:403-421) - but asked to play once, a loop is
-## not started again when the camera comes back, as the original's play() replaces the flags
-## before it looks (sound.cpp:350-356). Out of reach, a sound played once is not heard, and a loop
-## waits for the camera.
+## Plays the sound once or loops it; whether it is heard - false when it is playing already, which
+## it goes on doing (exclusive, sound_source::play_basic(), sound.cpp:403-421) - but asked to play
+## once, a loop is not started again when the camera comes back, as the original's play() replaces
+## the flags before it looks (sound.cpp:350-356). Out of reach, or played once beyond its start
+## reach, a sound is not heard, and a loop waits for the camera.
 func sound_play(sound_rid:RID, playback:Playback) -> bool:
     var state:SoundState = _sounds.get(sound_rid)
     if not state:
@@ -120,9 +135,17 @@ func sound_play(sound_rid:RID, playback:Playback) -> bool:
     state.looping = playback == Playback.LOOP
     if _player.is_playing(state.play_event.name) or _player.is_playing(state.loop_event.name):
         return false
-    if state.streamed:
-        _player.play(state.loop_event.name if playback == Playback.LOOP else state.play_event.name)
+    var distance:float = _camera_distance(state)
+    if not state.streamed or (playback == Playback.ONCE and state.start_reach > 0.0 and distance > state.start_reach):
+        return false
+    _player.play(state.loop_event.name if playback == Playback.LOOP else state.play_event.name,
+            {DISTANCE_PARAMETER: distance})
     return true
+
+
+## The bus every scenery sound is heard on (SfxPlayer3D.bus)
+func set_bus(bus:StringName) -> void:
+    _player.bus = bus
 
 
 func sound_stop(sound_rid:RID) -> void:
@@ -155,8 +178,10 @@ func _stream_build(sound_rid:RID, _preloaded:Variant) -> void:
     if not state:
         return
     state.streamed = true
+    _streamed[sound_rid] = true
+    set_process(true)
     if state.looping:
-        _player.play(state.loop_event.name)
+        _player.play(state.loop_event.name, {DISTANCE_PARAMETER: _camera_distance(state)})
 
 
 func _stream_clear(sound_rid:RID) -> void:
@@ -164,6 +189,8 @@ func _stream_clear(sound_rid:RID) -> void:
     if not state:
         return
     state.streamed = false
+    _streamed.erase(sound_rid)
+    set_process(not _streamed.is_empty())
     _player.stop(state.play_event.name)
     _player.stop(state.loop_event.name)
     # out of reach the sound is not played, so its files need not be in memory
@@ -171,3 +198,19 @@ func _stream_clear(sound_rid:RID) -> void:
         var stream:LazyAudioStream = clip.stream as LazyAudioStream
         if stream:
             stream.unload()
+
+
+## How far the camera is from the sound's place [m]; 0 without a camera
+func _camera_distance(state:SoundState) -> float:
+    if not SceneryStreamingServer.streaming_has_camera():
+        return 0.0
+    return state.position.distance_to(SceneryStreamingServer.streaming_get_camera_position())
+
+
+## The sounds in reach that play are told how far the camera is - a handful, near it
+func _process(_delta:float) -> void:
+    for sound_rid:RID in _streamed:
+        var state:SoundState = _sounds[sound_rid]
+        for event:SfxEvent in [state.play_event, state.loop_event]:
+            if _player.is_playing(event.name):
+                _player.modulate(event.name, {DISTANCE_PARAMETER: _camera_distance(state)})
