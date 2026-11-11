@@ -92,6 +92,9 @@ namespace godot {
                 TrackServer::tracks_changed_signal, callable_mp(this, &RailVehicleServer::_on_topology_changed));
         tracks->connect(
                 TrackServer::topology_changed_signal, callable_mp(this, &RailVehicleServer::_on_topology_changed));
+        tracks->connect(
+                TrackServer::track_curves_changed_signal,
+                callable_mp(this, &RailVehicleServer::_on_track_curves_changed));
     }
 
     RailVehicleServer::~RailVehicleServer() {
@@ -2470,6 +2473,24 @@ namespace godot {
         TrackServer *tracks = TrackServer::get_instance();
         ERR_FAIL_NULL(tracks);
         _track_changed(tracks->switch_get_track(p_switch));
+    }
+
+    void RailVehicleServer::_on_track_curves_changed(const RID &p_track) {
+        const TrackServer *tracks = TrackServer::get_instance();
+        ERR_FAIL_NULL(tracks);
+        const TypedArray<RID> on_track = tracks->track_get_vehicles(p_track);
+        for (int64_t i = 0; i < on_track.size(); ++i) {
+            const RID vehicle = on_track[i];
+            VehiclePlacement *placement = vehicles.getptr(vehicle);
+            if (placement == nullptr) {
+                continue;
+            }
+            placement->moved = true;
+            placement->location_stale = true;
+            placement->placement_unreported = true;
+            _place_body(vehicle, *placement);
+        }
+        _track_changed(p_track);
     }
 
     void RailVehicleServer::vehicle_report_position(const RID &p_vehicle) {

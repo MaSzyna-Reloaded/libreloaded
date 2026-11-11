@@ -175,6 +175,13 @@
 				Reports that an axle of [param vehicle] left the track.
 			</description>
 		</method>
+		<method name="track_connect">
+			<return type="void" />
+			<param index="0" name="track" type="RID" />
+			<description>
+				Joins every free end of [param track] to the first track of its group whose free end meets it there - a turntable locked in place again after [method track_disconnect]. An end already joined to a track stays as it is; [signal tracks_changed] is emitted when an end was joined.
+			</description>
+		</method>
 		<method name="track_connect_many">
 			<return type="void" />
 			<param index="0" name="tracks" type="RID[]" />
@@ -186,6 +193,13 @@
 			<return type="RID" />
 			<description>
 				Creates an empty track. Give it curves with [method track_update_curves] and a type with [method track_update].
+			</description>
+		</method>
+		<method name="track_disconnect">
+			<return type="void" />
+			<param index="0" name="track" type="RID" />
+			<description>
+				Takes [param track] off the tracks its ends meet, each end left free - a turntable unlocked to turn. The tracks it met keep their own ends, free as well; [signal tracks_changed] is emitted when an end was taken off.
 			</description>
 		</method>
 		<method name="track_exists" qualifiers="const">
@@ -517,7 +531,7 @@
 			<param index="1" name="curve1" type="Resource" />
 			<param index="2" name="curve2" type="Resource" />
 			<description>
-				Sets the track's curves ([code]TrackCurve[/code] resources), the second one for a switch's diverging branch, and computes its lengths and switch geometry.
+				Sets the track's curves ([code]TrackCurve[/code] resources), the second one for a switch's diverging branch, and computes its lengths and switch geometry. The track is found where its ends are now ([method tracks_find_in_aabb]); a track that had curves before emits [signal track_curves_changed].
 			</description>
 		</method>
 		<method name="track_update_properties">
@@ -631,6 +645,12 @@
 		<signal name="topology_rebuilt">
 			<description>
 				[method topology_rebuild] finished.
+			</description>
+		</signal>
+		<signal name="track_curves_changed">
+			<param index="0" name="track" type="RID" />
+			<description>
+				The curves [param track] had were changed ([method track_update_curves]) - not given for the first time: [TrackRenderingServer] draws it again and [RailVehicleServer] places the vehicles on it again.
 			</description>
 		</signal>
 		<signal name="track_vehicle_entered">

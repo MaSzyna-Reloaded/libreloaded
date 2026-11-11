@@ -345,6 +345,9 @@ namespace godot {
             void _track_changed(const RID &p_track);
             void _on_topology_changed();
             void _on_switch_active_track_changed(const RID &p_switch, int p_active_track);
+            /* A track changed its shape under the vehicles on it (a turntable turning): each placed
+             * again where its axles stand on it */
+            void _on_track_curves_changed(const RID &p_track);
 
             RailVehicleController *_get_controller(const VehiclePlacement &p_placement) const;
             /* Whether p_answers(doors, side) holds for a vehicle of the trainset, p_side being the

@@ -56,6 +56,8 @@ namespace godot {
             void _stream_clear(const RID &p_track_render);
             void _on_topology_rebuilt();
             void _on_switch_offset_changed(const RID &p_switch, double p_offset);
+            /// A track changed its shape (a turntable turning): built again where it is drawn
+            void _on_track_curves_changed(const RID &p_track);
             void _on_data_reload_requested();
 
         protected:
