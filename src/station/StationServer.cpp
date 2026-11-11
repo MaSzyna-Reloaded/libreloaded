@@ -25,11 +25,6 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("station_list"), &StationServer::station_list);
         ClassDB::bind_method(D_METHOD("station_set_type", "station", "type"), &StationServer::station_set_type);
         ClassDB::bind_method(D_METHOD("station_get_type", "station"), &StationServer::station_get_type);
-        ClassDB::bind_method(
-                D_METHOD("station_add_stop_point", "station", "track"), &StationServer::station_add_stop_point);
-        ClassDB::bind_method(
-                D_METHOD("station_clear_stop_points", "station"), &StationServer::station_clear_stop_points);
-        ClassDB::bind_method(D_METHOD("station_get_stop_points", "station"), &StationServer::station_get_stop_points);
 
         ClassDB::bind_method(D_METHOD("timetable_create"), &StationServer::timetable_create);
         ClassDB::bind_method(D_METHOD("timetable_free", "timetable"), &StationServer::timetable_free);
@@ -158,6 +153,9 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("run_entry_get_actual_departure", "run", "entry"),
                 &StationServer::run_entry_get_actual_departure);
+        ClassDB::bind_method(D_METHOD("run_record_arrival", "run"), &StationServer::run_record_arrival);
+        ClassDB::bind_method(D_METHOD("run_record_departure", "run"), &StationServer::run_record_departure);
+        ClassDB::bind_method(D_METHOD("run_record_passing", "run"), &StationServer::run_record_passing);
         ClassDB::bind_method(D_METHOD("run_get_delay", "run", "time"), &StationServer::run_get_delay);
         ClassDB::bind_method(
                 D_METHOD("run_get_time_to_departure", "run", "time"), &StationServer::run_get_time_to_departure);
@@ -197,23 +195,12 @@ namespace godot {
     /// A freed vehicle takes its train's dispatch with it. No explicit disconnect: callable_mp
     /// reports this instance as the callable's object, so the engine drops the connection when it
     /// dies.
-    /// A run hears its train on its tracks and follows its trainset.
+    /// A run follows its trainset.
     StationServer::StationServer() {
         singleton = this;
         VehicleServer *vehicles = VehicleServer::get_instance();
         ERR_FAIL_NULL(vehicles);
         vehicles->connect(VehicleServer::vehicle_freed_signal, callable_mp(this, &StationServer::_on_vehicle_freed));
-        TrackServer *tracks = TrackServer::get_instance();
-        ERR_FAIL_NULL(tracks);
-        tracks->connect(
-                TrackServer::track_vehicle_entered_signal,
-                callable_mp(this, &StationServer::_on_track_vehicle_entered));
-        tracks->connect(
-                TrackServer::track_vehicle_stopped_signal,
-                callable_mp(this, &StationServer::_on_track_vehicle_stopped));
-        tracks->connect(
-                TrackServer::track_vehicle_started_signal,
-                callable_mp(this, &StationServer::_on_track_vehicle_started));
         RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
         ERR_FAIL_NULL(rail_vehicles);
         rail_vehicles->connect(
@@ -283,30 +270,6 @@ namespace godot {
         const Station *station = stations.getptr(p_station);
         ERR_FAIL_NULL_V(station, STATION_TYPE_STATION);
         return station->type;
-    }
-
-    void StationServer::station_add_stop_point(const RID &p_station, const RID &p_track) {
-        Station *station = stations.getptr(p_station);
-        ERR_FAIL_NULL(station);
-        if (!station->stop_points.has(p_track)) {
-            station->stop_points.push_back(p_track);
-        }
-    }
-
-    void StationServer::station_clear_stop_points(const RID &p_station) {
-        Station *station = stations.getptr(p_station);
-        ERR_FAIL_NULL(station);
-        station->stop_points.clear();
-    }
-
-    TypedArray<RID> StationServer::station_get_stop_points(const RID &p_station) const {
-        TypedArray<RID> result;
-        const Station *station = stations.getptr(p_station);
-        ERR_FAIL_NULL_V(station, result);
-        for (const RID &track: station->stop_points) {
-            result.push_back(track);
-        }
-        return result;
     }
 
     bool StationServer::_is_station_in_timetable(const RID &p_station) const {
@@ -621,10 +584,9 @@ namespace godot {
         run.actual_arrivals.fill(NO_TIME);
         run.actual_departures.resize(timetable->entries.size());
         run.actual_departures.fill(NO_TIME);
-        // the train starts its run at the first entry where no arrival is planned there, or where it
-        // stands at a stop point of its station already
-        if (!timetable->entries.is_empty() &&
-            (timetable->entries[0].arrival < 0.0 || _is_standing_at(p_trainset, timetable->entries[0].station))) {
+        // the train starts its run at the first entry where no arrival is planned there; where one
+        // is, its driver says when it has arrived (run_record_arrival())
+        if (!timetable->entries.is_empty() && timetable->entries[0].arrival < 0.0) {
             const SimulationServer *simulation = SimulationServer::get_instance();
             run.actual_arrivals.set(0, simulation != nullptr ? simulation->get_time_of_day() : 0.0);
         }
@@ -738,40 +700,12 @@ namespace godot {
         return _minutes_between(p_time, _shifted(entry->departure, run->offset));
     }
 
-    bool StationServer::_is_standing_at(const RID &p_trainset, const RID &p_station) const {
-        const Station *station = stations.getptr(p_station);
-        const RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
-        const TrackServer *tracks = TrackServer::get_instance();
-        if (station == nullptr || rail_vehicles == nullptr || tracks == nullptr) {
-            return false;
-        }
-        const TypedArray<RID> trainset_vehicles = rail_vehicles->trainset_get_vehicles(p_trainset);
-        for (int index = 0; index < trainset_vehicles.size(); ++index) {
-            const RID vehicle = trainset_vehicles[index];
-            if (!rail_vehicles->vehicle_is_standing(vehicle)) {
-                return false;
-            }
-            for (const RID &track: station->stop_points) {
-                if (tracks->track_get_vehicle_list(track).has(vehicle)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     const StationServer::Entry *StationServer::_get_current_entry(const Run &p_run) const {
         const Timetable *timetable = timetables.getptr(p_run.timetable);
         if (timetable == nullptr || p_run.current_entry >= timetable->entries.size()) {
             return nullptr;
         }
         return &timetable->entries[p_run.current_entry];
-    }
-
-    bool StationServer::_is_at_current_station(const Run &p_run, const RID &p_track) const {
-        const Entry *entry = _get_current_entry(p_run);
-        const Station *station = entry != nullptr ? stations.getptr(entry->station) : nullptr;
-        return station != nullptr && station->stop_points.has(p_track);
     }
 
     double StationServer::_shifted(const double p_hours, const double p_offset) {
@@ -799,38 +733,14 @@ namespace godot {
         return runs.getptr(*run);
     }
 
-    /// A moving train coming onto a stop point of the station it passes: it passes it now
-    void StationServer::_on_track_vehicle_entered(
-            const RID &p_track, const RID &p_vehicle, const TrackServer::TravelDirection p_direction) {
-        RID run_rid;
-        Run *run = _get_run_of_vehicle(p_vehicle, run_rid);
-        if (run == nullptr || p_direction == TrackServer::TRAVEL_NONE || !_is_at_current_station(*run, p_track)) {
-            return;
-        }
+    void StationServer::run_record_arrival(const RID &p_run) {
+        Run *run = runs.getptr(p_run);
+        ERR_FAIL_NULL(run);
         const Entry *entry = _get_current_entry(*run);
         const int index = run->current_entry;
-        if (entry->arrival >= 0.0 || run->actual_departures[index] >= 0.0) {
-            return; // a stop is arrived at standing, a passing is recorded once
+        if (entry == nullptr || run->actual_arrivals[index] >= 0.0 || run->actual_departures[index] >= 0.0) {
+            return; // past the last, or recorded already
         }
-        const SimulationServer *simulation = SimulationServer::get_instance();
-        ERR_FAIL_NULL(simulation);
-        run->actual_departures.set(index, simulation->get_time_of_day());
-        run->recorded_delay = _minutes_between(_shifted(entry->departure, run->offset), run->actual_departures[index]);
-        emit_signal(run_passed_signal, run_rid, index);
-    }
-
-    /// The train stopping at a stop point of its current entry's station has arrived there
-    void StationServer::_on_track_vehicle_stopped(const RID &p_track, const RID &p_vehicle) {
-        RID run_rid;
-        Run *run = _get_run_of_vehicle(p_vehicle, run_rid);
-        if (run == nullptr || !_is_at_current_station(*run, p_track)) {
-            return;
-        }
-        const int index = run->current_entry;
-        if (run->actual_arrivals[index] >= 0.0 || run->actual_departures[index] >= 0.0) {
-            return;
-        }
-        const Entry *entry = _get_current_entry(*run);
         const SimulationServer *simulation = SimulationServer::get_instance();
         ERR_FAIL_NULL(simulation);
         run->actual_arrivals.set(index, simulation->get_time_of_day());
@@ -838,30 +748,41 @@ namespace godot {
         if (planned >= 0.0) {
             run->recorded_delay = _minutes_between(_shifted(planned, run->offset), run->actual_arrivals[index]);
         }
-        emit_signal(run_arrived_signal, run_rid, index);
+        emit_signal(run_arrived_signal, p_run, index);
     }
 
-    /// The train standing at its current entry starting off - wherever it stood - has left it
-    void StationServer::_on_track_vehicle_started(
-            const RID & /*p_track*/, const RID &p_vehicle, const TrackServer::TravelDirection /*p_direction*/) {
-        RID run_rid;
-        Run *run = _get_run_of_vehicle(p_vehicle, run_rid);
-        if (run == nullptr) {
-            return;
-        }
-        const int index = run->current_entry;
+    void StationServer::run_record_departure(const RID &p_run) {
+        Run *run = runs.getptr(p_run);
+        ERR_FAIL_NULL(run);
         const Entry *entry = _get_current_entry(*run);
+        const int index = run->current_entry;
         if (entry == nullptr || run->actual_arrivals[index] < 0.0 || run->actual_departures[index] >= 0.0) {
-            return;
+            return; // past the last, not arrived, or recorded already
         }
+        _record_departure(*run, *entry, index);
+        emit_signal(run_departed_signal, p_run, index);
+    }
+
+    void StationServer::run_record_passing(const RID &p_run) {
+        Run *run = runs.getptr(p_run);
+        ERR_FAIL_NULL(run);
+        const Entry *entry = _get_current_entry(*run);
+        const int index = run->current_entry;
+        if (entry == nullptr || run->actual_arrivals[index] >= 0.0 || run->actual_departures[index] >= 0.0) {
+            return; // past the last, stopped at, or recorded already
+        }
+        _record_departure(*run, *entry, index);
+        emit_signal(run_passed_signal, p_run, index);
+    }
+
+    void StationServer::_record_departure(Run &p_run, const Entry &p_entry, const int p_index) {
         const SimulationServer *simulation = SimulationServer::get_instance();
         ERR_FAIL_NULL(simulation);
-        run->actual_departures.set(index, simulation->get_time_of_day());
-        if (entry->departure >= 0.0) {
-            run->recorded_delay =
-                    _minutes_between(_shifted(entry->departure, run->offset), run->actual_departures[index]);
+        p_run.actual_departures.set(p_index, simulation->get_time_of_day());
+        if (p_entry.departure >= 0.0) {
+            p_run.recorded_delay =
+                    _minutes_between(_shifted(p_entry.departure, p_run.offset), p_run.actual_departures[p_index]);
         }
-        emit_signal(run_departed_signal, run_rid, index);
     }
 
     /// Coupled into another trainset, a run goes with it where that one has none, and ends where it has

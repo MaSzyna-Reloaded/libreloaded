@@ -111,3 +111,57 @@ func test_it_moves_on_and_back_within_its_entries() -> void:
     assert_eq(StationServer.run_get_current_entry(_run), 3, "past the last, and no further")
     StationServer.run_previous_entry(_run)
     assert_eq(StationServer.run_get_current_entry(_run), 2)
+
+
+## Its driver says what the train did - left the start, arrived at the stop and left it, passed the
+## station - and each is recorded once, with the time it was said and the delay against the plan
+func test_it_records_what_its_driver_says_with_the_delays() -> void:
+    var previous_time:float = SimulationServer.time_of_day
+    watch_signals(StationServer)
+
+    SimulationServer.time_of_day = START_DEPARTURE + 2.0 * MINUTE
+    StationServer.run_record_departure(_run)
+    assert_signal_emitted_with_parameters(StationServer, "run_departed", [_run, 0])
+    assert_almost_eq(StationServer.run_get_delay(_run, START_DEPARTURE + 3.0 * MINUTE), 2.0, 0.001, "left 2 min late")
+
+    StationServer.run_next_entry(_run)
+    SimulationServer.time_of_day = STOP_ARRIVAL + MINUTE
+    StationServer.run_record_arrival(_run)
+    StationServer.run_record_arrival(_run)
+    assert_signal_emit_count(StationServer, "run_arrived", 1, "once")
+    assert_almost_eq(StationServer.run_entry_get_actual_arrival(_run, STOP_ENTRY), STOP_ARRIVAL + MINUTE, 0.0001)
+    assert_almost_eq(StationServer.run_get_delay(_run, STOP_ARRIVAL + MINUTE), 1.0, 0.001, "arrived 1 min late")
+    StationServer.run_record_passing(_run)
+    assert_signal_not_emitted(StationServer, "run_passed", "a stop arrived at is not passed")
+
+    SimulationServer.time_of_day = STOP_DEPARTURE
+    StationServer.run_record_departure(_run)
+    assert_almost_eq(StationServer.run_get_delay(_run, STOP_DEPARTURE + MINUTE), 0.0, 0.001, "left on time")
+
+    StationServer.run_next_entry(_run)
+    StationServer.run_record_departure(_run)
+    assert_eq(StationServer.run_entry_get_actual_departure(_run, STOP_ENTRY + 1), StationServer.NO_TIME,
+            "not arrived: no departure")
+    SimulationServer.time_of_day = PASSING + 4.0 * MINUTE
+    StationServer.run_record_passing(_run)
+    assert_signal_emitted_with_parameters(StationServer, "run_passed", [_run, STOP_ENTRY + 1])
+    assert_almost_eq(StationServer.run_get_delay(_run, PASSING + 5.0 * MINUTE), 4.0, 0.001, "passed 4 min late")
+    SimulationServer.time_of_day = previous_time
+
+
+## Where an arrival is planned at the first station, the run starts there not arrived yet: its
+## driver says when it has
+func test_a_planned_arrival_at_the_start_waits_for_the_driver() -> void:
+    var station:RID = StationServer.station_create()
+    var timetable:RID = StationServer.timetable_create()
+    StationServer.timetable_add_entry(timetable, station, STOP_ARRIVAL, STOP_DEPARTURE)
+    var trainset:RID = RailVehicleServer.trainset_create()
+    var run:RID = StationServer.run_create(timetable, trainset)
+
+    assert_eq(StationServer.run_entry_get_actual_arrival(run, 0), StationServer.NO_TIME)
+    StationServer.run_record_arrival(run)
+    assert_ne(StationServer.run_entry_get_actual_arrival(run, 0), StationServer.NO_TIME, "arrived when said")
+    StationServer.run_free(run)
+    RailVehicleServer.trainset_free(trainset)
+    StationServer.timetable_free(timetable)
+    StationServer.station_free(station)
