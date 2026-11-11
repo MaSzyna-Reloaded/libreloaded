@@ -70,3 +70,25 @@ func test_built_as_nodes_it_is_the_scene_under_the_attached_node() -> void:
     var wheel:Node3D = attached.find_child("Wheel", true, false) as Node3D
     assert_not_null(wheel, "the scene's nodes under the attached node")
     assert_false(wheel.visible, "a hidden part's node hidden")
+
+
+## instance_find_nearest_hit(): of the built, visible instances on a segment, the nearest - what
+## hides a pickable behind it (SceneryHUDMouseServer)
+func test_the_nearest_built_instance_on_a_segment_is_found() -> void:
+    var model:Resource = ModelRenderingServer.model_load(BACKEND, MODEL)
+    var near:RID = ModelRenderingServer.instance_create(BACKEND, model, ModelRenderingServer.INSTANCER_OPTIMIZED,
+            ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    var far:RID = _create(ModelRenderingServer.INSTANCER_OPTIMIZED)
+    ModelRenderingServer.instance_set_transform(near, Transform3D(Basis(), POSE_SHIFT))
+    var from:Vector3 = Vector3(0.0, 0.0, RAY_LENGTH)
+    var to:Vector3 = Vector3(0.0, 0.0, -RAY_LENGTH)
+
+    assert_eq(ModelRenderingServer.instance_find_nearest_hit(from, to), {}, "nothing built yet")
+    ModelRenderingServer.instance_build(near)
+    ModelRenderingServer.instance_build(far)
+    var hit:Dictionary = ModelRenderingServer.instance_find_nearest_hit(from, to)
+    assert_eq(hit.get("instance"), near, "the one in front")
+    assert_almost_eq(float(hit.get("distance", 0.0)), RAY_LENGTH - HULL_HALF_LENGTH - POSE_SHIFT.z, 0.001)
+    ModelRenderingServer.instance_set_visible(near, false)
+    assert_eq(ModelRenderingServer.instance_find_nearest_hit(from, to).get("instance"), far, "a hidden one hides nothing")
+    ModelRenderingServer.instance_free(near)

@@ -97,6 +97,8 @@ namespace godot {
                 D_METHOD("instance_set_material_overlay", "instance", "material"),
                 &ModelRenderingServer::instance_set_material_overlay);
         ClassDB::bind_method(
+                D_METHOD("instance_find_nearest_hit", "from", "to"), &ModelRenderingServer::instance_find_nearest_hit);
+        ClassDB::bind_method(
                 D_METHOD("instance_intersect_segment", "instance", "from", "to"),
                 &ModelRenderingServer::instance_intersect_segment);
 
@@ -226,11 +228,14 @@ namespace godot {
     }
 
     void ModelRenderingServer::_on_instance_built(const RID &p_instance) {
+        built_instances.insert(p_instance);
         emit_signal(instance_built_signal, p_instance);
     }
 
     void ModelRenderingServer::_on_instance_freed(const RID &p_instance) {
         instance_backends.erase(p_instance);
+        built_instances.erase(p_instance);
+        hidden_instances.erase(p_instance);
         emit_signal(instance_freed_signal, p_instance);
     }
 
@@ -303,6 +308,11 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_visible(p_instance, p_visible);
+        if (p_visible) {
+            hidden_instances.erase(p_instance);
+        } else {
+            hidden_instances.insert(p_instance);
+        }
     }
 
     void ModelRenderingServer::instance_attach_object_instance_id(const RID &p_instance, const uint64_t p_id) {
@@ -433,5 +443,32 @@ namespace godot {
         const ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL_V(backend, Dictionary());
         return backend->instance_intersect_segment(p_instance, p_from, p_to);
+    }
+
+    Dictionary ModelRenderingServer::instance_find_nearest_hit(const Vector3 &p_from, const Vector3 &p_to) const {
+        Dictionary nearest;
+        double nearest_distance = p_from.distance_to(p_to);
+        for (const RID &instance: built_instances) {
+            if (hidden_instances.has(instance)) {
+                continue;
+            }
+            ModelRenderingBackend *const *backend = instance_backends.getptr(instance);
+            if (backend == nullptr) {
+                continue;
+            }
+            // the bounds first: a precise test only for what the segment may meet
+            const AABB bounds =
+                    (*backend)->instance_get_transform(instance).xform((*backend)->instance_get_aabb(instance));
+            if (!bounds.intersects_segment(p_from, p_to)) {
+                continue;
+            }
+            const Dictionary hit = (*backend)->instance_intersect_segment(instance, p_from, p_to);
+            if (!hit.is_empty() && static_cast<double>(hit["distance"]) < nearest_distance) {
+                nearest_distance = hit["distance"];
+                nearest["instance"] = instance;
+                nearest["distance"] = nearest_distance;
+            }
+        }
+        return nearest;
     }
 } // namespace godot

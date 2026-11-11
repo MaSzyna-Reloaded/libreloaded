@@ -71,6 +71,14 @@
 				[param instance_kind] says what the placement is, in the words a [code].scn[/code] uses for it. It is given here rather than through a setter because it cannot be changed once the instance is built: the smoke density it selects is baked into every particle emitter of the model - its process material, its particle budget and its spawn rate. A client that has to change it frees the instance and creates it again.
 			</description>
 		</method>
+		<method name="instance_find_nearest_hit" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="from" type="Vector3" />
+			<param index="1" name="to" type="Vector3" />
+			<description>
+				The nearest of the built, visible instances the segment from [param from] to [param to] meets: [code]{ instance, distance }[/code] as [method instance_intersect_segment] gives it, empty when it meets none. Only an instance whose bounds the segment crosses is intersected; the built instances are the ones near the camera.
+			</description>
+		</method>
 		<method name="instance_free">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
