@@ -77,6 +77,13 @@
 				The cab signal acknowledged, where it has a button of its own ([code]cabsignal_reset()[/code]).
 			</description>
 		</method>
+		<method name="security_cabsignal_lock">
+			<return type="void" />
+			<param index="0" name="locked" type="bool" />
+			<description>
+				The cab signal kept on, however it is acknowledged, while [param locked] - the vehicle over the magnet that set it off, driven by a person; a computer driving it acknowledges it at once. Also the vehicle's [code]security_cabsignal_lock[/code] command.
+			</description>
+		</method>
 		<method name="security_cabsignal_trigger">
 			<return type="void" />
 			<description>
