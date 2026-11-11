@@ -48,6 +48,8 @@ namespace godot {
             static constexpr const char *BACKEND_SETTING = "reloaded/models/backend";
 
             static const char *instance_built_signal;
+            /// A built instance has been cleared by its backend, and is not built until it is built again
+            static const char *instance_cleared_signal;
             static const char *instance_freed_signal;
 
         private:
@@ -68,6 +70,7 @@ namespace godot {
             ModelRenderingBackend *_get_instance_backend(const RID &p_instance) const;
             void _on_instance_created(const RID &p_instance, const StringName &p_backend);
             void _on_instance_built(const RID &p_instance);
+            void _on_instance_cleared(const RID &p_instance);
             void _on_instance_freed(const RID &p_instance);
             /// A model a scenery's streaming provider places (SceneryStreamingProvider.CONTENT_MODELS),
             /// registered with the backend it names

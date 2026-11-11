@@ -25,6 +25,9 @@ namespace godot {
 
             static const char *instance_created_signal;
             static const char *instance_built_signal;
+            /// A built instance has been cleared and stays, with nothing built of it (a placement the
+            /// camera has left), until it is built again
+            static const char *instance_cleared_signal;
             static const char *instance_freed_signal;
 
         protected:

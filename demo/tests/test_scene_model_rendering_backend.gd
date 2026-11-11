@@ -10,6 +10,11 @@ const WHEEL_ORIGIN:Vector3 = Vector3(1.0, 0.0, 1.0)
 const HULL_HALF_LENGTH:float = 2.0
 const RAY_LENGTH:float = 10.0
 const POSE_SHIFT:Vector3 = Vector3(0.0, 0.0, 5.0)
+## How far from the camera a placement of the test is built [m], where the camera goes to leave it -
+## a few of the streaming's chunks away -, and how long the streaming may take
+const PLACEMENT_RANGE:float = 50.0
+const CAMERA_AWAY:Vector3 = Vector3(4000.0, 0.0, 0.0)
+const STREAM_TIMEOUT_SEC:float = 5.0
 
 var _instance:RID = RID()
 
@@ -92,3 +97,31 @@ func test_the_nearest_built_instance_on_a_segment_is_found() -> void:
     ModelRenderingServer.instance_set_visible(near, false)
     assert_eq(ModelRenderingServer.instance_find_nearest_hit(from, to).get("instance"), far, "a hidden one hides nothing")
     ModelRenderingServer.instance_free(near)
+
+
+## A placement the camera leaves is cleared by its backend: the server hears instance_cleared and
+## no longer searches it - a backend's instance_get_aabb() of an instance whose model it released
+## crashed the hit search (libreloaded#69)
+func test_a_placement_the_camera_has_left_is_not_searched() -> void:
+    var camera:Camera3D = add_child_autoqfree(Camera3D.new())
+    SceneryStreamingServer.streaming_set_camera(camera.get_instance_id())
+    var built:Array[RID] = []
+    var cleared:Array[RID] = []
+    var on_built:Callable = func(instance:RID) -> void: built.append(instance)
+    var on_cleared:Callable = func(instance:RID) -> void: cleared.append(instance)
+    ModelRenderingServer.instance_built.connect(on_built)
+    ModelRenderingServer.instance_cleared.connect(on_cleared)
+    _instance = ModelRenderingServer.instance_register(BACKEND, MODEL, PackedStringArray(), Transform3D(), 0.0,
+            PLACEMENT_RANGE, camera.get_world_3d().scenario)
+    var from:Vector3 = Vector3(0.0, 0.0, RAY_LENGTH)
+    var to:Vector3 = Vector3(0.0, 0.0, -RAY_LENGTH)
+
+    await wait_until(func() -> bool: return built.has(_instance), STREAM_TIMEOUT_SEC)
+    assert_eq(ModelRenderingServer.instance_find_nearest_hit(from, to).get("instance"), _instance, "built near the camera")
+    camera.position = CAMERA_AWAY
+    await wait_until(func() -> bool: return cleared.has(_instance), STREAM_TIMEOUT_SEC)
+    assert_eq(cleared, [_instance] as Array[RID], "cleared once the camera has left")
+    assert_eq(ModelRenderingServer.instance_find_nearest_hit(from, to), {}, "not searched since")
+    ModelRenderingServer.instance_built.disconnect(on_built)
+    ModelRenderingServer.instance_cleared.disconnect(on_cleared)
+    SceneryStreamingServer.streaming_set_camera(0)

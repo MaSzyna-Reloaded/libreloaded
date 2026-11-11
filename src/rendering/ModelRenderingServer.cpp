@@ -9,6 +9,7 @@
 
 namespace godot {
     const char *ModelRenderingServer::instance_built_signal = "instance_built";
+    const char *ModelRenderingServer::instance_cleared_signal = "instance_cleared";
     const char *ModelRenderingServer::instance_freed_signal = "instance_freed";
     ModelRenderingServer *ModelRenderingServer::singleton = nullptr;
 
@@ -110,6 +111,7 @@ namespace godot {
 
         ADD_SIGNAL(MethodInfo(instance_freed_signal, PropertyInfo(Variant::RID, "instance")));
         ADD_SIGNAL(MethodInfo(instance_built_signal, PropertyInfo(Variant::RID, "instance")));
+        ADD_SIGNAL(MethodInfo(instance_cleared_signal, PropertyInfo(Variant::RID, "instance")));
     }
 
     ModelRenderingServer *ModelRenderingServer::get_instance() {
@@ -157,6 +159,9 @@ namespace godot {
                 ModelRenderingBackend::instance_built_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_built));
         backend->connect(
+                ModelRenderingBackend::instance_cleared_signal,
+                callable_mp(this, &ModelRenderingServer::_on_instance_cleared));
+        backend->connect(
                 ModelRenderingBackend::instance_freed_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_freed));
         if (StringName(ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, String())) == p_name) {
@@ -176,6 +181,9 @@ namespace godot {
         backend->disconnect(
                 ModelRenderingBackend::instance_built_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_built));
+        backend->disconnect(
+                ModelRenderingBackend::instance_cleared_signal,
+                callable_mp(this, &ModelRenderingServer::_on_instance_cleared));
         backend->disconnect(
                 ModelRenderingBackend::instance_freed_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_freed));
@@ -230,6 +238,13 @@ namespace godot {
     void ModelRenderingServer::_on_instance_built(const RID &p_instance) {
         built_instances.insert(p_instance);
         emit_signal(instance_built_signal, p_instance);
+    }
+
+    /// No longer built, and so no longer searched (instance_find_nearest_hit()) - what is built of it,
+    /// its model too, is gone (#69)
+    void ModelRenderingServer::_on_instance_cleared(const RID &p_instance) {
+        built_instances.erase(p_instance);
+        emit_signal(instance_cleared_signal, p_instance);
     }
 
     void ModelRenderingServer::_on_instance_freed(const RID &p_instance) {

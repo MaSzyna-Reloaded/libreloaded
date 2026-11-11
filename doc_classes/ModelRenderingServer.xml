@@ -310,6 +310,12 @@
 				[param instance] was built - its model, and so its lights, are known from now on.
 			</description>
 		</signal>
+		<signal name="instance_cleared">
+			<param index="0" name="instance" type="RID" />
+			<description>
+				[param instance] was built and its backend has cleared it without freeing it - a placement the camera has left lets its model go. It is no longer searched by [method instance_find_nearest_hit] until it is built again.
+			</description>
+		</signal>
 		<signal name="instance_freed">
 			<param index="0" name="instance" type="RID" />
 			<description>
