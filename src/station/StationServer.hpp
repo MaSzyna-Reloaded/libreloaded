@@ -177,6 +177,9 @@ namespace godot {
                     const RID &p_track, const RID &p_vehicle, TrackServer::TravelDirection p_direction);
             void _on_trainset_merged(const RID &p_trainset, const RID &p_absorbed);
             void _on_trainset_freed(const RID &p_trainset);
+            /* The vehicles of the trainset are to go where its timetable's destination is - none
+             * for an empty one: assigning a timetable sets it, letting go of it clears it */
+            void _set_trainset_destination(const RID &p_trainset, const RID &p_station);
 
             /// A car of the dispatch and what it reports, followed while the dispatch lasts
             struct Car {

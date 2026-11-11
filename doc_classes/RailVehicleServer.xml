@@ -416,6 +416,20 @@
 				The running shape the vehicle's physics was last handed: [code]radius[/code] [m] from the yaw difference of its axles over the pivot spacing, as the original divides it, 0 above 15000 m - and [code]cant[/code] [rad], the mean of both axles' (DynObj.cpp:3145-3167).
 			</description>
 		</method>
+		<method name="vehicle_get_destination_station" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The [StationServer] station [param vehicle] is to go to; an empty RID for no destination.
+			</description>
+		</method>
+		<method name="vehicle_get_destination_track" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The track of its destination [param vehicle] is to go to; an empty RID when none is named.
+			</description>
+		</method>
 		<method name="vehicle_get_driver_cabin" qualifiers="const">
 			<return type="RID" />
 			<param index="0" name="vehicle" type="RID" />
@@ -500,6 +514,15 @@
 			<param index="1" name="delta" type="float" />
 			<description>
 				Walks [param vehicle] the distance its own simulation asked for. The step does this for every vehicle; on its own it is how a single vehicle is advanced deliberately.
+			</description>
+		</method>
+		<method name="vehicle_set_destination">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="station" type="RID" />
+			<param index="2" name="track" type="RID" default="RID()" />
+			<description>
+				Where [param vehicle] is to go: the [StationServer] [param station], and its [param track] when one is named. An empty [param station] is no destination.
 			</description>
 		</method>
 		<method name="vehicle_set_track">

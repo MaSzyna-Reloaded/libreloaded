@@ -149,6 +149,15 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("vehicle_get_type_name", "vehicle"), &RailVehicleServer::vehicle_get_type_name);
         ClassDB::bind_method(D_METHOD("load_set", "vehicle", "load_name", "load_amount"), &RailVehicleServer::load_set);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_destination", "vehicle", "station", "track"),
+                &RailVehicleServer::vehicle_set_destination, DEFVAL(RID()));
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_destination_station", "vehicle"),
+                &RailVehicleServer::vehicle_get_destination_station);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_destination_track", "vehicle"),
+                &RailVehicleServer::vehicle_get_destination_track);
+        ClassDB::bind_method(
                 D_METHOD("load_add", "vehicle", "amount", "side", "load_name"), &RailVehicleServer::load_add,
                 DEFVAL(String()));
         ClassDB::bind_method(D_METHOD("load_remove", "vehicle", "amount", "side"), &RailVehicleServer::load_remove);
@@ -391,6 +400,25 @@ namespace godot {
             controller->set_load_name(p_load_name);
             controller->set_load_amount(p_load_amount);
         }
+    }
+
+    void RailVehicleServer::vehicle_set_destination(const RID &p_vehicle, const RID &p_station, const RID &p_track) {
+        VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(placement);
+        placement->destination_station = p_station;
+        placement->destination_track = p_station.is_valid() ? p_track : RID();
+    }
+
+    RID RailVehicleServer::vehicle_get_destination_station(const RID &p_vehicle) const {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(placement, RID());
+        return placement->destination_station;
+    }
+
+    RID RailVehicleServer::vehicle_get_destination_track(const RID &p_vehicle) const {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(placement, RID());
+        return placement->destination_track;
     }
 
     RailVehicleLoad *RailVehicleServer::_get_load(const RID &p_vehicle) const {

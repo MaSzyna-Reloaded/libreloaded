@@ -195,6 +195,10 @@ namespace godot {
                     String type_name;
                     String load_name;
                     double load_amount = 0.0;
+                    /* Where the vehicle is to go (vehicle_set_destination()): a StationServer
+                     * station and a track of it, RID() for none */
+                    RID destination_station;
+                    RID destination_track;
                     /* The vehicle's position: its two axles. Each is counted on its track by
                      * TrackServer for as long as it is placed. */
                     AxleFollower axles[AXLE_COUNT];
@@ -501,6 +505,11 @@ namespace godot {
             void vehicle_set_type_name(const RID &p_vehicle, const String &p_type_name);
             String vehicle_get_type_name(const RID &p_vehicle) const;
             void load_set(const RID &p_vehicle, const String &p_load_name, double p_load_amount);
+            /* Where the vehicle is to go: a StationServer station, and a track there when one is
+             * named; no station is no destination */
+            void vehicle_set_destination(const RID &p_vehicle, const RID &p_station, const RID &p_track = RID());
+            RID vehicle_get_destination_station(const RID &p_vehicle) const;
+            RID vehicle_get_destination_track(const RID &p_vehicle) const;
             /* So much more to get on the vehicle at the platform's side, in its own frame; an empty
              * vehicle takes p_load_name, or the first load it accepts (RailVehicleLoad::load_add()).
              * The vehicle's `load_add` command (amount, side) comes here. */

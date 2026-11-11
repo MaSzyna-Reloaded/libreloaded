@@ -630,6 +630,7 @@ namespace godot {
         }
         runs.insert(run_rid, run);
         runs_by_trainset[p_trainset] = run_rid;
+        _set_trainset_destination(p_trainset, timetable->destination);
         emit_signal(run_created_signal, run_rid);
         return run_rid;
     }
@@ -639,6 +640,7 @@ namespace godot {
         ERR_FAIL_NULL(run);
         if (const RID *bound = runs_by_trainset.getptr(run->trainset); bound != nullptr && *bound == p_run) {
             runs_by_trainset.erase(run->trainset);
+            _set_trainset_destination(run->trainset, RID());
         }
         runs.erase(p_run);
         emit_signal(run_freed_signal, p_run);
@@ -871,16 +873,31 @@ namespace godot {
         const RID run_rid = *absorbed_run;
         if (runs_by_trainset.has(p_trainset)) {
             run_free(run_rid);
-            return;
+        } else {
+            runs_by_trainset.erase(p_absorbed);
+            runs_by_trainset[p_trainset] = run_rid;
+            runs[run_rid].trainset = p_trainset;
         }
-        runs_by_trainset.erase(p_absorbed);
-        runs_by_trainset[p_trainset] = run_rid;
-        runs[run_rid].trainset = p_trainset;
+        // the vehicles that came are to go where the trainset's timetable says
+        const Timetable *timetable = timetables.getptr(runs[runs_by_trainset[p_trainset]].timetable);
+        _set_trainset_destination(p_trainset, timetable != nullptr ? timetable->destination : RID());
+    }
+
+    void StationServer::_set_trainset_destination(const RID &p_trainset, const RID &p_station) {
+        RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
+        ERR_FAIL_NULL(rail_vehicles);
+        const TypedArray<RID> vehicles = rail_vehicles->trainset_get_vehicles(p_trainset);
+        for (int index = 0; index < vehicles.size(); ++index) {
+            rail_vehicles->vehicle_set_destination(vehicles[index], p_station);
+        }
     }
 
     void StationServer::_on_trainset_freed(const RID &p_trainset) {
-        if (const RID *run = runs_by_trainset.getptr(p_trainset); run != nullptr) {
-            run_free(*run);
+        // the trainset is gone with its vehicles' list: its run goes, nothing is left to clear
+        if (const RID *bound = runs_by_trainset.getptr(p_trainset); bound != nullptr) {
+            const RID run = *bound;
+            runs_by_trainset.erase(p_trainset);
+            run_free(run);
         }
     }
 

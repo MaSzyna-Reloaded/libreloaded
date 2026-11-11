@@ -3,6 +3,19 @@ name: architecture
 description: Decide where a piece of state, behaviour or API belongs in Reloaded Core's layers, and check that a change does not breach a boundary. Use before adding a class, a field, a signal, a state key or a server method; before writing a server, a registry or a backend (a singleton, never static functions) or loading a resource as one is made; before moving logic between C++ and GDScript; when something needs a value that lives in another layer; when a node, a system and a server all look like plausible homes for the same thing; when a plugin's backend needs something of the core; and when reviewing a diff for separation of concerns. Answers "which layer owns this", "may this layer know about that one", and "is this the same mistake we already made".
 ---
 
+## Rule zero: only what the operator orders
+
+REQUIRED, ABSOLUTE: **do always and only what the operator orders.** Nothing is edited, reverted,
+"restored", renamed, redesigned or posted (an issue, a comment, a PR) without the operator's
+explicit order - not even one's own work after a complaint. A complaint is not an order: name the
+facts and wait. Never touch an existing, reviewed mechanism outside the task.
+
+REQUIRED, ABSOLUTE: **no separation-of-concerns breach, ever.** Before any new state, API, enum,
+command or read from another layer, name to the operator which layer owns the value, where it is
+read from and why that keeps every layer to its own concern - and write nothing until the operator
+says yes. Data a scenery or a starter hands in is never read as live state; a value is read from
+its owner, never from a plugin's implementation, a dump or a copy.
+
 # Reloaded Core - layers, boundaries and how they are enforced
 
 The core is a stack of layers, each replaceable on its own. Most defects recorded in
