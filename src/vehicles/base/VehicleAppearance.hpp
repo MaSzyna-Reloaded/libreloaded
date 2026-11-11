@@ -12,11 +12,6 @@ namespace godot {
     class VehicleAppearance : public Resource {
             GDCLASS(VehicleAppearance, Resource)
 
-        public:
-            /* The submodel a head display material is drawn on, for a vehicle put together by hand -
-             * the wrapper's own name; a vehicle of the game data takes the one its plugin finds */
-            static constexpr const char *DEFAULT_HEAD_DISPLAY_SUBMODEL = "tablice_relacyjne";
-
         private:
             String data_path;
             String model_filename;
@@ -25,7 +20,6 @@ namespace godot {
             PackedStringArray attachment_model_filenames;
             PackedStringArray skins;
             Transform3D model_transform;
-            String head_display_submodel = DEFAULT_HEAD_DISPLAY_SUBMODEL;
 
         protected:
             static void _bind_methods();
@@ -49,7 +43,5 @@ namespace godot {
             /* Where every model of the vehicle sits in the vehicle's own frame */
             void set_model_transform(const Transform3D &p_value);
             Transform3D get_model_transform() const;
-            void set_head_display_submodel(const String &p_value);
-            String get_head_display_submodel() const;
     };
 } // namespace godot

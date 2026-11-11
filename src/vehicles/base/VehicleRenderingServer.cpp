@@ -269,9 +269,6 @@ namespace godot {
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
         ClassDB::bind_method(
-                D_METHOD("vehicle_set_head_display_material", "vehicle", "material"),
-                &VehicleRenderingServer::vehicle_set_head_display_material);
-        ClassDB::bind_method(
                 D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
                 &VehicleRenderingServer::vehicle_set_shown_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_is_detailed", "vehicle"), &VehicleRenderingServer::vehicle_is_detailed);
@@ -470,21 +467,6 @@ namespace godot {
         return visual->model;
     }
 
-    void
-    VehicleRenderingServer::vehicle_set_head_display_material(const RID &p_vehicle, const Ref<Material> &p_material) {
-        Visual *visual = vehicles.getptr(p_vehicle);
-        ERR_FAIL_NULL(visual);
-        visual->head_display_material = p_material;
-        ModelRenderingServer *models = ModelRenderingServer::get_instance();
-        if (models == nullptr || !visual->model.is_valid() || visual->appearance.is_null()) {
-            return;
-        }
-        const String submodel = visual->appearance->get_head_display_submodel();
-        if (models->instance_has_part(visual->model, submodel)) {
-            models->instance_set_part_material_override(visual->model, submodel, p_material);
-        }
-    }
-
     void VehicleRenderingServer::vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
@@ -648,7 +630,6 @@ namespace godot {
         p_visual.model_transform = appearance->get_model_transform();
         _bind_running_gear(p_vehicle, p_visual);
         _vehicle_parts_bound(p_vehicle);
-        vehicle_set_head_display_material(p_vehicle, p_visual.head_display_material);
         _update_detection_area(p_vehicle, p_visual);
         _place(p_vehicle, p_visual);
     }

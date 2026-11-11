@@ -4,7 +4,6 @@
 #include "vehicles/rail/RailVehicleAppearance.hpp"
 #include "vehicles/rail/RailVehicleController.hpp"
 
-#include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -46,7 +45,6 @@ namespace godot {
              * `dynamic` - and how it couples to the next one */
             double trainset_gap = 0.0;
             RailVehicleController::CouplingMode trainset_coupling_mode = RailVehicleController::COUPLING_MODE_NONE;
-            Ref<Material> head_display_material;
 
             /* The vehicle this node draws - the handle its VehiclePhysicsNode built, or the one it
              * was given */
@@ -119,7 +117,5 @@ namespace godot {
             double get_trainset_gap() const;
             void set_trainset_coupling_mode(RailVehicleController::CouplingMode p_value);
             RailVehicleController::CouplingMode get_trainset_coupling_mode() const;
-            void set_head_display_material(const Ref<Material> &p_value);
-            Ref<Material> get_head_display_material() const;
     };
 } // namespace godot
