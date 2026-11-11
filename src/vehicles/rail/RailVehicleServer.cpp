@@ -2612,9 +2612,9 @@ namespace godot {
                                           : Math::INF;
                 pantographs->pantograph_step(pantograph, gap, raised, speed_factor, p_delta);
             }
-            const double assumed_voltage =
-                    MAX(Math::abs(power_source->get_collector_pantograph_first_voltage()),
-                        Math::abs(power_source->get_collector_pantograph_second_voltage()));
+            // the current is drawn at the collector's voltage of the step before, its short losses
+            // held over
+            const double assumed_voltage = power_source->get_collector_voltage();
             int collecting = 0;
             for (int pantograph = 0; pantograph < count; ++pantograph) {
                 collecting += static_cast<int>(
@@ -2653,9 +2653,18 @@ namespace godot {
                 if (collector.touching && !pantographs->get_pantograph_has_geometry(pantograph)) {
                     wire = _find_pantograph_wire(p_vehicle, collector, pantograph, position, frame, half_width)["rid"];
                 }
-                if (collector.touching && wire.is_valid() && traction != nullptr) {
-                    voltage = traction->wire_get_voltage(wire, assumed_voltage, current);
-                    traction->wire_draw_current(wire, assumed_voltage, current);
+                // a pantograph that reads no wire has no voltage, so it comes back to one unpowered
+                if (!collector.touching || !wire.is_valid() || traction == nullptr) {
+                    collector.powered = false;
+                } else {
+                    // one that read nothing on the step before reads the wire drawing nothing, not to
+                    // load its source as a short circuit, and draws from the next step on
+                    if (collector.powered) {
+                        voltage = traction->wire_get_voltage(wire, assumed_voltage, current);
+                        traction->wire_draw_current(wire, assumed_voltage, current);
+                    } else {
+                        voltage = traction->wire_get_voltage(wire, assumed_voltage, 0.0);
+                    }
                     /* A span overhead that carries nothing is another defect than a hole in the
                      * wiring - the network behind it has no source, or the resistance never
                      * reached it - and the two look the same from the cab, as a dead line. */
