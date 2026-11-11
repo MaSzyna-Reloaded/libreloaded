@@ -74,6 +74,20 @@
 				Returns the branch the switch is set to.
 			</description>
 		</method>
+		<method name="switch_get_blade_delay" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="switch" type="RID" />
+			<description>
+				How far past its travel the second blade of [param switch] goes on [m] ([method switch_set_blade_delay]).
+			</description>
+		</method>
+		<method name="switch_get_blade_speed" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="switch" type="RID" />
+			<description>
+				How fast the blades of [param switch] move [m/s] ([method switch_set_blade_speed]).
+			</description>
+		</method>
 		<method name="switch_get_f_offset1" qualifiers="const">
 			<return type="float" />
 			<param index="0" name="switch" type="RID" />
@@ -115,6 +129,22 @@
 			<param index="1" name="active_track" type="int" enum="TrackServer.SwitchTrack" />
 			<description>
 				Sets the switch to [param active_track]: emits [signal switch_active_track_changed] and [signal switch_movement_started], then moves the blades at the original's speed (Track.cpp:1743-1755, 1944) and emits [signal switch_movement_finished] when they are in place - at once when they already are.
+			</description>
+		</method>
+		<method name="switch_set_blade_delay">
+			<return type="void" />
+			<param index="0" name="switch" type="RID" />
+			<param index="1" name="delay" type="float" />
+			<description>
+				How far past its travel the second blade of [param switch] goes on to close it [m]; the blades move to where [param delay] puts them. The default is the server's switch offset delay.
+			</description>
+		</method>
+		<method name="switch_set_blade_speed">
+			<return type="void" />
+			<param index="0" name="switch" type="RID" />
+			<param index="1" name="speed" type="float" />
+			<description>
+				How fast the blades of [param switch] move [m/s] from now on. The default is the same for every switch.
 			</description>
 		</method>
 		<method name="topology_get_summary">

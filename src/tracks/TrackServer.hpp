@@ -231,6 +231,8 @@ namespace godot {
             struct SwitchData {
                     RID track;
                     SwitchTrack active_track = TRACK_COMMON;
+                    /* How fast its blades move [m/s] (switch_set_blade_speed()) */
+                    double blade_speed = SWITCH_OFFSET_SPEED;
                     double f_offset_delay = SWITCH_OFFSET_DELAY;
                     double desired_offset = -SWITCH_OFFSET_DELAY;
                     double f_offset = -SWITCH_OFFSET_DELAY;
@@ -327,6 +329,9 @@ namespace godot {
             void _free_switch(TrackSegment &p_track);
             void _erase_track(const RID &p_track);
             void _set_switch_processing(bool p_processing);
+            /* The blades start towards where the switch's active track and blade delay put them,
+             * or are set there when they are there already (Track.cpp:1743-1755) */
+            void _move_switch_blades(const RID &p_switch, SwitchTrack p_from_track);
             void _process_switches();
 
             int _get_or_create_node(const Vector3 &p_world_position, const RID &p_track_rid, int p_endpoint_index);
@@ -497,6 +502,15 @@ namespace godot {
             SwitchTrack switch_get_active_track(const RID &p_switch) const;
             /* The blades move towards the track (Track.cpp:1743-1755) */
             void switch_set_active_track(const RID &p_switch, SwitchTrack p_active_track);
+            /* How fast the switch's blades move [m/s], SWITCH_OFFSET_SPEED until set (Track.h:67
+             * fOffsetSpeed) */
+            void switch_set_blade_speed(const RID &p_switch, double p_speed);
+            double switch_get_blade_speed(const RID &p_switch) const;
+            /* How far past its travel the second blade goes on to close the switch [m],
+             * SWITCH_OFFSET_DELAY until set (Track.h:68 fOffsetDelay); the blades move to where it
+             * puts them */
+            void switch_set_blade_delay(const RID &p_switch, double p_delay);
+            double switch_get_blade_delay(const RID &p_switch) const;
             double switch_get_f_offset1(const RID &p_switch) const;
             double switch_get_f_offset2(const RID &p_switch) const;
             Dictionary topology_get_summary();

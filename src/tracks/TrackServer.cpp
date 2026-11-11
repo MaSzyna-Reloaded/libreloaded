@@ -168,6 +168,12 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("switch_get_active_track", "switch"), &TrackServer::switch_get_active_track);
         ClassDB::bind_method(
                 D_METHOD("switch_set_active_track", "switch", "active_track"), &TrackServer::switch_set_active_track);
+        ClassDB::bind_method(
+                D_METHOD("switch_set_blade_speed", "switch", "speed"), &TrackServer::switch_set_blade_speed);
+        ClassDB::bind_method(D_METHOD("switch_get_blade_speed", "switch"), &TrackServer::switch_get_blade_speed);
+        ClassDB::bind_method(
+                D_METHOD("switch_set_blade_delay", "switch", "delay"), &TrackServer::switch_set_blade_delay);
+        ClassDB::bind_method(D_METHOD("switch_get_blade_delay", "switch"), &TrackServer::switch_get_blade_delay);
         ClassDB::bind_method(D_METHOD("topology_get_summary"), &TrackServer::topology_get_summary);
         ClassDB::bind_method(D_METHOD("topology_rebuild"), &TrackServer::topology_rebuild);
 
@@ -541,7 +547,7 @@ namespace godot {
             }
             const double remaining = data->desired_offset - data->f_offset;
             // Track.cpp:1944 - the blade moves at a constant speed
-            const double step = SWITCH_OFFSET_SPEED * delta;
+            const double step = data->blade_speed * delta;
             if (Math::abs(remaining) <= step) {
                 const SwitchTrack active_track = data->active_track;
                 _set_switch_f_offset(switch_rid, *data, data->desired_offset);
@@ -1493,12 +1499,47 @@ namespace godot {
         }
         const SwitchTrack from_track = data->active_track;
         data->active_track = p_active_track;
+        emit_signal(switch_active_track_changed_signal, p_switch, p_active_track);
+        _move_switch_blades(p_switch, from_track);
+    }
+
+    void TrackServer::switch_set_blade_speed(const RID &p_switch, const double p_speed) {
+        SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL(data);
+        data->blade_speed = p_speed;
+    }
+
+    double TrackServer::switch_get_blade_speed(const RID &p_switch) const {
+        const SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL_V(data, SWITCH_OFFSET_SPEED);
+        return data->blade_speed;
+    }
+
+    void TrackServer::switch_set_blade_delay(const RID &p_switch, const double p_delay) {
+        SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL(data);
+        if (data->f_offset_delay == p_delay) {
+            return;
+        }
+        data->f_offset_delay = p_delay;
+        _move_switch_blades(p_switch, data->active_track);
+    }
+
+    double TrackServer::switch_get_blade_delay(const RID &p_switch) const {
+        const SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL_V(data, SWITCH_OFFSET_DELAY);
+        return data->f_offset_delay;
+    }
+
+    void TrackServer::_move_switch_blades(const RID &p_switch, const SwitchTrack p_from_track) {
+        SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL(data);
+        const SwitchTrack active_track = data->active_track;
         data->desired_offset =
-                p_active_track == TRACK_DIVERGING ? SWITCH_MAX_OFFSET + data->f_offset_delay : -data->f_offset_delay;
+                active_track == TRACK_DIVERGING ? SWITCH_MAX_OFFSET + data->f_offset_delay : -data->f_offset_delay;
         const bool in_place = data->desired_offset == data->f_offset;
 
-        emit_signal(switch_active_track_changed_signal, p_switch, p_active_track);
-        emit_signal(switch_movement_started_signal, p_switch, from_track, p_active_track);
+        emit_signal(switch_movement_started_signal, p_switch, p_from_track, active_track);
 
         moving_switches.erase(p_switch);
 
@@ -1506,7 +1547,7 @@ namespace godot {
             data = switches.getptr(p_switch); // a listener may have rehashed the table
             ERR_FAIL_NULL(data);
             _set_switch_f_offset(p_switch, *data, data->desired_offset);
-            emit_signal(switch_movement_finished_signal, p_switch, p_active_track);
+            emit_signal(switch_movement_finished_signal, p_switch, active_track);
             return;
         }
         moving_switches.push_back(p_switch);
