@@ -16,7 +16,7 @@ namespace godot {
                 D_METHOD("set_name", "name"), static_cast<void (VehicleData::*)(const String &)>(&Resource::set_name));
         ClassDB::bind_method(D_METHOD("get_name"), static_cast<String (VehicleData::*)() const>(&Resource::get_name));
         ADD_PROPERTY(
-                PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_name",
+                PropertyInfo(Variant::STRING, "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), "set_name",
                 "get_name");
         ClassDB::bind_method(D_METHOD("set_driver_type", "value"), &VehicleData::set_driver_type);
         ClassDB::bind_method(D_METHOD("get_driver_type"), &VehicleData::get_driver_type);
@@ -35,5 +35,6 @@ namespace godot {
         vehicle_provider = p_other->vehicle_provider;
         vehicle = p_other->vehicle;
         livery = p_other->livery;
+        set_name(p_other->get_name());
     }
 } // namespace godot

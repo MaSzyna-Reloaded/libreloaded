@@ -862,6 +862,15 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
   `OPD`, `SBBBH`, `SBD`, `SCIM`, `SplitEDPneumaticBrake`. `MaxBPMass` was one of them (EN57's
   trailers braked at MaxBP and locked their wheels, `docs/findings-archive.md` 2026-10-06).
 
+## Resource name property missing PROPERTY_USAGE_STORAGE
+
+* `VehicleData` and `TrainsetData`'s `name` property was fixed (MaSzyna-Reloaded/reports#30,
+  `docs/findings-archive.md`, "A renamed vehicle lost its name at the first copy") - bound with
+  `PROPERTY_USAGE_EDITOR` alone, so `duplicate()` silently dropped it. The same pattern (same
+  `ADD_PROPERTY` call, same flag) is still open in: `ModelData.cpp`, `WorldLayer.cpp`,
+  `PowerSourceData.cpp`, `TrackData.cpp`, `SoundData.cpp`. None of these were touched here - left
+  out of this fix's scope - but a `duplicate()` of any of them loses its name the same way.
+
 ## Grass and trees vanishing up close (report 2026-10-05)
 
 * Models: whether a model's node range (`MaszynaE3DOptimizedBackend.cpp:227-234`) still goes by the

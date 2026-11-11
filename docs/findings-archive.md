@@ -4,6 +4,30 @@ The full entries behind the rules in `FINDINGS.md`: the symptom, what proved the
 and the rule. Headings keep their date and title, because comments in the code cite them
 (`see FINDINGS.md, 2026-09-23`). Open work belongs in `TODO.md`, not here.
 
+## 2026-11-11 - A renamed vehicle lost its name at the first copy
+
+* **Symptom:** MaSzyna-Reloaded/reports#30 - a vehicle changed in the scenery selector's starter
+  (model swap or a skin applied) was meant to take the new livery's name, but the trainset's HUD
+  vehicle card and chip kept showing the scenery's originally declared name, even after
+  `VehicleData.take_vehicle_of()` and `TrainsetData.get_arranged_members()` were changed to carry
+  the name across (`a10a5e3`).
+* **What proved it:** an isolated probe built a `VehicleData`, set its name, and ran it through
+  `Resource.duplicate()` and the real `get_arranged_members()` - the name came back empty every
+  time, regardless of what the merge logic did with it. `VehicleData::_bind_methods()` (and
+  `TrainsetData`'s) registered `name` with `PropertyInfo(..., PROPERTY_USAGE_EDITOR)` only - every
+  other property on the class used the macros' default (`PROPERTY_USAGE_DEFAULT`, which includes
+  `PROPERTY_USAGE_STORAGE`). Godot's `Resource::duplicate()`
+  (`core/io/resource.cpp`) copies only properties flagged `PROPERTY_USAGE_STORAGE`; `name` never
+  had it; the vehicle selector's own `_copy_member()` duplicates the vehicle on the way out
+  (`scenery_selector_screen.gd`), which dropped the just-set name before `take_vehicle_of()` ever
+  saw it.
+* **Fix:** `VehicleData` and `TrainsetData` bind `name` with `PROPERTY_USAGE_DEFAULT`, the same as
+  every other property, so it survives `duplicate()` like the rest of the resource.
+* **Rule:** `PROPERTY_USAGE_EDITOR` alone makes a property visible and settable in the editor, but
+  not saved or copied - a property meant to persist needs `PROPERTY_USAGE_STORAGE` (or the
+  macros' default, which already includes it); leaving it out is invisible until something
+  `duplicate()`s or saves the resource.
+
 ## 2026-11-05 - The minimap that made a slideshow
 
 * **Symptom:** the Mini Map window turned the game into a slideshow on Wrzosy (EP07-1024,

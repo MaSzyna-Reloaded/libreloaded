@@ -47,7 +47,8 @@ namespace godot {
             MAKE_GS(String, load_name);
             MAKE_GS_NR(double, load_amount);
 
-            /// It becomes the vehicle p_other is, in its livery
+            /// It becomes the vehicle p_other is, in its livery and under its name - the id stays, what
+            /// finds it
             void take_vehicle_of(const Ref<VehicleData> &p_other);
     };
 } // namespace godot

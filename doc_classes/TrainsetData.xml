@@ -13,7 +13,7 @@
 			<return type="TrainsetMemberData[]" />
 			<param index="0" name="arranged" type="TrainsetMemberData[]" />
 			<description>
-				Its members as [param arranged] lists them (a scenery's trainset_override) when every declared member there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared member by its place ([member TrainsetMemberData.trainset_index]); a declared member becomes the entry's vehicle, turned its way, its crew, load and gap kept; an added one is a copy of the vehicle before it with nobody aboard, no load, no gap, an id of its own and no name. Each couples to the next by the entry's [member TrainsetMemberData.coupling_mode] - the one the arrangement shows and the player chose.
+				Its members as [param arranged] lists them (a scenery's trainset_override) when every declared member there stands at its place in this trainset, its declared ones otherwise. An entry is paired with its declared member by its place ([member TrainsetMemberData.trainset_index]); every member becomes the entry's vehicle, turned its way and under its name - a declared one's crew, load and gap stay; an added one is a copy of the vehicle before it with nobody aboard, no load, no gap and an id of its own. Each couples to the next by the entry's [member TrainsetMemberData.coupling_mode] - the one the arrangement shows and the player chose.
 			</description>
 		</method>
 		<method name="get_driver_vehicle" qualifiers="const">
