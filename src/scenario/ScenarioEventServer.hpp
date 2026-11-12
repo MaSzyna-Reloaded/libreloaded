@@ -137,6 +137,10 @@ namespace godot {
             /// another request is refused and its activator is dropped (event_manager::AddToQuery,
             /// Event.cpp:2380-2462).
             bool event_queue(const RID &p_event, const RID &p_activator = RID(), double p_extra_delay = 0.0);
+            /// Runs the event now, without the queue and whatever its delays: its condition is tested
+            /// and its action run, as when its time in the queue comes; its system's implementation
+            /// then learns that it ran
+            void event_run(const RID &p_event, const RID &p_activator = RID());
             bool event_is_queued(const RID &p_event) const;
             /// The simulation time (SimulationServer.simulation_get_time()) a queued event runs at,
             /// negative when it is not queued

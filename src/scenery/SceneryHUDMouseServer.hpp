@@ -22,8 +22,8 @@ namespace godot {
     /// instances alone - a handful per scenery and the vehicles near the camera, not every model -
     /// of which only the ones built (streamed in) are tested.
     ///
-    /// Unlike the original's pick buffer, nothing hides a model: one standing behind a building is
-    /// picked through it.
+    /// A model in front of a pickable hides it: one standing behind a building is not picked. Only
+    /// the models built - the ones near the camera - are looked at, and only up to the pickable.
     class SceneryHUDMouseServer : public Object {
             GDCLASS(SceneryHUDMouseServer, Object)
 

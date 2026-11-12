@@ -18,6 +18,9 @@ namespace godot {
         /// A vehicle's outline, about a pixel wide (1080 lines, 75 degree field of view): a vehicle
         /// fills much of the view, and the lever's ring around it reads as a thick frame
         constexpr double VEHICLE_OUTLINE_WIDTH_PER_METRE = 0.0015;
+        /* How much nearer than a pickable a model has to be to hide it [m] - the pickable's own
+         * surface met again is no other model */
+        constexpr double OCCLUSION_TOLERANCE = 0.01;
     } // namespace
 
     const char *SceneryHUDMouseServer::pickable_hovered_signal = "pickable_hovered";
@@ -140,6 +143,15 @@ namespace godot {
                 if (!hit.is_empty() && static_cast<double>(hit["distance"]) < nearest_distance) {
                     nearest_distance = hit["distance"];
                     nearest = entry.key;
+                }
+            }
+            // a model in front of it hides it, as the original's pick buffer does
+            if (nearest.is_valid()) {
+                const Dictionary occluder = models->instance_find_nearest_hit(
+                        from, from + view->project_ray_normal(motion->get_position()) * nearest_distance);
+                if (!occluder.is_empty() && !(RID(occluder["instance"]) == pickables[nearest].instance) &&
+                    static_cast<double>(occluder["distance"]) < nearest_distance - OCCLUSION_TOLERANCE) {
+                    nearest = RID();
                 }
             }
             _set_hovered(nearest);

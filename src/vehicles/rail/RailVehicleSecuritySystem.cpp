@@ -29,6 +29,8 @@ namespace godot {
                 D_METHOD("security_cabsignal_acknowledge"), &RailVehicleSecuritySystem::security_cabsignal_acknowledge);
         ClassDB::bind_method(
                 D_METHOD("security_cabsignal_trigger"), &RailVehicleSecuritySystem::security_cabsignal_trigger);
+        ClassDB::bind_method(
+                D_METHOD("security_cabsignal_lock", "locked"), &RailVehicleSecuritySystem::security_cabsignal_lock);
         ClassDB::bind_method(D_METHOD("security_radiostop", "enabled"), &RailVehicleSecuritySystem::security_radiostop);
         ADD_SIGNAL(MethodInfo(blinking_changed_signal, PropertyInfo(Variant::BOOL, "state")));
         ADD_SIGNAL(MethodInfo(beeping_changed_signal, PropertyInfo(Variant::BOOL, "state")));
@@ -57,6 +59,8 @@ namespace godot {
         register_command(
                 "security_cabsignal_trigger",
                 callable_mp(this, &RailVehicleSecuritySystem::security_cabsignal_trigger));
+        register_command(
+                "security_cabsignal_lock", callable_mp(this, &RailVehicleSecuritySystem::security_cabsignal_lock));
         register_command("security_radiostop", callable_mp(this, &RailVehicleSecuritySystem::security_radiostop));
     }
 
@@ -64,6 +68,7 @@ namespace godot {
         unregister_command("security_acknowledge");
         unregister_command("security_cabsignal_acknowledge");
         unregister_command("security_cabsignal_trigger");
+        unregister_command("security_cabsignal_lock");
         unregister_command("security_radiostop");
     }
 } // namespace godot

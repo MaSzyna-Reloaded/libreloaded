@@ -28,6 +28,7 @@ namespace godot {
     const char *TrackServer::isolated_axle_left_signal = "isolated_axle_left";
     const char *TrackServer::track_vehicle_entered_signal = "track_vehicle_entered";
     const char *TrackServer::track_vehicle_left_signal = "track_vehicle_left";
+    const char *TrackServer::track_curves_changed_signal = "track_curves_changed";
     const char *TrackServer::track_vehicle_stopped_signal = "track_vehicle_stopped";
     const char *TrackServer::track_vehicle_started_signal = "track_vehicle_started";
 
@@ -73,6 +74,8 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("track_free", "track"), &TrackServer::track_free);
         ClassDB::bind_method(D_METHOD("track_free_many", "tracks"), &TrackServer::track_free_many);
         ClassDB::bind_method(D_METHOD("track_connect_many", "tracks"), &TrackServer::track_connect_many);
+        ClassDB::bind_method(D_METHOD("track_connect", "track"), &TrackServer::track_connect);
+        ClassDB::bind_method(D_METHOD("track_disconnect", "track"), &TrackServer::track_disconnect);
         ClassDB::bind_method(D_METHOD("track_get_rid_by_name", "name"), &TrackServer::track_get_rid_by_name);
         ClassDB::bind_method(
                 D_METHOD("track_get_length", "track", "branch"), &TrackServer::track_get_length, DEFVAL(TRACK_COMMON));
@@ -168,6 +171,12 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("switch_get_active_track", "switch"), &TrackServer::switch_get_active_track);
         ClassDB::bind_method(
                 D_METHOD("switch_set_active_track", "switch", "active_track"), &TrackServer::switch_set_active_track);
+        ClassDB::bind_method(
+                D_METHOD("switch_set_blade_speed", "switch", "speed"), &TrackServer::switch_set_blade_speed);
+        ClassDB::bind_method(D_METHOD("switch_get_blade_speed", "switch"), &TrackServer::switch_get_blade_speed);
+        ClassDB::bind_method(
+                D_METHOD("switch_set_blade_delay", "switch", "delay"), &TrackServer::switch_set_blade_delay);
+        ClassDB::bind_method(D_METHOD("switch_get_blade_delay", "switch"), &TrackServer::switch_get_blade_delay);
         ClassDB::bind_method(D_METHOD("topology_get_summary"), &TrackServer::topology_get_summary);
         ClassDB::bind_method(D_METHOD("topology_rebuild"), &TrackServer::topology_rebuild);
 
@@ -239,6 +248,7 @@ namespace godot {
         ADD_SIGNAL(MethodInfo(tracks_changed_signal));
         ADD_SIGNAL(MethodInfo(topology_rebuilt_signal));
         ADD_SIGNAL(MethodInfo(topology_changed_signal));
+        ADD_SIGNAL(MethodInfo(track_curves_changed_signal, PropertyInfo(Variant::RID, "track")));
         for (const char *signal:
              {isolated_occupied_signal, isolated_freed_signal, isolated_axle_entered_signal,
               isolated_axle_left_signal}) {
@@ -541,7 +551,7 @@ namespace godot {
             }
             const double remaining = data->desired_offset - data->f_offset;
             // Track.cpp:1944 - the blade moves at a constant speed
-            const double step = SWITCH_OFFSET_SPEED * delta;
+            const double step = data->blade_speed * delta;
             if (Math::abs(remaining) <= step) {
                 const SwitchTrack active_track = data->active_track;
                 _set_switch_f_offset(switch_rid, *data, data->desired_offset);
@@ -628,6 +638,108 @@ namespace godot {
         emit_signal(tracks_changed_signal);
     }
 
+    void TrackServer::track_connect(const RID &p_track) {
+        TrackSegment *track = tracks.getptr(p_track);
+        ERR_FAIL_NULL(track);
+        const int group = _track_type_group(track->type);
+        if (group == GROUP_NONE) {
+            return;
+        }
+        const PackedVector3Array endpoints = _endpoints(*track);
+        if (endpoints.is_empty()) {
+            return;
+        }
+        Rect2 reach(Vector2(endpoints[0].x, endpoints[0].z), Vector2());
+        for (const Vector3 &endpoint: endpoints) {
+            reach = reach.expand(Vector2(endpoint.x, endpoint.z));
+        }
+        const TypedArray<RID> candidates = spatial_index->query(reach.grow(static_cast<real_t>(ENDPOINT_EPSILON)));
+        bool joined = false;
+        for (int endpoint_index = 0; endpoint_index < endpoints.size(); ++endpoint_index) {
+            if (_node_is_shared(track->node_ids[endpoint_index], p_track)) {
+                continue;
+            }
+            // its own node where its end is now: it may have been turned since it was made
+            if (TrackNode *node = _get_node(track->node_ids[endpoint_index]); node != nullptr) {
+                node->world_position = endpoints[endpoint_index];
+            }
+            // the first track found there, as an end joins one track
+            for (int64_t i = 0; i < candidates.size() && !_node_is_shared(track->node_ids[endpoint_index], p_track);
+                 ++i) {
+                const RID other_rid = candidates[i];
+                TrackSegment *other = tracks.getptr(other_rid);
+                if (other_rid == p_track || other == nullptr || !(_track_type_group(other->type) == group)) {
+                    continue;
+                }
+                const PackedVector3Array other_endpoints = _endpoints(*other);
+                for (int other_index = 0; other_index < other_endpoints.size(); ++other_index) {
+                    if (_endpoints_equal(endpoints[endpoint_index], other_endpoints[other_index]) &&
+                        !_node_is_shared(other->node_ids[other_index], other_rid)) {
+                        _merge_endpoint_nodes(p_track, endpoint_index, other_rid, other_index);
+                        joined = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (joined) {
+            emit_signal(tracks_changed_signal);
+        }
+    }
+
+    void TrackServer::track_disconnect(const RID &p_track) {
+        TrackSegment *track = tracks.getptr(p_track);
+        ERR_FAIL_NULL(track);
+        const PackedVector3Array endpoints = _endpoints(*track);
+        bool detached = false;
+        for (int endpoint_index = 0; endpoint_index < endpoints.size(); ++endpoint_index) {
+            const int node_id = track->node_ids[endpoint_index];
+            if (!_node_is_shared(node_id, p_track)) {
+                continue;
+            }
+            Vector<EndpointPair> &refs = _get_node(node_id)->endpoint_refs;
+            for (int64_t i = refs.size() - 1; i >= 0; --i) {
+                if (refs[i].track_rid == p_track && refs[i].endpoint_index == endpoint_index) {
+                    refs.remove_at(i);
+                }
+            }
+            // a node of its own, shared only with its other endpoints at the same point
+            track->node_ids[endpoint_index] = INVALID_NODE_ID;
+            track->node_ids[endpoint_index] = _get_or_create_node(endpoints[endpoint_index], p_track, endpoint_index);
+            detached = true;
+        }
+        if (detached) {
+            emit_signal(tracks_changed_signal);
+        }
+    }
+
+    void TrackServer::_index_track(const RID &p_track, TrackSegment &p_segment) {
+        spatial_index->remove(p_track);
+        const PackedVector3Array &points = _endpoints(p_segment);
+        if (points.is_empty()) {
+            return;
+        }
+        Rect2 rect(Vector2(points[0].x, points[0].z), Vector2());
+        for (const Vector3 &point: points) {
+            rect = rect.expand(Vector2(point.x, point.z));
+        }
+        p_segment.aabb = rect.grow(static_cast<real_t>(AABB_MARGIN));
+        spatial_index->add(p_track, p_segment.aabb);
+    }
+
+    bool TrackServer::_node_is_shared(const int p_node_id, const RID &p_track) {
+        const TrackNode *node = _get_node(p_node_id);
+        if (node == nullptr) {
+            return false;
+        }
+        for (const EndpointPair &ref: node->endpoint_refs) {
+            if (!(ref.track_rid == p_track)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /* A track out of the server - its switch, name, place in the spatial index, isolated sections
      * and nodes - its graph left to the caller */
     void TrackServer::_erase_track(const RID &p_track) {
@@ -685,6 +797,7 @@ namespace godot {
             return;
         }
 
+        const bool had_curves = track->curve1.is_valid();
         const PackedVector3Array previous_endpoints = _endpoints(*track);
         PackedVector3Array next_endpoints;
         CurvePoints next_points1;
@@ -727,9 +840,15 @@ namespace godot {
         }
 
         _set_curves(*track, p_curve1, p_curve2);
+        _index_track(p_track, *track);
 
         if (changed_connected_endpoint) {
             _mark_topology_changed();
+        }
+        // a track given its first curves, as a scenery is loaded, had no shape to change: it is
+        // drawn and stood on after - streamed, not built at once
+        if (had_curves) {
+            emit_signal(track_curves_changed_signal, p_track);
         }
     }
 
@@ -757,18 +876,7 @@ namespace godot {
         if (!Math::is_equal_approx(previous_width, p_width)) {
             _update_switch_blade_boundary_offsets(*track);
         }
-        const PackedVector3Array points = _endpoints(*track);
-        if (points.is_empty()) {
-            spatial_index->remove(p_track);
-        } else {
-            Rect2 rect(Vector2(points[0].x, points[0].z), Vector2());
-            for (const Vector3 &point: points) {
-                rect = rect.expand(Vector2(point.x, point.z));
-            }
-            track->aabb = rect.grow(static_cast<real_t>(AABB_MARGIN));
-            spatial_index->remove(p_track);
-            spatial_index->add(p_track, track->aabb);
-        }
+        _index_track(p_track, *track);
         if (!was_switch && p_type == TRACK_SWITCH) {
             ++next_track_id; // the tracks' own ids, so that a switch is never taken for a track
             track->switch_rid = UtilityFunctions::rid_from_int64(next_track_id);
@@ -1493,12 +1601,47 @@ namespace godot {
         }
         const SwitchTrack from_track = data->active_track;
         data->active_track = p_active_track;
+        emit_signal(switch_active_track_changed_signal, p_switch, p_active_track);
+        _move_switch_blades(p_switch, from_track);
+    }
+
+    void TrackServer::switch_set_blade_speed(const RID &p_switch, const double p_speed) {
+        SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL(data);
+        data->blade_speed = p_speed;
+    }
+
+    double TrackServer::switch_get_blade_speed(const RID &p_switch) const {
+        const SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL_V(data, SWITCH_OFFSET_SPEED);
+        return data->blade_speed;
+    }
+
+    void TrackServer::switch_set_blade_delay(const RID &p_switch, const double p_delay) {
+        SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL(data);
+        if (data->f_offset_delay == p_delay) {
+            return;
+        }
+        data->f_offset_delay = p_delay;
+        _move_switch_blades(p_switch, data->active_track);
+    }
+
+    double TrackServer::switch_get_blade_delay(const RID &p_switch) const {
+        const SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL_V(data, SWITCH_OFFSET_DELAY);
+        return data->f_offset_delay;
+    }
+
+    void TrackServer::_move_switch_blades(const RID &p_switch, const SwitchTrack p_from_track) {
+        SwitchData *data = switches.getptr(p_switch);
+        ERR_FAIL_NULL(data);
+        const SwitchTrack active_track = data->active_track;
         data->desired_offset =
-                p_active_track == TRACK_DIVERGING ? SWITCH_MAX_OFFSET + data->f_offset_delay : -data->f_offset_delay;
+                active_track == TRACK_DIVERGING ? SWITCH_MAX_OFFSET + data->f_offset_delay : -data->f_offset_delay;
         const bool in_place = data->desired_offset == data->f_offset;
 
-        emit_signal(switch_active_track_changed_signal, p_switch, p_active_track);
-        emit_signal(switch_movement_started_signal, p_switch, from_track, p_active_track);
+        emit_signal(switch_movement_started_signal, p_switch, p_from_track, active_track);
 
         moving_switches.erase(p_switch);
 
@@ -1506,7 +1649,7 @@ namespace godot {
             data = switches.getptr(p_switch); // a listener may have rehashed the table
             ERR_FAIL_NULL(data);
             _set_switch_f_offset(p_switch, *data, data->desired_offset);
-            emit_signal(switch_movement_finished_signal, p_switch, p_active_track);
+            emit_signal(switch_movement_finished_signal, p_switch, active_track);
             return;
         }
         moving_switches.push_back(p_switch);

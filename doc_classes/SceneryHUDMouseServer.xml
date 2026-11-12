@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		A left click on a registered scenery model calls what its owner handed in, Shift+click the other operation - the original's click on a scenery model in free-fly mode, which fires the event launcher of the model's name and is how a hand-thrown switch is set. The model under the cursor is outlined the way [CabinHUDMouseSystem] outlines a cab control; the original shows nothing there.
-		A pickable is an [ModelRenderingServer] instance and its operations. Picking tests the camera ray against the registered instances alone, on mouse motion only, while the cursor is visible and over no GUI control; an instance that is not built (not streamed in) is not hit. Nothing hides a model: one standing behind a building is picked through it.
+		A pickable is an [ModelRenderingServer] instance and its operations. Picking tests the camera ray against the registered instances alone, on mouse motion only, while the cursor is visible and over no GUI control; an instance that is not built (not streamed in) is not hit. A model in front of a pickable hides it: one standing behind a building is not picked ([method ModelRenderingServer.instance_find_nearest_hit], up to the pickable).
 	</description>
 	<tutorials>
 	</tutorials>

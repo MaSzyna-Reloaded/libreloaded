@@ -4,6 +4,7 @@
 namespace godot {
     const char *ModelRenderingBackend::instance_created_signal = "instance_created";
     const char *ModelRenderingBackend::instance_built_signal = "instance_built";
+    const char *ModelRenderingBackend::instance_cleared_signal = "instance_cleared";
     const char *ModelRenderingBackend::instance_freed_signal = "instance_freed";
 
     void ModelRenderingBackend::_bind_methods() {
@@ -87,5 +88,6 @@ namespace godot {
         ADD_SIGNAL(MethodInfo(instance_created_signal, PropertyInfo(Variant::RID, "instance")));
         ADD_SIGNAL(MethodInfo(instance_freed_signal, PropertyInfo(Variant::RID, "instance")));
         ADD_SIGNAL(MethodInfo(instance_built_signal, PropertyInfo(Variant::RID, "instance")));
+        ADD_SIGNAL(MethodInfo(instance_cleared_signal, PropertyInfo(Variant::RID, "instance")));
     }
 } // namespace godot

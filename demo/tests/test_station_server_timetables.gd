@@ -58,22 +58,6 @@ func test_a_renamed_station_is_found_by_its_new_name_only() -> void:
     assert_eq(StationServer.station_find_by_name("Old"), RID())
 
 
-func test_a_station_keeps_its_stop_points() -> void:
-    var station:RID = _station("Halt")
-    var platform:RID = TrackServer.track_create()
-    var through:RID = TrackServer.track_create()
-
-    StationServer.station_add_stop_point(station, platform)
-    StationServer.station_add_stop_point(station, through)
-    StationServer.station_add_stop_point(station, platform)
-
-    assert_eq(StationServer.station_get_stop_points(station), [platform, through] as Array[RID], "each track once")
-    StationServer.station_clear_stop_points(station)
-    assert_eq(StationServer.station_get_stop_points(station), [] as Array[RID])
-    TrackServer.track_free(platform)
-    TrackServer.track_free(through)
-
-
 func test_a_timetable_holds_its_stations_and_their_times() -> void:
     var start:RID = _station("Start")
     var halt:RID = _station("Halt")

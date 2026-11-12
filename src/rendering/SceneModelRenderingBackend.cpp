@@ -256,9 +256,13 @@ namespace godot {
         if (instance == nullptr) {
             return;
         }
+        const bool built = instance->built;
         _clear(*instance);
         instance->model.unref();
         instance->meshes.clear();
+        if (built) {
+            emit_signal(instance_cleared_signal, p_instance);
+        }
     }
 
     void SceneModelRenderingBackend::instance_free(const RID &p_instance) {

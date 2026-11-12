@@ -1,5 +1,4 @@
 #pragma once
-#include "tracks/TrackServer.hpp"
 #include "utils/RIDHash.hpp"
 #include "vehicles/rail/RailVehicleDoors.hpp"
 #include "vehicles/rail/RailVehicleLoad.hpp"
@@ -16,12 +15,11 @@ namespace godot {
     /// The stations of a scenery, the timetables of the trains calling at them, and the dispatch
     /// of a train at a stop.
     ///
-    /// A station (station_*) has a name it is also found by and the tracks where a train stops or
-    /// passes it - its stop points. A timetable (timetable_*) is a plan only: the train's name and
-    /// its entries, each a station with its planned arrival and departure, any number of trains
-    /// may run by it. A run (run_*) is a timetable run by a trainset: whoever drives the train moves
-    /// it on from entry to entry, this server records when the train arrived at the current entry's
-    /// station, left it or passed it, and works out from that how late the train is.
+    /// A station (station_*) has a name it is also found by. A timetable (timetable_*) is a plan only: the train's name
+    /// and its entries, each a station with its planned arrival and departure, any number of trains may run by it. A
+    /// run (run_*) is a timetable run by a trainset: whoever drives the train moves it on from entry to entry and says
+    /// when it arrived at the current entry's station, left it or passed it - the driver knows where its train stops -
+    /// and this server records the times and works out from them how late the train is.
     ///
     /// The dispatch (odprawa, dispatch_*): its steps one after another, each over when the
     /// vehicles report it done - the cars' passengers exchanged, the train let go, its doors
@@ -91,8 +89,6 @@ namespace godot {
             struct Station {
                     String name;
                     StationType type = STATION_TYPE_STATION;
-                    /// The tracks where a train stops or passes the station
-                    Vector<RID> stop_points;
             };
             /// A station of a timetable, the times planned there (hours since midnight) and what
             /// the timetable says of the way to it
@@ -160,23 +156,19 @@ namespace godot {
             bool _is_station_in_timetable(const RID &p_station) const;
             /// The run of the trainset the vehicle is in, nullptr for none - and its RID
             Run *_get_run_of_vehicle(const RID &p_vehicle, RID &p_run_rid);
-            /// The trainset stands with a vehicle on a stop point of the station
-            bool _is_standing_at(const RID &p_trainset, const RID &p_station) const;
             /// The run's current entry, nullptr past the last
             const Entry *_get_current_entry(const Run &p_run) const;
-            /// Whether p_track is a stop point of the station of the run's current entry
-            bool _is_at_current_station(const Run &p_run, const RID &p_track) const;
+            /// The departure from the run's entry at p_index, now, and its delay
+            static void _record_departure(Run &p_run, const Entry &p_entry, int p_index);
             /// A planned time of the run: the timetable's shifted by the run's offset [h]
             static double _shifted(double p_hours, double p_offset);
             /// p_to less p_from [min], the shorter way round the clock
             static double _minutes_between(double p_from, double p_to);
-            void _on_track_vehicle_entered(
-                    const RID &p_track, const RID &p_vehicle, TrackServer::TravelDirection p_direction);
-            void _on_track_vehicle_stopped(const RID &p_track, const RID &p_vehicle);
-            void _on_track_vehicle_started(
-                    const RID &p_track, const RID &p_vehicle, TrackServer::TravelDirection p_direction);
             void _on_trainset_merged(const RID &p_trainset, const RID &p_absorbed);
             void _on_trainset_freed(const RID &p_trainset);
+            /* The vehicles of the trainset are to go where its timetable's destination is - none
+             * for an empty one: assigning a timetable sets it, letting go of it clears it */
+            void _set_trainset_destination(const RID &p_trainset, const RID &p_station);
 
             /// A car of the dispatch and what it reports, followed while the dispatch lasts
             struct Car {
@@ -219,9 +211,6 @@ namespace godot {
             TypedArray<RID> station_list() const;
             void station_set_type(const RID &p_station, StationType p_type);
             StationType station_get_type(const RID &p_station) const;
-            void station_add_stop_point(const RID &p_station, const RID &p_track);
-            void station_clear_stop_points(const RID &p_station);
-            TypedArray<RID> station_get_stop_points(const RID &p_station) const;
 
             RID timetable_create();
             void timetable_free(const RID &p_timetable);
@@ -301,6 +290,15 @@ namespace godot {
             /// When the train arrived at, and left or passed, the entry [h]; NO_TIME until it did
             double run_entry_get_actual_arrival(const RID &p_run, int p_entry) const;
             double run_entry_get_actual_departure(const RID &p_run, int p_entry) const;
+            /// The train has arrived at the current entry's station, now: its arrival and its delay
+            /// against the planned arrival, or the departure where none is planned - once
+            void run_record_arrival(const RID &p_run);
+            /// The train has left the current entry's station it arrived at, now: its departure and
+            /// its delay against the planned departure - once
+            void run_record_departure(const RID &p_run);
+            /// The train has passed the current entry's station without stopping, now: its
+            /// departure and its delay against the planned departure - once
+            void run_record_passing(const RID &p_run);
             /// How late the train is at p_time [min], early when negative: the delay recorded last,
             /// or more once the clock has passed the planned time of where it has not got to - the
             /// current entry's arrival, or its departure where it passes or stands. A train early at

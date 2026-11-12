@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
 #include <godot_cpp/variant/aabb.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -47,6 +48,8 @@ namespace godot {
             static constexpr const char *BACKEND_SETTING = "reloaded/models/backend";
 
             static const char *instance_built_signal;
+            /// A built instance has been cleared by its backend, and is not built until it is built again
+            static const char *instance_cleared_signal;
             static const char *instance_freed_signal;
 
         private:
@@ -58,11 +61,16 @@ namespace godot {
             StringName default_backend;
             /// The backend each instance is drawn by, from its instance_created to its instance_freed
             RIDMap<ModelRenderingBackend *> instance_backends;
+            /* The instances built now, and the ones hidden (instance_set_visible()) - what a segment
+             * may meet (instance_find_nearest_hit()) */
+            HashSet<RID> built_instances;
+            HashSet<RID> hidden_instances;
 
             ModelRenderingBackend *_get_backend(const StringName &p_provider) const;
             ModelRenderingBackend *_get_instance_backend(const RID &p_instance) const;
             void _on_instance_created(const RID &p_instance, const StringName &p_backend);
             void _on_instance_built(const RID &p_instance);
+            void _on_instance_cleared(const RID &p_instance);
             void _on_instance_freed(const RID &p_instance);
             /// A model a scenery's streaming provider places (SceneryStreamingProvider.CONTENT_MODELS),
             /// registered with the backend it names
@@ -158,6 +166,11 @@ namespace godot {
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const;
+            /* The nearest of the built, visible instances the segment meets: { instance, distance }
+             * as instance_intersect_segment() gives it, empty when it meets none. Only an instance
+             * whose bounds the segment crosses is intersected; built instances are the ones near
+             * the camera. */
+            Dictionary instance_find_nearest_hit(const Vector3 &p_from, const Vector3 &p_to) const;
     };
 } // namespace godot
 

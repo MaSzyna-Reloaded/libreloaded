@@ -195,6 +195,10 @@ namespace godot {
                     String type_name;
                     String load_name;
                     double load_amount = 0.0;
+                    /* Where the vehicle is to go (vehicle_set_destination()): a StationServer
+                     * station and a track of it, RID() for none */
+                    RID destination_station;
+                    RID destination_track;
                     /* The vehicle's position: its two axles. Each is counted on its track by
                      * TrackServer for as long as it is placed. */
                     AxleFollower axles[AXLE_COUNT];
@@ -341,6 +345,9 @@ namespace godot {
             void _track_changed(const RID &p_track);
             void _on_topology_changed();
             void _on_switch_active_track_changed(const RID &p_switch, int p_active_track);
+            /* A track changed its shape under the vehicles on it (a turntable turning): each placed
+             * again where its axles stand on it */
+            void _on_track_curves_changed(const RID &p_track);
 
             RailVehicleController *_get_controller(const VehiclePlacement &p_placement) const;
             /* Whether p_answers(doors, side) holds for a vehicle of the trainset, p_side being the
@@ -476,6 +483,10 @@ namespace godot {
              * RID() when nobody drives it) - vehicle_get_driver_cabin() */
             static const char *vehicle_driver_cabin_changed_signal;
             static const char *coupler_attached_signal;
+            /* A command came to the vehicle along a line of couplings (vehicle_send_line_command()),
+             * sent by `sender`, in by the vehicle's `end` - just before the vehicle takes it
+             * (vehicle, sender, end, command) */
+            static const char *vehicle_line_command_received_signal;
             static const char *coupler_detached_signal;
             /* A coupler adapter fitted to / taken off an end of the vehicle (its controller's) */
             static const char *coupler_adapter_attached_signal;
@@ -501,6 +512,11 @@ namespace godot {
             void vehicle_set_type_name(const RID &p_vehicle, const String &p_type_name);
             String vehicle_get_type_name(const RID &p_vehicle) const;
             void load_set(const RID &p_vehicle, const String &p_load_name, double p_load_amount);
+            /* Where the vehicle is to go: a StationServer station, and a track there when one is
+             * named; no station is no destination */
+            void vehicle_set_destination(const RID &p_vehicle, const RID &p_station, const RID &p_track = RID());
+            RID vehicle_get_destination_station(const RID &p_vehicle) const;
+            RID vehicle_get_destination_track(const RID &p_vehicle) const;
             /* So much more to get on the vehicle at the platform's side, in its own frame; an empty
              * vehicle takes p_load_name, or the first load it accepts (RailVehicleLoad::load_add()).
              * The vehicle's `load_add` command (amount, side) comes here. */
@@ -585,6 +601,16 @@ namespace godot {
             coupler_get_joinable_flags(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
             double coupler_get_adapter_length(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
             double coupler_get_adapter_height(const RID &p_vehicle, RailVehicleController::CouplerEnd p_end) const;
+            /* A line of couplings: the command goes out of the vehicle through p_end, and every vehicle
+             * joined on by p_flags - as far as a coupling without them, whichever way round each
+             * stands - takes it as its own (VehicleServer::vehicle_send_command()), told first where
+             * it came from (vehicle_line_command_received); one without the command passes it on. A
+             * plugin registers the commands it carries, as its other commands; both ways are two
+             * calls. */
+            void vehicle_send_line_command(
+                    const RID &p_vehicle, RailVehicleController::CouplerEnd p_end,
+                    BitField<RailVehicleController::CouplingFlags> p_flags, const StringName &p_command,
+                    const Variant &p_p1 = Variant(), const Variant &p_p2 = Variant());
             TypedArray<RID> vehicle_get_coupled(
                     const RID &p_vehicle, RailVehicleController::CouplerEnd p_end,
                     BitField<RailVehicleController::CouplingFlags> p_flags) const;

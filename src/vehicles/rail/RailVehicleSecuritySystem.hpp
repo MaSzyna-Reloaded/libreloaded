@@ -44,6 +44,9 @@ namespace godot {
             /* The track's cab signal magnet reached the vehicle (SHP/Indusi; the scenery's
              * `CabSignal` command, Mover.cpp:12649-12654) */
             virtual void security_cabsignal_trigger() = 0;
+            /* The cab signal kept on, however it is acknowledged, while the vehicle is over the
+             * magnet that set it - for a person driving it; a computer driving it acknowledges it */
+            virtual void security_cabsignal_lock(bool p_locked) = 0;
             /* The Radio-Stop emergency braking switched on or off from outside the cab (the
              * scenery's `Emergency_brake` command, Mover.cpp:12624-12630) */
             virtual void security_radiostop(bool p_enabled) = 0;

@@ -262,6 +262,12 @@
 				[param instance] was built - its model, and so its lights, are known from now on.
 			</description>
 		</signal>
+		<signal name="instance_cleared">
+			<param index="0" name="instance" type="RID" />
+			<description>
+				[param instance] was built and has been cleared without being freed - a placement the camera has left lets its model go - and nothing of it is built until [method instance_build] builds it again.
+			</description>
+		</signal>
 		<signal name="instance_created">
 			<param index="0" name="instance" type="RID" />
 			<description>

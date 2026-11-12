@@ -2,6 +2,8 @@ extends ReloadedGutTest
 
 ## A second of silence, enough for an event to be playing when asked
 const MIX_RATE:int = 22050
+## How far from the camera a sound played once is heard in the test [m]
+const START_REACH:float = 50.0
 
 
 func test_a_sound_heard_everywhere_loops_until_stopped() -> void:
@@ -37,10 +39,23 @@ func test_a_sound_keeps_its_place_and_its_event_until_freed() -> void:
     assert_null(ScenerySoundServer.sound_get_play_event(sound))
 
 
-func _create_sound(reach:float, position:Vector3 = Vector3.ZERO) -> RID:
+## Played once beyond its start reach of the camera a sound is not heard; a loop is
+func test_a_sound_played_once_beyond_its_start_reach_is_not_heard() -> void:
+    var camera:Camera3D = add_child_autoqfree(Camera3D.new())
+    SceneryStreamingServer.streaming_set_camera(camera.get_instance_id())
+    var sound:RID = _create_sound(0.0, Vector3(START_REACH * 2.0, 0.0, 0.0), START_REACH)
+
+    assert_false(ScenerySoundServer.sound_play(sound, ScenerySoundServer.Playback.ONCE), "not heard")
+    assert_false(ScenerySoundServer.sound_is_playing(sound))
+    assert_true(ScenerySoundServer.sound_play(sound, ScenerySoundServer.Playback.LOOP), "a loop is")
+    ScenerySoundServer.sound_free(sound)
+    SceneryStreamingServer.streaming_set_camera(0)
+
+
+func _create_sound(reach:float, position:Vector3 = Vector3.ZERO, start_reach:float = 0.0) -> RID:
     var config:SfxSpatialConfig = SfxSpatialConfig.new()
     config.position = position
-    return ScenerySoundServer.sound_create(_event(config, false), _event(config, true), position, reach)
+    return ScenerySoundServer.sound_create(_event(config, false), _event(config, true), position, reach, start_reach)
 
 
 func _event(config:SfxSpatialConfig, loop:bool) -> SfxEvent:

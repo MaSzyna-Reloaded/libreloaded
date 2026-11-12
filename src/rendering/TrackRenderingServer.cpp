@@ -59,6 +59,9 @@ namespace godot {
             track_server->connect(
                     TrackServer::switch_offset_changed_signal,
                     callable_mp(this, &TrackRenderingServer::_on_switch_offset_changed));
+            track_server->connect(
+                    TrackServer::track_curves_changed_signal,
+                    callable_mp(this, &TrackRenderingServer::_on_track_curves_changed));
         }
         if (GameDataServer *game_data = GameDataServer::get_instance(); game_data != nullptr) {
             game_data->connect(
@@ -75,6 +78,9 @@ namespace godot {
             track_server->disconnect(
                     TrackServer::switch_offset_changed_signal,
                     callable_mp(this, &TrackRenderingServer::_on_switch_offset_changed));
+            track_server->disconnect(
+                    TrackServer::track_curves_changed_signal,
+                    callable_mp(this, &TrackRenderingServer::_on_track_curves_changed));
         }
         if (GameDataServer *game_data = GameDataServer::get_instance(); game_data != nullptr) {
             game_data->disconnect(
@@ -307,6 +313,12 @@ namespace godot {
             backend->track_set_switch_blade_offsets(
                     track_render, track_server->switch_get_f_offset1(p_switch),
                     track_server->switch_get_f_offset2(p_switch));
+        }
+    }
+
+    void TrackRenderingServer::_on_track_curves_changed(const RID &p_track) {
+        if (const RID track_render = track_get_render_rid(p_track); track_render.is_valid()) {
+            track_rebuild(track_render);
         }
     }
 

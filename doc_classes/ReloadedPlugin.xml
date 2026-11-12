@@ -8,6 +8,14 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="dump_state" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				The plugin's own state a problem report carries, read once as the report is opened: what the plugin keeps for itself and the core does not know. Empty unless the plugin gives one.
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="description" type="String" setter="" getter="get_description" default="&quot;Vehicles and sceneries of MaSzyna EU07: the vehicles simulated on its Mover, its E3D models, sceneries, scenarios, signalling and cabs&quot;">
 			What the plugin brings, for the player.

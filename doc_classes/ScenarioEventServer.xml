@@ -119,6 +119,14 @@
 				Queues [param event] to run after its delay plus [param extra_delay]; [param activator] is the vehicle that queued it. An event is queued once: while it waits, another request is refused and its activator is dropped ([code]event_manager::AddToQuery[/code], [code]Event.cpp:2380-2462[/code]). The implementation of the event's system may refuse it ([method ScenarioEventImplementation._event_can_queue]) and says when it runs ([method ScenarioEventImplementation._event_get_run_time]). Returns whether it was queued.
 			</description>
 		</method>
+		<method name="event_run">
+			<return type="void" />
+			<param index="0" name="event" type="RID" />
+			<param index="1" name="activator" type="RID" default="RID()" />
+			<description>
+				Runs [param event] now, without the queue and whatever its delays: its condition is tested and its action run, as when its time in the queue comes; the implementation of its system then learns that it ran ([method ScenarioEventImplementation._event_ran]).
+			</description>
+		</method>
 		<method name="event_set_delay">
 			<return type="void" />
 			<param index="0" name="event" type="RID" />

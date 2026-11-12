@@ -7,11 +7,16 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_description"), &ReloadedPlugin::get_description);
         ClassDB::bind_method(D_METHOD("get_logo"), &ReloadedPlugin::get_logo);
         ClassDB::bind_method(D_METHOD("get_runtime_script"), &ReloadedPlugin::get_runtime_script);
+        ClassDB::bind_method(D_METHOD("dump_state"), &ReloadedPlugin::dump_state);
         ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "", "get_name");
         ADD_PROPERTY(PropertyInfo(Variant::STRING, "description"), "", "get_description");
         ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "logo", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D"), "", "get_logo");
         ADD_PROPERTY(
                 PropertyInfo(Variant::STRING, "runtime_script", PROPERTY_HINT_FILE, "*.gd"), "", "get_runtime_script");
+    }
+
+    Dictionary ReloadedPlugin::dump_state() const {
+        return {};
     }
 
     String ReloadedPlugin::get_name() const {

@@ -34,6 +34,8 @@ namespace godot {
                 D_METHOD("event_set_random_delay", "event", "seconds"), &ScenarioEventServer::event_set_random_delay);
         ClassDB::bind_method(D_METHOD("event_get_random_delay", "event"), &ScenarioEventServer::event_get_random_delay);
         ClassDB::bind_method(
+                D_METHOD("event_run", "event", "activator"), &ScenarioEventServer::event_run, DEFVAL(RID()));
+        ClassDB::bind_method(
                 D_METHOD("event_attach_action", "event", "action"), &ScenarioEventServer::event_attach_action);
         ClassDB::bind_method(D_METHOD("event_get_action", "event"), &ScenarioEventServer::event_get_action);
         ClassDB::bind_method(
@@ -106,27 +108,32 @@ namespace godot {
                 continue;
             }
             event->queued_sequence = 0;
-            // taken before anything runs: an action may create or free events, which rehashes
-            // the table
-            const Ref<ScenarioEventAction> action = event->action;
-            const Ref<ScenarioEventCondition> condition = event->condition;
-            const RID event_system = event->system;
-            const Ref<ScenarioEventImplementation> implementation = _get_event_implementation(*event);
-            emit_signal(event_launched_signal, entry.owner, entry.activator);
-            const bool passed = condition.is_null() || condition->test(entry.owner, entry.activator);
-            if (action.is_null()) {
-                continue;
-            }
-            if (passed) {
-                action->run(entry.owner, entry.activator);
-            } else {
-                action->run_else(entry.owner, entry.activator);
-            }
-            if (implementation.is_valid()) {
-                implementation->event_ran(event_system, entry.owner, entry.activator);
-            }
+            event_run(entry.owner, entry.activator);
         }
         _set_processing(!queue.empty());
+    }
+
+    void ScenarioEventServer::event_run(const RID &p_event, const RID &p_activator) {
+        const EventData *event = events.getptr(p_event);
+        ERR_FAIL_NULL(event);
+        // taken before anything runs: an action may create or free events, which rehashes the table
+        const Ref<ScenarioEventAction> action = event->action;
+        const Ref<ScenarioEventCondition> condition = event->condition;
+        const RID event_system = event->system;
+        const Ref<ScenarioEventImplementation> implementation = _get_event_implementation(*event);
+        emit_signal(event_launched_signal, p_event, p_activator);
+        const bool passed = condition.is_null() || condition->test(p_event, p_activator);
+        if (action.is_null()) {
+            return;
+        }
+        if (passed) {
+            action->run(p_event, p_activator);
+        } else {
+            action->run_else(p_event, p_activator);
+        }
+        if (implementation.is_valid()) {
+            implementation->event_ran(event_system, p_event, p_activator);
+        }
     }
 
     uint64_t ScenarioEventServer::_schedule(

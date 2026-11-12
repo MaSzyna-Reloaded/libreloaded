@@ -40,6 +40,7 @@ namespace godot {
     const char *RailVehicleServer::vehicle_derailed_signal = "vehicle_derailed";
     const char *RailVehicleServer::vehicle_driver_cabin_changed_signal = "vehicle_driver_cabin_changed";
     const char *RailVehicleServer::coupler_attached_signal = "coupler_attached";
+    const char *RailVehicleServer::vehicle_line_command_received_signal = "vehicle_line_command_received";
     const char *RailVehicleServer::coupler_detached_signal = "coupler_detached";
     const char *RailVehicleServer::coupler_adapter_attached_signal = "coupler_adapter_attached";
     const char *RailVehicleServer::coupler_adapter_removed_signal = "coupler_adapter_removed";
@@ -92,6 +93,9 @@ namespace godot {
                 TrackServer::tracks_changed_signal, callable_mp(this, &RailVehicleServer::_on_topology_changed));
         tracks->connect(
                 TrackServer::topology_changed_signal, callable_mp(this, &RailVehicleServer::_on_topology_changed));
+        tracks->connect(
+                TrackServer::track_curves_changed_signal,
+                callable_mp(this, &RailVehicleServer::_on_track_curves_changed));
     }
 
     RailVehicleServer::~RailVehicleServer() {
@@ -149,6 +153,15 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("vehicle_get_type_name", "vehicle"), &RailVehicleServer::vehicle_get_type_name);
         ClassDB::bind_method(D_METHOD("load_set", "vehicle", "load_name", "load_amount"), &RailVehicleServer::load_set);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_destination", "vehicle", "station", "track"),
+                &RailVehicleServer::vehicle_set_destination, DEFVAL(RID()));
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_destination_station", "vehicle"),
+                &RailVehicleServer::vehicle_get_destination_station);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_destination_track", "vehicle"),
+                &RailVehicleServer::vehicle_get_destination_track);
+        ClassDB::bind_method(
                 D_METHOD("load_add", "vehicle", "amount", "side", "load_name"), &RailVehicleServer::load_add,
                 DEFVAL(String()));
         ClassDB::bind_method(D_METHOD("load_remove", "vehicle", "amount", "side"), &RailVehicleServer::load_remove);
@@ -162,6 +175,9 @@ namespace godot {
                 &RailVehicleServer::coupler_attach);
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_coupled", "vehicle", "end", "flags"), &RailVehicleServer::vehicle_get_coupled);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_send_line_command", "vehicle", "end", "flags", "command", "p1", "p2"),
+                &RailVehicleServer::vehicle_send_line_command, DEFVAL(Variant()), DEFVAL(Variant()));
         ClassDB::bind_method(D_METHOD("vehicle_find_powered", "vehicle"), &RailVehicleServer::vehicle_find_powered);
         ClassDB::bind_method(
                 D_METHOD("vehicle_find_pantograph_carrier", "vehicle"),
@@ -264,6 +280,10 @@ namespace godot {
                 Variant::INT, "flag", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_CLASS_IS_BITFIELD,
                 "RailVehicleController.CouplingFlags");
         ADD_SIGNAL(MethodInfo(coupler_attached_signal, PropertyInfo(Variant::RID, "vehicle"), coupling_flag));
+        ADD_SIGNAL(MethodInfo(
+                vehicle_line_command_received_signal, PropertyInfo(Variant::RID, "vehicle"),
+                PropertyInfo(Variant::RID, "sender"), PropertyInfo(Variant::INT, "end"),
+                PropertyInfo(Variant::STRING_NAME, "command")));
         ADD_SIGNAL(MethodInfo(coupler_detached_signal, PropertyInfo(Variant::RID, "vehicle"), coupling_flag));
         ADD_SIGNAL(MethodInfo(
                 coupler_adapter_attached_signal, PropertyInfo(Variant::RID, "vehicle"),
@@ -391,6 +411,25 @@ namespace godot {
             controller->set_load_name(p_load_name);
             controller->set_load_amount(p_load_amount);
         }
+    }
+
+    void RailVehicleServer::vehicle_set_destination(const RID &p_vehicle, const RID &p_station, const RID &p_track) {
+        VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(placement);
+        placement->destination_station = p_station;
+        placement->destination_track = p_station.is_valid() ? p_track : RID();
+    }
+
+    RID RailVehicleServer::vehicle_get_destination_station(const RID &p_vehicle) const {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(placement, RID());
+        return placement->destination_station;
+    }
+
+    RID RailVehicleServer::vehicle_get_destination_track(const RID &p_vehicle) const {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(placement, RID());
+        return placement->destination_track;
     }
 
     RailVehicleLoad *RailVehicleServer::_get_load(const RID &p_vehicle) const {
@@ -1015,6 +1054,37 @@ namespace godot {
                     static_cast<RadioServer::Kind>(p_kind), static_cast<int>(p_channel), p_payload, driven) &&
             p_kind == RadioServer::KIND_RADIO_STOP) {
             emit_signal(vehicle_emergency_signal_received_signal, p_vehicle);
+        }
+    }
+
+    void RailVehicleServer::vehicle_send_line_command(
+            const RID &p_vehicle, const RailVehicleController::CouplerEnd p_end,
+            const BitField<RailVehicleController::CouplingFlags> p_flags, const StringName &p_command,
+            const Variant &p_p1, const Variant &p_p2) {
+        ERR_FAIL_COND_MSG(static_cast<int64_t>(p_flags) == 0, "No coupling to send along.");
+        VehicleServer *vehicle_server = VehicleServer::get_instance();
+        ERR_FAIL_NULL(vehicle_server);
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        RailVehicleController *vehicle = placement != nullptr ? _get_controller(*placement) : nullptr;
+        // the vehicles along the line with the end it enters each by, all found before any takes the
+        // command: a command may change the couplings
+        Vector<RID> receivers;
+        Vector<RailVehicleController::CouplerEnd> entered_ends;
+        RailVehicleController::CouplerEnd end = p_end;
+        while (vehicle != nullptr && vehicle->is_coupled_by(end, p_flags)) {
+            const RailVehicleController::CouplerEnd entered = vehicle->get_coupled_end(end);
+            vehicle = vehicle->get_coupled_controller(end).ptr();
+            // a vehicle that carries no such command passes it on, untaken
+            if (vehicle->get_commands().has(p_command)) {
+                receivers.push_back(vehicle->get_rid());
+                entered_ends.push_back(entered);
+            }
+            end = RailVehicleController::opposite_end(entered);
+        }
+        for (int index = 0; index < receivers.size(); ++index) {
+            emit_signal(
+                    vehicle_line_command_received_signal, receivers[index], p_vehicle, entered_ends[index], p_command);
+            vehicle_server->vehicle_send_command(receivers[index], p_command, p_p1, p_p2);
         }
     }
 
@@ -2444,6 +2514,24 @@ namespace godot {
         _track_changed(tracks->switch_get_track(p_switch));
     }
 
+    void RailVehicleServer::_on_track_curves_changed(const RID &p_track) {
+        const TrackServer *tracks = TrackServer::get_instance();
+        ERR_FAIL_NULL(tracks);
+        const TypedArray<RID> on_track = tracks->track_get_vehicles(p_track);
+        for (int64_t i = 0; i < on_track.size(); ++i) {
+            const RID vehicle = on_track[i];
+            VehiclePlacement *placement = vehicles.getptr(vehicle);
+            if (placement == nullptr) {
+                continue;
+            }
+            placement->moved = true;
+            placement->location_stale = true;
+            placement->placement_unreported = true;
+            _place_body(vehicle, *placement);
+        }
+        _track_changed(p_track);
+    }
+
     void RailVehicleServer::vehicle_report_position(const RID &p_vehicle) {
         VehiclePlacement *placement = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(placement);
@@ -2524,9 +2612,9 @@ namespace godot {
                                           : Math::INF;
                 pantographs->pantograph_step(pantograph, gap, raised, speed_factor, p_delta);
             }
-            const double assumed_voltage =
-                    MAX(Math::abs(power_source->get_collector_pantograph_first_voltage()),
-                        Math::abs(power_source->get_collector_pantograph_second_voltage()));
+            // the current is drawn at the collector's voltage of the step before, its short losses
+            // held over
+            const double assumed_voltage = power_source->get_collector_voltage();
             int collecting = 0;
             for (int pantograph = 0; pantograph < count; ++pantograph) {
                 collecting += static_cast<int>(
@@ -2565,9 +2653,18 @@ namespace godot {
                 if (collector.touching && !pantographs->get_pantograph_has_geometry(pantograph)) {
                     wire = _find_pantograph_wire(p_vehicle, collector, pantograph, position, frame, half_width)["rid"];
                 }
-                if (collector.touching && wire.is_valid() && traction != nullptr) {
-                    voltage = traction->wire_get_voltage(wire, assumed_voltage, current);
-                    traction->wire_draw_current(wire, assumed_voltage, current);
+                // a pantograph that reads no wire has no voltage, so it comes back to one unpowered
+                if (!collector.touching || !wire.is_valid() || traction == nullptr) {
+                    collector.powered = false;
+                } else {
+                    // one that read nothing on the step before reads the wire drawing nothing, not to
+                    // load its source as a short circuit, and draws from the next step on
+                    if (collector.powered) {
+                        voltage = traction->wire_get_voltage(wire, assumed_voltage, current);
+                        traction->wire_draw_current(wire, assumed_voltage, current);
+                    } else {
+                        voltage = traction->wire_get_voltage(wire, assumed_voltage, 0.0);
+                    }
                     /* A span overhead that carries nothing is another defect than a hole in the
                      * wiring - the network behind it has no source, or the resistance never
                      * reached it - and the two look the same from the cab, as a dead line. */
