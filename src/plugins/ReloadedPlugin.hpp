@@ -1,6 +1,7 @@
 #pragma once
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 namespace godot {
@@ -34,6 +35,9 @@ namespace godot {
             virtual void create_servers() {}
             /* Frees what create_servers() made, in reverse */
             virtual void free_servers() {}
+            /* The plugin's own state a problem report carries, read once as the report is opened;
+             * empty unless the plugin gives one */
+            virtual Dictionary dump_state() const;
 
             String get_name() const;
             String get_description() const;
