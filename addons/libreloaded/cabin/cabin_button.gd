@@ -155,7 +155,7 @@ func _process_tool(delta):
                 * Basis(Vector3.UP, deg_to_rad(_current_rotation.y)) \
                 * Basis(Vector3.FORWARD, deg_to_rad(_current_rotation.z))
         _mesh.transform.basis = _mesh_original_basis * rotation_basis
-        _mesh.position = _mesh_original_position + _current_position
+        _mesh.position = _mesh_original_position + _mesh_original_basis * _current_position
         _pose_wiper_chain(rotation_basis)
 
 ## A flag from the cabin logic presses or releases the control; a number is the pose itself

@@ -5,6 +5,9 @@ extends ReloadedGutTest
 ## once (Gauge.cpp:364-375).
 
 const FULL_SHIFT:float = 0.2
+## A needle's own basis tilted with the desk and scaled, as EP07 1xxx's ammeters
+const NEEDLE_TILT_DEGREES:float = 36.6
+const NEEDLE_SCALE:float = 1.393
 ## How often a switch takes its target (_process_tool(), cabin_switch.gd)
 const SWITCH_REFRESH_SECONDS:float = 0.05
 
@@ -20,6 +23,22 @@ func test_a_sliding_gauge_moves_its_mesh() -> void:
     gauge.value = 0.5
     await wait_idle_frames(3)
     assert_almost_eq(bar.position.z, FULL_SHIFT * 0.5, 0.001)
+
+
+func test_a_sliding_gauge_moves_along_its_mesh_basis() -> void:
+    var bar:MeshInstance3D = add_child_autofree(MeshInstance3D.new())
+    var bar_basis:Basis = Basis(Vector3.RIGHT, deg_to_rad(NEEDLE_TILT_DEGREES)).scaled(Vector3.ONE * NEEDLE_SCALE)
+    bar.basis = bar_basis
+    var gauge:CabinGauge = CabinGauge.new()
+    gauge.mesh_position = Vector3(0.0, 0.0, FULL_SHIFT)
+    gauge.max_value = 1.0
+    gauge.animation_speed = 0.0
+    add_child_autofree(gauge)
+    gauge.target_mesh_path = gauge.get_path_to(bar)
+    gauge.value = 0.5
+    await wait_idle_frames(3)
+    var expected:Vector3 = bar_basis * Vector3(0.0, 0.0, FULL_SHIFT * 0.5)
+    assert_almost_eq(bar.position, expected, Vector3.ONE * 0.001)
 
 
 func test_a_switch_without_friction_moves_at_once() -> void:

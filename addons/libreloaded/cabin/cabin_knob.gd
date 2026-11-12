@@ -149,7 +149,7 @@ func _process_tool(delta):
         new_basis *= Basis(Vector3.UP, deg_to_rad(_current_rotation.y))
         new_basis *= Basis(Vector3.FORWARD, deg_to_rad(_current_rotation.z))
         _mesh.transform.basis = new_basis
-        _mesh.position = _mesh_original_position + _current_position
+        _mesh.position = _mesh_original_position + _mesh_original_basis * _current_position
 
 
 func _apply_control_value(p_value:Variant) -> void:
@@ -244,5 +244,5 @@ func _process_dirty(delta):
             # the drag's direction is that of a one-pixel move
             _set_mouse_control(_mesh, hint_actions, grab, let_go, Callable(),
                     Callable(), mesh_rotation / MOUSE_PIXELS_PER_RANGE, mesh_position / MOUSE_PIXELS_PER_RANGE,
-                    drag)
+                    drag, _mesh_original_basis)
             _on_value_changed()

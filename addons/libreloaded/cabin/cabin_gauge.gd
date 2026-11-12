@@ -27,7 +27,8 @@ class_name CabinGauge
         _dirty = true
 
 ## A gauge that slides instead of turning - MMD "mov" (TGauge gt_Move, Gauge.cpp:466-469): the
-## full-scale shift and the shift at zero
+## full-scale shift and the shift at zero, in the mesh's own space - along its basis, with its
+## rotation and scale, as the turn is
 @export var mesh_position = Vector3.ZERO:
     set(x):
         mesh_position = x
@@ -142,7 +143,7 @@ func _process_tool(_delta):
             * Basis(Vector3.UP, deg_to_rad(_current_rotation.y)) \
             * Basis(Vector3.FORWARD, deg_to_rad(_current_rotation.z))
     _mesh.transform.basis = _mesh_original_basis * rotation_basis
-    _mesh.position = _mesh_original_position + _current_position
+    _mesh.position = _mesh_original_position + _mesh_original_basis * _current_position
     _pose_wiper_chain(rotation_basis)
 
 

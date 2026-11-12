@@ -176,15 +176,16 @@ func _apply_control_value(_value:Variant) -> void:
 ## Makes `mesh` operable by mouse with this control's own operations; an empty `increase` leaves
 ## it click-only. `actions` are the keys that do the same, shown next to the caption
 ## (drivermode.cpp:373). `step_rotation` (degrees, applied X, Y, Z as the widgets animate) and
-## `step_position` are how far one increase moves the mesh, so a drag follows the grip. A valid
+## `step_position` are how far one increase moves the mesh, so a drag follows the grip;
+## `step_position` goes along `rest_basis`, the mesh's basis before the control moved it. A valid
 ## `drag` takes the drag's travel in pixels in place of the increase/decrease steps.
 func _set_mouse_control(mesh:Node3D, actions:PackedStringArray, pressed:Callable, released:Callable,
         increase:Callable, decrease:Callable, step_rotation:Vector3, step_position:Vector3,
-        drag:Callable = Callable()) -> void:
+        drag:Callable = Callable(), rest_basis:Basis = Basis.IDENTITY) -> void:
     if _mouse_control.is_valid():
         CabinHUDMouseSystem.control_free(_mouse_control)
     _mouse_setup = [mesh, actions, pressed, released, increase, decrease, step_rotation,
-            step_position, drag]
+            step_position, drag, rest_basis]
     add_to_group(MOUSE_HINTS_GROUP)
     var names_of:Callable = action_hints if action_hints.is_valid() else input_map_hints
     var hints:PackedStringArray = []
@@ -196,7 +197,7 @@ func _set_mouse_control(mesh:Node3D, actions:PackedStringArray, pressed:Callable
             * Basis(Vector3.FORWARD, deg_to_rad(step_rotation.z))
     _mouse_control = CabinHUDMouseSystem.control_create(mesh.get_instance_id(),
             caption, HINTS_SEPARATOR.join(hints), pressed, released, increase, decrease,
-            step_basis, step_position, drag, mouse_drag_signs)
+            step_basis, step_position, drag, mouse_drag_signs, rest_basis)
 
 
 ## The caption made again with the keys' names as they are now (action_hints) - after the player
