@@ -69,8 +69,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD(
                         "control_create", "mesh_instance_id", "caption", "hints", "pressed", "released", "increase",
-                        "decrease", "step_rotation", "step_offset", "drag", "drag_signs"),
-                &CabinHUDMouseSystem::control_create);
+                        "decrease", "step_rotation", "step_offset", "drag", "drag_signs", "rest_basis"),
+                &CabinHUDMouseSystem::control_create, DEFVAL(Basis()));
         ClassDB::bind_method(D_METHOD("control_free", "control"), &CabinHUDMouseSystem::control_free);
         ClassDB::bind_method(
                 D_METHOD("control_set_state", "control", "state"), &CabinHUDMouseSystem::control_set_state);
@@ -96,7 +96,7 @@ namespace godot {
             const uint64_t p_mesh_instance_id, const String &p_caption, const String &p_hints,
             const Callable &p_pressed, const Callable &p_released, const Callable &p_increase,
             const Callable &p_decrease, const Basis &p_step_rotation, const Vector3 &p_step_offset,
-            const Callable &p_drag, const Vector2 &p_drag_signs) {
+            const Callable &p_drag, const Vector2 &p_drag_signs, const Basis &p_rest_basis) {
         const RID rid = UtilityFunctions::rid_from_int64(UtilityFunctions::rid_allocate_id());
         const ObjectID mesh_id = ObjectID(p_mesh_instance_id);
         PackedInt64Array meshes;
@@ -127,7 +127,7 @@ namespace godot {
         const Pickable pickable = _pickable(meshes);
         controls.insert(
                 rid, Control{pickable, p_caption, p_hints, String(), p_pressed, p_released, p_increase, p_decrease,
-                             p_drag, p_step_rotation, p_step_offset});
+                             p_drag, p_step_rotation, p_step_offset, p_rest_basis});
         Control &control = controls[rid];
         control.grip = _grip(pickable, p_step_rotation);
         control.drag_signs = p_drag_signs;
@@ -386,8 +386,11 @@ namespace godot {
         const Transform3D parent_transform = parent == nullptr ? Transform3D() : parent->get_global_transform();
         const Transform3D transform = mesh->get_transform();
         const Vector3 before = parent_transform.xform(transform.xform(point));
-        const Vector3 after =
-                parent_transform.xform(transform.xform(p_control.step_rotation.xform(point)) + p_control.step_offset);
+        // the shift goes along the mesh's basis at rest, not turned by where it stands now - the
+        // mesh slides before it turns (the cab tools' _process_tool())
+        const Vector3 after = parent_transform.xform(
+                transform.xform(p_control.step_rotation.xform(point)) +
+                p_control.rest_basis.xform(p_control.step_offset));
         const Vector2 direction = view->unproject_position(after) - view->unproject_position(before);
         // a control seen edge-on moves along the view ray and shows no direction on screen
         if (direction.is_zero_approx()) {
