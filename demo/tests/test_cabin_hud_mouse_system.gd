@@ -103,6 +103,26 @@ func test_vertical_drag_steps_the_control() -> void:
     assert_eq(_calls, ["pressed", "increase", "increase", "decrease", "released"] as Array[String])
 
 
+## A control shifts along its mesh's basis at rest: turned a quarter about the view axis, its
+## local up is the screen's left, and dragging left increases it.
+func test_drag_follows_the_shift_along_the_rest_basis() -> void:
+    CabinHUDMouseSystem.control_free(_control)
+    var rest_basis:Basis = Basis(Vector3.BACK, PI / 2.0)
+    _mesh.basis = rest_basis
+    _control = CabinHUDMouseSystem.control_create(_mesh.get_instance_id(), "slider", "",
+            func() -> void: _calls.append("pressed"),
+            func() -> void: _calls.append("released"),
+            func() -> void: _calls.append("increase"),
+            func() -> void: _calls.append("decrease"),
+            Basis.IDENTITY, Vector3.UP, Callable(), Vector2.ZERO, rest_basis)
+    var step:int = ClassDB.class_get_integer_constant(&"CabinHUDMouseSystem", &"DRAG_STEP_PIXELS")
+    _move_to(_over_control())
+    _left_button(true)
+    _drag_by(Vector2(-step, 0.0))
+    _left_button(false)
+    assert_eq(_calls, ["pressed", "increase", "released"] as Array[String])
+
+
 ## The first movement chooses the mouse axis and the drag keeps to it until let go; each axis
 ## counts the way the grip goes on it - here right and up.
 func test_drag_keeps_the_axis_its_first_movement_took() -> void:
