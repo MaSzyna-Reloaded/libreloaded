@@ -198,11 +198,14 @@ func _input(event):
         sfx_player.play_automation(&"flashlight", &"toggle", float(enabled))
 
     var walking:bool = PlayerCameraServer.camera_get_mode() == PlayerCameraServer.CAMERA_MODE_FREE
+    var following:bool = PlayerCameraServer.camera_get_mode() == PlayerCameraServer.CAMERA_MODE_FOLLOW
     var driven:RID = PlayerServer.player_get_vehicle()
     # on foot, F4 or change_vehicle takes the vehicle in front of the player; F4 only while the
-    # player has no cab to go back to
+    # player has no cab to go back to. Following a vehicle, change_vehicle takes the vehicle followed.
     var picked:RID = _picked_vehicle() if walking and (event.is_action_pressed("change_vehicle", false, true)
             or (event.is_action_pressed("cabin_mode_toggle", false, true) and not driven.is_valid())) else RID()
+    if following and event.is_action_pressed("change_vehicle", false, true):
+        picked = PlayerCameraServer.camera_get_target()
     if picked.is_valid():
         PlayerServer.player_take_over_vehicle(picked)
     elif event.is_action_pressed("cabin_mode_toggle", false, true):
@@ -445,7 +448,7 @@ func _on_camera_changed() -> void:
         free_view.glide(follow_view.velocity)
     elif view == follow_view:
         var target:RID = PlayerCameraServer.camera_get_target()
-        follow_view.view = PlayerCameraServer.camera_get_follow_view() as FollowView.View
+        follow_view.view = PlayerCameraServer.camera_get_follow_view()
         # another vehicle, or following anew: its view applied in full, flown to from where the view
         # is - or from beside the vehicle, when it is far; the same one keeps its view and offsets
         if not (previous == follow_view and follow_view.vehicle == target):

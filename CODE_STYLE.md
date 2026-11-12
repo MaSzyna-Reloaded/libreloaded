@@ -375,16 +375,17 @@ _coupler_events[vehicle_rid][COUPLER_DETACH_OFFSET + element] += 1
 The name is where the next reader learns what the value means, and the one place it changes. Two
 call sites sharing a literal by coincidence are a bug waiting for one of them to be tuned.
 
-A value ported from the original engine carries **the original's value and a reference to where it
-came from**, never a rounder number that looks safer:
+A constant is named and documented for what it means in the core - never by another engine's name
+or a citation of its sources, which have no place in libreloaded (`CLAUDE.md`). Its value is the
+measured or specified one, never a rounder number that looks safer:
 
 ```gdscript
-## Original engine: Track.cpp:35 fMaxOffset
+## How far a switch's tongue may stand off the track it leads to and still count as on it [m]
 const SWITCH_MAX_OFFSET: float = 0.1
 ```
 
 `FINDINGS.md` (2026-09-20) is what this rule is made of: a 0.25 m tolerance that "looked safe"
-where the original used 0.02 m silently merged every double slip in the data set.
+where 0.02 m was the right one silently merged every double slip in the data set.
 
 What needs no name: 0, 1, -1 and 2 used as themselves, and an index that is literally the position
 being addressed.

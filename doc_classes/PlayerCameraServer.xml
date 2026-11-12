@@ -12,7 +12,7 @@
 		<method name="camera_cycle_follow_view">
 			<return type="void" />
 			<description>
-				Shift+F4: following, the next view of [enum CameraFollowView]; else the vehicle the player drives is followed.
+				Shift+F4: following, the next view of [enum CameraFollowView]; else the vehicle the player drives is followed from the first view, [constant CAMERA_FOLLOW_VIEW_TRAINSET_FRONT].
 			</description>
 		</method>
 		<method name="camera_get_follow_view" qualifiers="const">
@@ -65,7 +65,7 @@
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />
 			<description>
-				The vehicle the following camera follows; following now, it follows this one. Cleared while following, the view becomes the free camera. A freed vehicle is cleared.
+				The vehicle the following camera follows; following now, it follows this one. A vehicle of another trainset than the one followed before is followed from the first view, [constant CAMERA_FOLLOW_VIEW_TRAINSET_FRONT]; a vehicle in no trainset is a trainset of its own. Cleared while following, the view becomes the free camera. A freed vehicle is cleared.
 			</description>
 		</method>
 		<method name="camera_show_vehicle">
@@ -106,16 +106,16 @@
 			The following camera, following the target.
 		</constant>
 		<constant name="CAMERA_FOLLOW_VIEW_TRAINSET_FRONT" value="0" enum="CameraFollowView">
-			From ahead of the trainset.
+			Over the vehicle followed, looking the way its trainset goes.
 		</constant>
 		<constant name="CAMERA_FOLLOW_VIEW_TRAINSET_REAR" value="1" enum="CameraFollowView">
-			From behind the trainset.
+			Over the end of the trainset, looking at its rear: the trainset's last vehicle while the player's own vehicle is followed, else the vehicle followed.
 		</constant>
 		<constant name="CAMERA_FOLLOW_VIEW_BOGIE" value="2" enum="CameraFollowView">
-			At a bogie.
+			At the bogie of the vehicle followed, looking the way its trainset goes.
 		</constant>
 		<constant name="CAMERA_FOLLOW_VIEW_DRIVEBY" value="3" enum="CameraFollowView">
-			From a point beside the track the trainset drives by.
+			From a point beside the track ahead of the vehicle followed, standing while it passes.
 		</constant>
 		<constant name="CAMERA_FOLLOW_VIEW_MAX" value="4" enum="CameraFollowView">
 			The number of the views.
