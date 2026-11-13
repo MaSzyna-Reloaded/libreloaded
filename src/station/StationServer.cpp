@@ -154,6 +154,7 @@ namespace godot {
                 D_METHOD("run_entry_get_actual_departure", "run", "entry"),
                 &StationServer::run_entry_get_actual_departure);
         ClassDB::bind_method(D_METHOD("run_record_arrival", "run"), &StationServer::run_record_arrival);
+        ClassDB::bind_method(D_METHOD("run_record_start", "run"), &StationServer::run_record_start);
         ClassDB::bind_method(D_METHOD("run_record_departure", "run"), &StationServer::run_record_departure);
         ClassDB::bind_method(D_METHOD("run_record_passing", "run"), &StationServer::run_record_passing);
         ClassDB::bind_method(D_METHOD("run_get_delay", "run", "time"), &StationServer::run_get_delay);
@@ -584,14 +585,14 @@ namespace godot {
         run.actual_arrivals.fill(NO_TIME);
         run.actual_departures.resize(timetable->entries.size());
         run.actual_departures.fill(NO_TIME);
-        // the train starts its run at the first entry where no arrival is planned there; where one
-        // is, its driver says when it has arrived (run_record_arrival())
-        if (!timetable->entries.is_empty() && timetable->entries[0].arrival < 0.0) {
-            const SimulationServer *simulation = SimulationServer::get_instance();
-            run.actual_arrivals.set(0, simulation != nullptr ? simulation->get_time_of_day() : 0.0);
-        }
         runs.insert(run_rid, run);
         runs_by_trainset[p_trainset] = run_rid;
+        // the train starts its run at the first entry where no arrival is planned there; where one
+        // is, its driver says whether it starts there (run_record_start()) or when it has arrived
+        // (run_record_arrival())
+        if (!timetable->entries.is_empty() && timetable->entries[0].arrival < 0.0) {
+            run_record_start(run_rid);
+        }
         _set_trainset_destination(p_trainset, timetable->destination);
         emit_signal(run_created_signal, run_rid);
         return run_rid;
@@ -751,13 +752,27 @@ namespace godot {
         emit_signal(run_arrived_signal, p_run, index);
     }
 
+    void StationServer::run_record_start(const RID &p_run) {
+        Run *run = runs.getptr(p_run);
+        ERR_FAIL_NULL(run);
+        const int index = run->current_entry;
+        if (_get_current_entry(*run) == nullptr || run->actual_arrivals[index] >= 0.0 ||
+            run->actual_departures[index] >= 0.0) {
+            return; // past the last, or recorded already
+        }
+        const SimulationServer *simulation = SimulationServer::get_instance();
+        ERR_FAIL_NULL(simulation);
+        // standing there from now, as after an arrival: no delay against a planned arrival
+        run->actual_arrivals.set(index, simulation->get_time_of_day());
+    }
+
     void StationServer::run_record_departure(const RID &p_run) {
         Run *run = runs.getptr(p_run);
         ERR_FAIL_NULL(run);
         const Entry *entry = _get_current_entry(*run);
         const int index = run->current_entry;
         if (entry == nullptr || run->actual_arrivals[index] < 0.0 || run->actual_departures[index] >= 0.0) {
-            return; // past the last, not arrived, or recorded already
+            return; // past the last, neither arrived nor started, or recorded already
         }
         _record_departure(*run, *entry, index);
         emit_signal(run_departed_signal, p_run, index);
