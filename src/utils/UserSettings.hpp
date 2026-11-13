@@ -38,7 +38,14 @@ namespace godot {
 
             void _apply_defaults();
             void _set_project_setting(const String &p_name, const Variant &p_value);
+            /// The project's own value of a setting the player's value replaced, back
+            void _restore_project_setting(const String &p_name);
             void _update_data_dir();
+
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
 
         protected:
             static void _bind_methods();
@@ -80,6 +87,9 @@ namespace godot {
             void save_setting(const String &p_section, const String &p_key, const Variant &p_value);
             Variant
             get_setting(const String &p_section, const String &p_key, const Variant &p_default_value = Variant()) const;
+            /// The project's own value of a project setting, whatever the player set: the value of
+            /// project.godot, or else the setting's registered default (ReloadedProjectSetting)
+            Variant get_project_value(const String &p_name) const;
 
             /// Set in memory and saved at once, and only this key - the rest of the configuration may
             /// hold changes not saved yet

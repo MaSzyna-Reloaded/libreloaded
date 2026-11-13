@@ -78,8 +78,8 @@ func _exit_tree() -> void:
 
 
 func _on_project_settings_changed() -> void:
-    _min_distance = ProjectSettings.get_setting(MIN_DISTANCE_SETTING, MIN_DISTANCE_DEFAULT)
-    _max_distance = ProjectSettings.get_setting(MAX_DISTANCE_SETTING, MAX_DISTANCE_DEFAULT)
+    _min_distance = ProjectSettings.get_setting(MIN_DISTANCE_SETTING)
+    _max_distance = ProjectSettings.get_setting(MAX_DISTANCE_SETTING)
 
 
 func activate(p_vehicle:RID, p_from:Transform3D) -> void:

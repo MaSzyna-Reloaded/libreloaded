@@ -348,6 +348,11 @@ namespace godot {
             void _release_node(int p_node_id);
             void _mark_topology_changed();
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 

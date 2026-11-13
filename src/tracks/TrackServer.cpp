@@ -2,6 +2,7 @@
 #include "TrackServer.hpp"
 #include "utils/Names.hpp"
 #include "utils/RIDHash.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "utils/Units.hpp"
 
 #include <cfloat>
@@ -44,8 +45,7 @@ namespace godot {
         singleton = this;
         spatial_index.instantiate();
         spatial_index->set_cell_size(GRID_CELL_SIZE);
-        curve_bake_interval =
-                ProjectSettings::get_singleton()->get_setting(CURVE_BAKE_INTERVAL_SETTING, DEFAULT_CURVE_BAKE_INTERVAL);
+        curve_bake_interval = ProjectSettings::get_singleton()->get_setting(CURVE_BAKE_INTERVAL_SETTING);
         ProjectSettings::get_singleton()->connect(
                 "settings_changed", callable_mp(this, &TrackServer::_on_project_settings_changed));
     }
@@ -53,8 +53,7 @@ namespace godot {
     /// The control points stay, so do the endpoints and the topology - only the baked curves and
     /// the lengths measured on them change
     void TrackServer::_on_project_settings_changed() {
-        const double interval =
-                ProjectSettings::get_singleton()->get_setting(CURVE_BAKE_INTERVAL_SETTING, DEFAULT_CURVE_BAKE_INTERVAL);
+        const double interval = ProjectSettings::get_singleton()->get_setting(CURVE_BAKE_INTERVAL_SETTING);
         if (interval == curve_bake_interval) {
             return;
         }
@@ -67,6 +66,10 @@ namespace godot {
     TrackServer::~TrackServer() {
         _set_switch_processing(false);
         singleton = nullptr;
+    }
+
+    void TrackServer::project_settings_register() {
+        ReloadedProjectSetting::add(CURVE_BAKE_INTERVAL_SETTING, DEFAULT_CURVE_BAKE_INTERVAL, Variant::FLOAT);
     }
 
     void TrackServer::_bind_methods() {

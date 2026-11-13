@@ -25,6 +25,13 @@
 				The game's own data - its worlds and their assets - absolute: the [code]reloaded/data_dir[/code] the player chose, relative to the directory the game sits in ([signal data_dir_changed]).
 			</description>
 		</method>
+		<method name="get_project_value" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="name" type="String" />
+			<description>
+				The project's own value of the project setting [param name], whatever the player set: the value of [code]project.godot[/code], or else the setting's registered default ([method ReloadedProjectSetting.add]) - the default a settings screen offers.
+			</description>
+		</method>
 		<method name="get_setting" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="section" type="String" />

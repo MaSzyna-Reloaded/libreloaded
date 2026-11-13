@@ -28,6 +28,11 @@ namespace godot {
              * previous run, nothing written) */
             static bool _enabled();
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
             String _get_cache_path(const String &p_path) const;

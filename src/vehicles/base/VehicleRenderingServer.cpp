@@ -3,6 +3,7 @@
 #include "resources/ResourceLazyLoader.hpp"
 #include "scenery/SceneryHUDMouseServer.hpp"
 #include "scenery/SceneryStreamingServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "vehicles/base/VehicleRenderingServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
 
@@ -63,8 +64,7 @@ namespace godot {
     }
 
     void VehicleRenderingServer::_on_project_settings_changed() {
-        detail_distance =
-                ProjectSettings::get_singleton()->get_setting(DETAIL_DISTANCE_SETTING, DEFAULT_DETAIL_DISTANCE);
+        detail_distance = ProjectSettings::get_singleton()->get_setting(DETAIL_DISTANCE_SETTING);
     }
 
     /* Every vehicle's place against the new camera at once - the ones within the draw distance
@@ -239,6 +239,12 @@ namespace godot {
         }
         visual->preload_task = -1;
         _preload(p_vehicle, *visual);
+    }
+
+    void VehicleRenderingServer::project_settings_register() {
+        ReloadedProjectSetting::add(
+                DETAIL_DISTANCE_SETTING, DEFAULT_DETAIL_DISTANCE, Variant::FLOAT, PROPERTY_HINT_RANGE,
+                "50.0,10000.0,10.0,suffix:m");
     }
 
     void VehicleRenderingServer::_bind_methods() {

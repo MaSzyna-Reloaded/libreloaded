@@ -2,6 +2,7 @@
 #include "driver/DriverServer.hpp"
 #include "person/PersonServer.hpp"
 #include "scenery/SceneryStreamingServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "vehicles/base/VehicleServer.hpp"
 #include "vehicles/rail/RailVehicleServer.hpp"
 #include <godot_cpp/classes/os.hpp>
@@ -60,6 +61,10 @@ namespace godot {
         }
     }
 
+    void PlayerServer::project_settings_register() {
+        ReloadedProjectSetting::add(NICK_SETTING, String(), Variant::STRING);
+    }
+
     void PlayerServer::_bind_methods() {
         ClassDB::bind_method(D_METHOD("player_take_over_vehicle", "vehicle"), &PlayerServer::player_take_over_vehicle);
         ClassDB::bind_method(D_METHOD("player_enter_vehicle", "vehicle"), &PlayerServer::player_enter_vehicle);
@@ -109,7 +114,7 @@ namespace godot {
     void PlayerServer::_on_project_settings_changed() {
         PersonServer *persons = PersonServer::get_instance();
         ERR_FAIL_NULL(persons);
-        String name = String(ProjectSettings::get_singleton()->get_setting(NICK_SETTING, String())).strip_edges();
+        String name = String(ProjectSettings::get_singleton()->get_setting(NICK_SETTING)).strip_edges();
         if (name.is_empty()) {
             // the system's user name: USER on Linux and macOS, USERNAME on Windows
             const OS *os = OS::get_singleton();

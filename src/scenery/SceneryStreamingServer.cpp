@@ -1,5 +1,6 @@
 #include "SceneryStreamingServer.hpp"
 #include "utils/ProcessMemory.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "utils/Units.hpp"
 
 #include <godot_cpp/classes/camera3d.hpp>
@@ -18,6 +19,12 @@ namespace godot {
     const char *SceneryStreamingServer::streaming_camera_changed_signal = "streaming_camera_changed";
     const char *SceneryStreamingServer::chunk_cleared_signal = "chunk_cleared";
     const char *SceneryStreamingServer::area_ready_signal = "area_ready";
+
+    void SceneryStreamingServer::project_settings_register() {
+        ReloadedProjectSetting::add(
+                DRAW_DISTANCE_SETTING, DEFAULT_DRAW_DISTANCE_M, Variant::FLOAT, PROPERTY_HINT_RANGE,
+                "100.0,50000.0,10.0,suffix:m");
+    }
 
     void SceneryStreamingServer::_bind_methods() {
         ClassDB::bind_method(
@@ -82,15 +89,14 @@ namespace godot {
         singleton = this;
         semaphore.instantiate();
         preload_queue.instantiate();
-        draw_distance = ProjectSettings::get_singleton()->get_setting(DRAW_DISTANCE_SETTING, DEFAULT_DRAW_DISTANCE_M);
+        draw_distance = ProjectSettings::get_singleton()->get_setting(DRAW_DISTANCE_SETTING);
         ProjectSettings::get_singleton()->connect(
                 "settings_changed", callable_mp(this, &SceneryStreamingServer::_on_project_settings_changed));
     }
 
     /// Every piece is ranged anew - the next pass builds what came into range and clears what left it
     void SceneryStreamingServer::_on_project_settings_changed() {
-        const float distance =
-                ProjectSettings::get_singleton()->get_setting(DRAW_DISTANCE_SETTING, DEFAULT_DRAW_DISTANCE_M);
+        const float distance = ProjectSettings::get_singleton()->get_setting(DRAW_DISTANCE_SETTING);
         MutexLock lock(mutex);
         if (distance == draw_distance) {
             return;

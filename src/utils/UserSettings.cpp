@@ -1,4 +1,5 @@
 #include "UserSettings.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -43,6 +44,12 @@ namespace godot {
         singleton = nullptr;
     }
 
+    void UserSettings::project_settings_register() {
+        // only the project settings the game's settings declare a player's are taken from the
+        // player's settings.cfg
+        ReloadedProjectSetting::add(DECLARATIONS_SETTING, String(), Variant::STRING, PROPERTY_HINT_FILE, "*.json");
+    }
+
     void UserSettings::_bind_methods() {
         ClassDB::bind_method(D_METHOD("load_config"), &UserSettings::load_config);
 
@@ -51,6 +58,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("save_config"), &UserSettings::save_config);
         ClassDB::bind_method(D_METHOD("is_config_changed"), &UserSettings::is_config_changed);
         ClassDB::bind_method(D_METHOD("erase_setting", "section", "key"), &UserSettings::erase_setting);
+        ClassDB::bind_method(D_METHOD("get_project_value", "name"), &UserSettings::get_project_value);
 
         ClassDB::bind_method(
                 D_METHOD("get_setting", "section", "key", "default_value"), &UserSettings::get_setting,
@@ -94,7 +102,7 @@ namespace godot {
         _apply_defaults();
         ProjectSettings *project_settings = ProjectSettings::get_singleton();
         for (const Variant &name: project_values.keys()) {
-            project_settings->set_setting(name, project_values[name]);
+            _restore_project_setting(name);
         }
         project_values.clear();
 
@@ -114,7 +122,7 @@ namespace godot {
          * out of the game's Settings still overrode the project's). The constructor runs before
          * every server's, so each server reads them at its own init. */
         PackedStringArray declared;
-        const String declarations = project_settings->get_setting(DECLARATIONS_SETTING, "");
+        const String declarations = project_settings->get_setting(DECLARATIONS_SETTING);
         const Variant parsed =
                 declarations.is_empty() ? Variant() : JSON::parse_string(FileAccess::get_file_as_string(declarations));
         const Array sections =
@@ -181,7 +189,7 @@ namespace godot {
         }
         config->erase_section_key(p_section, p_key);
         if (p_section == PROJECT_SETTINGS_SECTION && project_values.has(p_key)) {
-            ProjectSettings::get_singleton()->set_setting(p_key, project_values[p_key]);
+            _restore_project_setting(p_key);
             project_values.erase(p_key);
         }
         emit_signal(setting_changed_signal, p_section, p_key);
@@ -208,6 +216,22 @@ namespace godot {
     void UserSettings::save_setting(const String &p_section, const String &p_key, const Variant &p_value) {
         set_setting(p_section, p_key, p_value);
         save_config();
+    }
+
+    void UserSettings::_restore_project_setting(const String &p_name) {
+        ProjectSettings::get_singleton()->set_setting(p_name, get_project_value(p_name));
+    }
+
+    /* A setting the project had no value of as the player's was applied - one a library registers in
+     * GDScript as the game starts, after this constructor (ReloadedProjectSettings) - has its initial
+     * value, not none: set to none, the setting would be gone */
+    Variant UserSettings::get_project_value(const String &p_name) const {
+        ProjectSettings *project_settings = ProjectSettings::get_singleton();
+        if (!project_values.has(p_name)) {
+            return project_settings->get_setting(p_name);
+        }
+        const Variant value = project_values[p_name];
+        return value.get_type() == Variant::NIL ? project_settings->property_get_revert(p_name) : value;
     }
 
     /* The editor keeps the project's values: one set there would be saved into project.godot. The

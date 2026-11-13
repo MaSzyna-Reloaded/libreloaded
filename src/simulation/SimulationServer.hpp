@@ -115,6 +115,11 @@ namespace godot {
             /// The speed's change time follows its setting
             void _on_project_settings_changed();
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 
@@ -128,7 +133,7 @@ namespace godot {
             static const char *simulation_current_speed_changed_signal;
             /// The Project Setting of how long the running speed takes to reach one set [s]
             static constexpr const char *SPEED_CHANGE_TIME_SETTING = "reloaded/simulation/speed_change_time";
-            /// ... when the project does not set it (libmaszyna.gd registers the same) [s]
+            /// ... when the project does not set it [s]
             static constexpr double SPEED_CHANGE_TIME_DEFAULT = 0.4;
             static const char *time_of_day_changed_signal;
             static const char *time_of_day_hour_changed_signal;
@@ -148,7 +153,7 @@ namespace godot {
             /// original lights a scenery light set to "on when dark" below a light level of 0.325
             /// (AnimModel.cpp:598), which on this ramp falls at about 1.4 degrees below the
             /// horizon. Both ends have to stay clear of a winter noon - at 50 N the sun peaks at
-            /// 16-19 degrees in January (FINDINGS.md). libmaszyna.gd registers the same.
+            /// 16-19 degrees in January (FINDINGS.md).
             static constexpr const char *LIGHT_LEVEL_NIGHT_ALTITUDE_SETTING = "reloaded/lights/night_altitude";
             static constexpr const char *LIGHT_LEVEL_DAY_ALTITUDE_SETTING = "reloaded/lights/day_altitude";
             static constexpr double LIGHT_LEVEL_NIGHT_ALTITUDE_DEFAULT = -6.0;

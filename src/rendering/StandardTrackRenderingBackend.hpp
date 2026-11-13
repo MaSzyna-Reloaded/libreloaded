@@ -132,6 +132,11 @@ namespace godot {
             void
             _add_road(const Vector<Frame> &p_frames, const TrackData &p_description, Vector<Surface> &p_surfaces) const;
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 

@@ -299,8 +299,7 @@ func _process_dirty() -> void:
         RenderingServer.global_shader_parameter_set(
             "reloaded_fog_range",
             fog_distance / float(ProjectSettings.get_setting(
-                SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_SETTING,
-                SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_DEFAULT))
+                SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_SETTING))
             if fog_enabled
             else FOG_RANGE_MAX)
         applied = true

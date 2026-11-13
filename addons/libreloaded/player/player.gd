@@ -121,8 +121,8 @@ func _exit_tree() -> void:
 
 ## The headlamp's shadow (opengl33renderer.cpp:1758) and the follow jump follow their settings
 func _on_project_settings_changed() -> void:
-    headlamp.shadow_reverse_cull_face = ProjectSettings.get_setting("reloaded/lights/reverse_cull_face", false)
-    _follow_jump_distance = ProjectSettings.get_setting(FOLLOW_JUMP_DISTANCE_SETTING, FOLLOW_JUMP_DISTANCE_DEFAULT)
+    headlamp.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(SkyEnvironment.REVERSE_CULL_FACE_SETTING))
+    _follow_jump_distance = ProjectSettings.get_setting(FOLLOW_JUMP_DISTANCE_SETTING)
 
 ## The cab shakes the camera while it looks from the cab
 func _process(_delta:float) -> void:
@@ -174,7 +174,7 @@ func _stand() -> void:
     if not camera:
         camera = Camera3D.new()
         camera.name = "Camera"
-        camera.far = ProjectSettings.get_setting(FAR_DISTANCE_SETTING, FAR_DISTANCE_DEFAULT)
+        camera.far = ProjectSettings.get_setting(FAR_DISTANCE_SETTING)
         _mode_view().add_child(camera)
         CabinHUDMouseSystem.mouse_set_camera(camera.get_instance_id())
     _show_view(_mode_view())

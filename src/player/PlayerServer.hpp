@@ -59,6 +59,11 @@ namespace godot {
             /// The player's person is named by the player's nick
             void _on_project_settings_changed();
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 
