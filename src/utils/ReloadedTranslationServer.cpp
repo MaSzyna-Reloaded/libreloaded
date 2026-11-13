@@ -1,5 +1,6 @@
 #include "ReloadedTranslationServer.hpp"
 #include "game_data/GameDataServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "utils/UserSettings.hpp"
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -34,6 +35,14 @@ namespace godot {
             TranslationServer::get_singleton()->remove_translation(translation);
         }
         singleton = nullptr;
+    }
+
+    void ReloadedTranslationServer::project_settings_register() {
+        // the wrapper's own .po files, merged with the game's catalogue into the one translation
+        // TranslationServer uses, so they are not listed in Localization
+        ReloadedProjectSetting::add(
+                TRANSLATIONS_SETTING, PackedStringArray(), Variant::PACKED_STRING_ARRAY, PROPERTY_HINT_TYPE_STRING,
+                String::num_int64(Variant::STRING) + "/" + String::num_int64(PROPERTY_HINT_FILE) + ":*.po");
     }
 
     void ReloadedTranslationServer::_bind_methods() {
@@ -112,8 +121,7 @@ namespace godot {
 
         // the game's catalogues carry neither msgctxt nor plurals, nor do the wrapper's - only the
         // plain singular messages are merged
-        const PackedStringArray wrapper_paths =
-                ProjectSettings::get_singleton()->get_setting(TRANSLATIONS_SETTING, PackedStringArray());
+        const PackedStringArray wrapper_paths = ProjectSettings::get_singleton()->get_setting(TRANSLATIONS_SETTING);
         for (const String &path: wrapper_paths) {
             const Ref<Translation> wrapper_translation = ResourceLoader::get_singleton()->load(path);
             ERR_CONTINUE_MSG(wrapper_translation.is_null(), "ReloadedTranslationServer: cannot load " + path);

@@ -63,6 +63,11 @@ namespace godot {
 
             void _on_data_unload_requested();
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 

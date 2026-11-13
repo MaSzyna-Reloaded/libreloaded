@@ -489,8 +489,7 @@ func _apply_fog() -> void:
     # that range becomes the distance of a complete fog
     var fog_range:float = fog_end / maxf(1.0, overcast * 2.0 if overcast_defined else 0.0)
     environment_node.fog_distance = fog_range * float(ProjectSettings.get_setting(
-        SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_SETTING,
-        SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_DEFAULT))
+        SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_SETTING))
     environment_node.fog_density = 1.0
 
 

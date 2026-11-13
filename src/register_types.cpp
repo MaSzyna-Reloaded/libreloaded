@@ -82,6 +82,7 @@
 #include "traction/TractionData.hpp"
 #include "traction/TractionServer.hpp"
 #include "utils/ProcessMemory.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "utils/ReloadedTranslationServer.hpp"
 #include "utils/Units.hpp"
 #include "utils/UserSettings.hpp"
@@ -207,6 +208,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
         GDREGISTER_ABSTRACT_CLASS(UserSettings);
         GDREGISTER_CLASS(ProcessMemory);
+        GDREGISTER_ABSTRACT_CLASS(ReloadedProjectSetting);
         GDREGISTER_CLASS(SimulationServer);
         GDREGISTER_CLASS(SimulationRuntime);
         GDREGISTER_CLASS(GameDataServer);
@@ -360,6 +362,22 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(VehicleCurvePointItem);
         GDREGISTER_ABSTRACT_CLASS(ReloadedPlugin);
         GDREGISTER_CLASS(ReloadedPluginServer);
+
+        // the settings read in C++, by their owners, before UserSettings applies the player's values
+        ModelRenderingServer::project_settings_register();
+        PlayerServer::project_settings_register();
+        RailVehicleServer::project_settings_register();
+        ReloadedTranslationServer::project_settings_register();
+        ResourceCache::project_settings_register();
+        ResourceLazyLoader::project_settings_register();
+        SceneryStreamingServer::project_settings_register();
+        SimulationServer::project_settings_register();
+        SmokeServer::project_settings_register();
+        StandardTrackRenderingBackend::project_settings_register();
+        TrackRenderingServer::project_settings_register();
+        TrackServer::project_settings_register();
+        UserSettings::project_settings_register();
+        VehicleRenderingServer::project_settings_register();
 
         // after every core class: the plugins' classes derive from them
         reloaded_plugin_server_singleton = memnew(ReloadedPluginServer);

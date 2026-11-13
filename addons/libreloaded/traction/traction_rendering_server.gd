@@ -138,7 +138,7 @@ func _build_if_in_range(traction_rid: RID) -> void:
 func _get_backend_name(description: TractionData) -> StringName:
     if description and description.rendering_backend in _backends:
         return description.rendering_backend
-    var default_name: StringName = ProjectSettings.get_setting(RENDERING_BACKEND_SETTING, PLAIN_BACKEND)
+    var default_name: StringName = ProjectSettings.get_setting(RENDERING_BACKEND_SETTING)
     return default_name if default_name in _backends else PLAIN_BACKEND
 
 

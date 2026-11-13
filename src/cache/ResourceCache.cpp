@@ -1,4 +1,5 @@
 #include "ResourceCache.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 
 #include "game_data/GameDataServer.hpp"
 
@@ -15,8 +16,13 @@ namespace godot {
     /* Off, no cache is read or written - the GUT hooks switch it off, so a test never sees what a
      * previous run compiled (a stale scenery cache cost a day: FINDINGS.md, 2026-10-12) */
     constexpr const char *CACHE_ENABLED_SETTING = "reloaded/cache/enabled";
+    constexpr bool CACHE_ENABLED_DEFAULT = true;
 
     Mutex ResourceCache::defaults_mutex;
+
+    void ResourceCache::project_settings_register() {
+        ReloadedProjectSetting::add(CACHE_ENABLED_SETTING, CACHE_ENABLED_DEFAULT, Variant::BOOL);
+    }
 
     void ResourceCache::_bind_methods() {
         ClassDB::bind_static_method("ResourceCache", D_METHOD("create", "cache_dir"), &ResourceCache::create);
@@ -80,7 +86,7 @@ namespace godot {
 
     // read on every use: the caches are made before a hook or the editor could change the setting
     bool ResourceCache::_enabled() {
-        return ProjectSettings::get_singleton()->get_setting(CACHE_ENABLED_SETTING, true);
+        return ProjectSettings::get_singleton()->get_setting(CACHE_ENABLED_SETTING);
     }
 
     bool ResourceCache::has(const String &p_path, const String &p_hash) const {

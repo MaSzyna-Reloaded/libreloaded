@@ -1,4 +1,5 @@
 #include "rendering/TrackRenderingServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 
 #include "game_data/GameDataServer.hpp"
 #include "scenery/SceneryStreamingServer.hpp"
@@ -11,6 +12,13 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace godot {
+    void TrackRenderingServer::project_settings_register() {
+        ReloadedProjectSetting::add(
+                TRACKS_DISTANCE_SETTING, TRACKS_DISTANCE, Variant::FLOAT, PROPERTY_HINT_RANGE,
+                "100.0,20000.0,10.0,suffix:m");
+        ReloadedProjectSetting::add(BACKEND_SETTING, StringName(DEFAULT_BACKEND), Variant::STRING_NAME);
+    }
+
     void TrackRenderingServer::_bind_methods() {
         ClassDB::bind_method(
                 D_METHOD("backend_register", "name", "backend_id"), &TrackRenderingServer::backend_register);
@@ -51,7 +59,7 @@ namespace godot {
         stream_owner = streaming->owner_create(
                 "tracks", Callable(), callable_mp(this, &TrackRenderingServer::_stream_build),
                 callable_mp(this, &TrackRenderingServer::_stream_clear));
-        tracks_distance = ProjectSettings::get_singleton()->get_setting(TRACKS_DISTANCE_SETTING, TRACKS_DISTANCE);
+        tracks_distance = ProjectSettings::get_singleton()->get_setting(TRACKS_DISTANCE_SETTING);
         if (TrackServer *track_server = TrackServer::get_instance(); track_server != nullptr) {
             track_server->connect(
                     TrackServer::topology_rebuilt_signal,
@@ -250,7 +258,7 @@ namespace godot {
         if (named != StringName() && backends.has(named)) {
             return named;
         }
-        return ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, DEFAULT_BACKEND);
+        return ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING);
     }
 
     TrackRenderingBackend *TrackRenderingServer::_get_backend(const Track &p_track) const {

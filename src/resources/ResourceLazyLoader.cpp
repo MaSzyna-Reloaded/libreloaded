@@ -1,4 +1,5 @@
 #include "ResourceLazyLoader.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 
 #include "game_data/GameDataServer.hpp"
 
@@ -26,8 +27,7 @@ namespace godot {
     ResourceLazyLoader::ResourceLazyLoader() {
         singleton = this;
         lazy_loading = OS::get_singleton()->get_cmdline_args().has(ARG_ENABLE_LAZY_LOADING) ||
-                       static_cast<bool>(ProjectSettings::get_singleton()->get_setting(
-                               LAZY_LOADING_SETTING, DEFAULT_LAZY_LOADING));
+                       static_cast<bool>(ProjectSettings::get_singleton()->get_setting(LAZY_LOADING_SETTING));
         GameDataServer *game_data = GameDataServer::get_instance();
         ERR_FAIL_NULL(game_data);
         game_data->connect(
@@ -37,6 +37,13 @@ namespace godot {
 
     ResourceLazyLoader::~ResourceLazyLoader() {
         singleton = nullptr;
+    }
+
+    void ResourceLazyLoader::project_settings_register() {
+        // on, the models of a scenery, its terrain and a vehicle's models are loaded when the camera
+        // comes near and let go when it leaves; off, they are all loaded with the scenery and kept,
+        // and the streaming only builds and clears their instances
+        ReloadedProjectSetting::add(LAZY_LOADING_SETTING, DEFAULT_LAZY_LOADING, Variant::BOOL);
     }
 
     void ResourceLazyLoader::_bind_methods() {

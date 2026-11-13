@@ -26,7 +26,6 @@ const GAMMA_CURVE_STEPS: int = 256
 const SHADOW_SCENERY_ENABLED_SETTING: StringName = &"reloaded/scenery/shadows/enabled"
 const SHADOW_CABIN_ENABLED_SETTING: StringName = &"reloaded/cabin/shadows/enabled"
 const SHADOW_SCENERY_MODE_SETTING: StringName = &"reloaded/scenery/shadows/mode"
-## The cab light covers the cab alone - two splits over its few metres are enough
 const SHADOW_CABIN_MODE_SETTING: StringName = &"reloaded/cabin/shadows/mode"
 const SHADOW_SCENERY_BLUR_SETTING: StringName = &"reloaded/scenery/shadows/blur"
 const SHADOW_CABIN_BLUR_SETTING: StringName = &"reloaded/cabin/shadows/blur"
@@ -50,31 +49,49 @@ const SHADOW_CABIN_SPLIT_SETTINGS: Array[StringName] = [
     &"reloaded/cabin/shadows/split_2",
     &"reloaded/cabin/shadows/split_3",
 ]
-## The original's cascades end at range/32, range/8 and range (opengl33renderer.cpp:1106); Godot
-## has four, and the third boundary continues the same x4 step
-const SHADOW_SCENERY_SPLITS: Array[float] = [1.0 / 32.0, 1.0 / 8.0, 1.0 / 2.0]
-## Original engine: Globals.h:153 shadowtune.range
-const SHADOW_SCENERY_MAX_DISTANCE: float = 250.0
-## The original has no normal bias at all; this is Godot's own DirectionalLight3D default. The
-## lookup moves by normal_bias times the texel of a cascade - at 10 it moved 2.6 m in the last one
-## and the shadow of a mast or a person was gone.
+## How sharp the shadows are - the size of their textures (get_shadow_atlas_size())
+const SHADOW_TEXTURE_QUALITY_SETTING: StringName = &"reloaded/shadows/texture_quality"
+enum ShadowTextureQuality { LOW, MEDIUM, HIGH, MAXIMUM }
+const SHADOW_TEXTURE_QUALITY: ShadowTextureQuality = ShadowTextureQuality.MEDIUM
+## The size of the shadow map of each shadowed directional light, by ShadowTextureQuality - MAXIMUM's
+## takes 512 MB of video memory with 16-bit shadows
+const SHADOW_TEXTURE_QUALITY_SIZES: PackedInt32Array = [2048, 4096, 8192, 16384]
+## The largest atlas Godot takes (rendering/lights_and_shadows/directional_shadow/size): MAXIMUM's
+## map does not fit twice, so beside a cab light the sun keeps half of it
+const SHADOW_ATLAS_MAX_SIZE: int = 16384
+
+# The default values of the shadow settings, which ReloadedProjectSettings registers - the only
+# place they are written down
+const SHADOW_ENABLED: bool = true
+const SHADOW_OPACITY: float = 1.0
+const SHADOW_BIAS: float = 0.1
+const SHADOW_BLEND_SPLITS: bool = true
+## The world's sun: its first cascade sharp over some 20 m of a 1 km reach
+const SHADOW_SCENERY_MODE: DirectionalLight3D.ShadowMode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+const SHADOW_SCENERY_SPLITS: Array[float] = [0.02, 0.125, 0.5]
+const SHADOW_SCENERY_MAX_DISTANCE: float = 1000.0
+const SHADOW_SCENERY_BLUR: float = 0.4
+## Godot's own DirectionalLight3D default. The lookup moves by normal_bias times the texel of a
+## cascade - at 10 it moved 2.6 m in the last one and the shadow of a mast or a person was gone.
 const SHADOW_SCENERY_NORMAL_BIAS: float = 1.0
-## The cab light's two splits; only the first boundary is used by PARALLEL_2_SPLITS
-const SHADOW_CABIN_SPLITS: Array[float] = [0.25, 0.5, 0.75]
-## The original draws the cab only into its nearest cascade, SHADOW_SCENERY_MAX_DISTANCE / 32
-## (opengl33renderer.cpp:1135)
-const SHADOW_CABIN_MAX_DISTANCE: float = 8.0
+## The cab light: four cascades over the cab and what stands beside it
+const SHADOW_CABIN_MODE: DirectionalLight3D.ShadowMode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+const SHADOW_CABIN_SPLITS: Array[float] = [0.114, 0.162, 0.64]
+const SHADOW_CABIN_MAX_DISTANCE: float = 22.0
+const SHADOW_CABIN_BLUR: float = 0.46
 const SHADOW_CABIN_NORMAL_BIAS: float = 5.0
 ## The cab gets a sun of its own that lights only EnvironmentNode.CABIN_RENDER_LAYER, with
 ## the cabin/shadows settings, while the world's sun keeps the scenery ones in the cab view too
 const CABIN_SHADOWS_IMPROVED_SETTING: StringName = &"reloaded/cabin/improve_shadows_quality"
+const CABIN_SHADOWS_IMPROVED: bool = true
 ## Shadow maps drawn with front faces culled (opengl33renderer.cpp:1758)
 const REVERSE_CULL_FACE_SETTING: StringName = &"reloaded/lights/reverse_cull_face"
-## Two shadowed directional lights halve the directional shadow atlas (Godot's
-## light_storage.cpp _get_directional_shadow_rect) - twice the default keeps the world's cascades
-## as sharp as with one light
-const IMPROVED_CABIN_SHADOW_ATLAS_SIZE: int = 8192
+const REVERSE_CULL_FACE: bool = false
 const DIRECTIONAL_SHADOW_16_BITS_SETTING: StringName = &"rendering/lights_and_shadows/directional_shadow/16_bits"
+## How soft the directional lights' shadows are - Godot's own setting, which the renderer reads only
+## as it starts: taken again with the lights' settings, so a change shows at once
+const DIRECTIONAL_SOFT_SHADOW_QUALITY_SETTING: StringName = (
+    &"rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality")
 const CABIN_LIGHT_NAME: StringName = &"CabinLight"
 
 ## Which settings a directional light takes: the world's sun the scenery ones, the cab light the
@@ -90,6 +107,7 @@ enum ShadowView { SCENERY, CABIN }
 const FOG_VOLUMETRIC_LENGTH_SCALE_SETTING: StringName = &"reloaded/weather/fog/volumetric_length_scale"
 const FOG_VOLUMETRIC_LENGTH_SCALE_DEFAULT: float = 24.0
 const VOLUMETRIC_FOG_ENERGY_SETTING: StringName = &"reloaded/weather/fog/volumetric_energy"
+const VOLUMETRIC_FOG_ENERGY_DEFAULT: float = 1.0
 ## EnvironmentNode.fog_distance is scaled by these for the day and for the night fog of a
 ## sky backend that tells them apart; the night default keeps Skydome's own 200 m to 470 m ratio
 const FOG_DAY_DISTANCE_FACTOR_SETTING: StringName = &"reloaded/weather/fog/day_distance_factor"
@@ -515,10 +533,9 @@ func _apply_environment_configuration() -> void:
     _environment.adjustment_color_correction = _gamma_curve
     _environment.fog_enabled = fog_active
     # the sky backends leave these two alone
-    _environment.fog_aerial_perspective = float(ProjectSettings.get_setting(
-        FOG_AERIAL_PERSPECTIVE_SETTING, FOG_AERIAL_PERSPECTIVE_DEFAULT))
+    _environment.fog_aerial_perspective = float(ProjectSettings.get_setting(FOG_AERIAL_PERSPECTIVE_SETTING))
     _environment.fog_depth_curve = maxf(FOG_CURVE_MIN, float(
-        ProjectSettings.get_setting(FOG_CURVE_SETTING, FOG_CURVE_DEFAULT)))
+        ProjectSettings.get_setting(FOG_CURVE_SETTING)))
     _environment.volumetric_fog_enabled = (
         fog_active and bool(UserSettings.get_setting("render", "volumetric_fog_enabled", true))
     )
@@ -528,7 +545,7 @@ func _apply_environment_configuration() -> void:
 ## terrain FOG_SKY_HEIGHT_SETTING away takes, (height / fog_distance) ^ fog curve, at most 1 - for a
 ## backend to scale by the fog's density (Environment.fog_sky_affect fogs the sky whatever it is)
 func get_fog_sky_share(fog_distance: float) -> float:
-    return clampf(pow(float(ProjectSettings.get_setting(FOG_SKY_HEIGHT_SETTING, FOG_SKY_HEIGHT_DEFAULT))
+    return clampf(pow(float(ProjectSettings.get_setting(FOG_SKY_HEIGHT_SETTING))
             / fog_distance, _environment.fog_depth_curve), 0.0, 1.0)
 
 
@@ -603,9 +620,6 @@ func _create_cabin_light(world_light: DirectionalLight3D) -> void:
     world_light.add_child(cabin_light, false, Node.INTERNAL_MODE_BACK)
     world_light.light_cull_mask &= ~EnvironmentNode.CABIN_RENDER_LAYER
     _cabin_lights[world_light] = cabin_light
-    RenderingServer.directional_shadow_atlas_set_size(
-        IMPROVED_CABIN_SHADOW_ATLAS_SIZE, bool(ProjectSettings.get_setting(DIRECTIONAL_SHADOW_16_BITS_SETTING, true))
-    )
 
 
 ## The world light gives the cab light back the cab layer it took
@@ -618,68 +632,82 @@ func _free_cabin_light(world_light: DirectionalLight3D) -> void:
 ## A world light takes the scenery settings, its cab light the cabin ones; the cab light is there
 ## while CABIN_SHADOWS_IMPROVED_SETTING is on, and comes and goes with it
 func _apply_sun_settings(world_light: DirectionalLight3D) -> void:
-    var improved: bool = bool(ProjectSettings.get_setting(CABIN_SHADOWS_IMPROVED_SETTING, true))
+    var improved: bool = bool(ProjectSettings.get_setting(CABIN_SHADOWS_IMPROVED_SETTING))
     if improved and not _cabin_lights.has(world_light):
         _create_cabin_light(world_light)
     elif not improved and _cabin_lights.has(world_light):
         _free_cabin_light(world_light)
+    RenderingServer.directional_shadow_atlas_set_size(
+        get_shadow_atlas_size(), bool(ProjectSettings.get_setting(DIRECTIONAL_SHADOW_16_BITS_SETTING))
+    )
+    RenderingServer.directional_soft_shadow_filter_set_quality(
+        int(ProjectSettings.get_setting(DIRECTIONAL_SOFT_SHADOW_QUALITY_SETTING)) as RenderingServer.ShadowQuality
+    )
     _apply_directional_light_settings(world_light, ShadowView.SCENERY)
     if _cabin_lights.has(world_light):
         _apply_directional_light_settings(_cabin_lights[world_light], ShadowView.CABIN)
 
 
+## The size the directional shadow atlas is set to: the shadow map of the shadow texture quality for the
+## world's sun and for each cab light, up to SHADOW_ATLAS_MAX_SIZE. Godot splits one atlas evenly
+## between the shadowed directional lights (its light_storage.cpp _get_directional_shadow_rect), so
+## the sun keeps its map beside a cab light
+func get_shadow_atlas_size() -> int:
+    var quality: int = int(ProjectSettings.get_setting(SHADOW_TEXTURE_QUALITY_SETTING))
+    return mini(SHADOW_TEXTURE_QUALITY_SIZES[quality] * (1 + _cabin_lights.size()), SHADOW_ATLAS_MAX_SIZE)
+
+
 func _apply_directional_light_settings(light: DirectionalLight3D, view: ShadowView) -> void:
     var cabin: bool = view == ShadowView.CABIN
-    light.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(REVERSE_CULL_FACE_SETTING, false))
+    light.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(REVERSE_CULL_FACE_SETTING))
     # the cab light casts shadows only while there is a cab to look at; it keeps lighting the cab
     # seen from outside
     light.shadow_enabled = (
-        bool(ProjectSettings.get_setting(SHADOW_CABIN_ENABLED_SETTING, true))
+        bool(ProjectSettings.get_setting(SHADOW_CABIN_ENABLED_SETTING))
         and environment_node.cabin_view
         if cabin
-        else bool(ProjectSettings.get_setting(SHADOW_SCENERY_ENABLED_SETTING, true))
+        else bool(ProjectSettings.get_setting(SHADOW_SCENERY_ENABLED_SETTING))
     )
     light.shadow_opacity = float(
-        ProjectSettings.get_setting(SHADOW_CABIN_OPACITY_SETTING, 1.0)
+        ProjectSettings.get_setting(SHADOW_CABIN_OPACITY_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_OPACITY_SETTING, 1.0)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_OPACITY_SETTING)
     )
     light.shadow_bias = float(
-        ProjectSettings.get_setting(SHADOW_CABIN_BIAS_SETTING, 0.1)
+        ProjectSettings.get_setting(SHADOW_CABIN_BIAS_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_BIAS_SETTING, 0.1)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_BIAS_SETTING)
     )
     light.shadow_blur = float(
-        ProjectSettings.get_setting(SHADOW_CABIN_BLUR_SETTING, 1.0)
+        ProjectSettings.get_setting(SHADOW_CABIN_BLUR_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_BLUR_SETTING, 1.0)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_BLUR_SETTING)
     )
     # Normal bias pushes the shadow lookup along the surface normal by normal_bias texels of the
     # split - thinner casters than that lose their shadow, so it stays small outside.
     light.shadow_normal_bias = float(
-        ProjectSettings.get_setting(SHADOW_CABIN_NORMAL_BIAS_SETTING, SHADOW_CABIN_NORMAL_BIAS)
+        ProjectSettings.get_setting(SHADOW_CABIN_NORMAL_BIAS_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_NORMAL_BIAS_SETTING, SHADOW_SCENERY_NORMAL_BIAS)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_NORMAL_BIAS_SETTING)
     )
     light.directional_shadow_mode = int(
-        ProjectSettings.get_setting(SHADOW_CABIN_MODE_SETTING, DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
+        ProjectSettings.get_setting(SHADOW_CABIN_MODE_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_MODE_SETTING, DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_MODE_SETTING)
     ) as DirectionalLight3D.ShadowMode
     light.directional_shadow_max_distance = float(
-        ProjectSettings.get_setting(SHADOW_CABIN_MAX_DISTANCE_SETTING, SHADOW_CABIN_MAX_DISTANCE)
+        ProjectSettings.get_setting(SHADOW_CABIN_MAX_DISTANCE_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_MAX_DISTANCE_SETTING, SHADOW_SCENERY_MAX_DISTANCE)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_MAX_DISTANCE_SETTING)
     )
     var split_settings: Array[StringName] = SHADOW_CABIN_SPLIT_SETTINGS if cabin else SHADOW_SCENERY_SPLIT_SETTINGS
-    var split_defaults: Array[float] = SHADOW_CABIN_SPLITS if cabin else SHADOW_SCENERY_SPLITS
-    light.directional_shadow_split_1 = float(ProjectSettings.get_setting(split_settings[0], split_defaults[0]))
-    light.directional_shadow_split_2 = float(ProjectSettings.get_setting(split_settings[1], split_defaults[1]))
-    light.directional_shadow_split_3 = float(ProjectSettings.get_setting(split_settings[2], split_defaults[2]))
+    light.directional_shadow_split_1 = float(ProjectSettings.get_setting(split_settings[0]))
+    light.directional_shadow_split_2 = float(ProjectSettings.get_setting(split_settings[1]))
+    light.directional_shadow_split_3 = float(ProjectSettings.get_setting(split_settings[2]))
     light.directional_shadow_blend_splits = bool(
-        ProjectSettings.get_setting(SHADOW_CABIN_BLEND_SPLITS_SETTING, true)
+        ProjectSettings.get_setting(SHADOW_CABIN_BLEND_SPLITS_SETTING)
         if cabin
-        else ProjectSettings.get_setting(SHADOW_SCENERY_BLEND_SPLITS_SETTING, true)
+        else ProjectSettings.get_setting(SHADOW_SCENERY_BLEND_SPLITS_SETTING)
     )
     if not cabin:
-        light.light_volumetric_fog_energy = float(ProjectSettings.get_setting(VOLUMETRIC_FOG_ENERGY_SETTING, 1.0))
+        light.light_volumetric_fog_energy = float(ProjectSettings.get_setting(VOLUMETRIC_FOG_ENERGY_SETTING))

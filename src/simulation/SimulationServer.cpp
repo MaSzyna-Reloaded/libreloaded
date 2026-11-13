@@ -1,4 +1,5 @@
 #include "SimulationServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "utils/Units.hpp"
 
 #include <godot_cpp/classes/project_settings.hpp>
@@ -50,11 +51,22 @@ namespace godot {
 
     void SimulationServer::_on_project_settings_changed() {
         const ProjectSettings *settings = ProjectSettings::get_singleton();
-        speed_change_time = settings->get_setting(SPEED_CHANGE_TIME_SETTING, SPEED_CHANGE_TIME_DEFAULT);
-        light_night_altitude =
-                settings->get_setting(LIGHT_LEVEL_NIGHT_ALTITUDE_SETTING, LIGHT_LEVEL_NIGHT_ALTITUDE_DEFAULT);
-        light_day_altitude = settings->get_setting(LIGHT_LEVEL_DAY_ALTITUDE_SETTING, LIGHT_LEVEL_DAY_ALTITUDE_DEFAULT);
+        speed_change_time = settings->get_setting(SPEED_CHANGE_TIME_SETTING);
+        light_night_altitude = settings->get_setting(LIGHT_LEVEL_NIGHT_ALTITUDE_SETTING);
+        light_day_altitude = settings->get_setting(LIGHT_LEVEL_DAY_ALTITUDE_SETTING);
         _update_light_level();
+    }
+
+    void SimulationServer::project_settings_register() {
+        ReloadedProjectSetting::add(
+                SPEED_CHANGE_TIME_SETTING, SPEED_CHANGE_TIME_DEFAULT, Variant::FLOAT, PROPERTY_HINT_RANGE,
+                "0.0,5.0,0.05,suffix:s");
+        ReloadedProjectSetting::add(
+                LIGHT_LEVEL_NIGHT_ALTITUDE_SETTING, LIGHT_LEVEL_NIGHT_ALTITUDE_DEFAULT, Variant::FLOAT,
+                PROPERTY_HINT_RANGE, String::utf8("-18.0,0.0,0.5,suffix:°"));
+        ReloadedProjectSetting::add(
+                LIGHT_LEVEL_DAY_ALTITUDE_SETTING, LIGHT_LEVEL_DAY_ALTITUDE_DEFAULT, Variant::FLOAT, PROPERTY_HINT_RANGE,
+                String::utf8("0.0,15.0,0.5,suffix:°"));
     }
 
     void SimulationServer::_bind_methods() {

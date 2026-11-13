@@ -457,6 +457,16 @@ namespace godot {
                     const RID &p_vehicle, Pantograph &p_pantograph, int p_index, const Vector3 &p_position,
                     const Transform3D &p_frame, double p_half_width);
 
+        public:
+            /// Reports physics inconsistencies with push_error (see _check_movement) - an
+            /// implementation's own checks follow it too
+            static constexpr const char *DIAGNOSTICS_SETTING = "reloaded/debug/physics_diagnostics";
+            static constexpr bool DIAGNOSTICS_DEFAULT = false;
+
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 

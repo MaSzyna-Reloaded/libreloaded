@@ -74,7 +74,7 @@ namespace godot {
             /// Pieces cleared before the memory they held is given back to the system, once the
             /// clearing is done (ProcessMemory::release_unused())
             static constexpr int RELEASE_CLEARED_PIECES = 256;
-            /// Fallback for reloaded/scenery/draw_distance, the streaming's own reach: the range of
+            /// Default of reloaded/scenery/draw_distance, the streaming's own reach: the range of
             /// the pieces that declare none of their own, the cap of those that do, and how far the
             /// vehicles are drawn. Not how far the camera sees - a world's far terrain is drawn
             /// past it, outside the streaming (Player.FAR_DISTANCE_SETTING, #47)
@@ -346,6 +346,11 @@ namespace godot {
             /// Hands each RID back to the consumer of its kind
             void _release_content(const std::array<Vector<RID>, CONTENT_KIND_COUNT> &p_rids);
 
+
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
 
         protected:
             static void _bind_methods();

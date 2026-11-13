@@ -2,6 +2,7 @@
 #include "game_data/GameDataServer.hpp"
 #include "scenery/SceneryStreamingServer.hpp"
 #include "simulation/SimulationServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "utils/Units.hpp"
 #include <godot_cpp/classes/curve.hpp>
 #include <godot_cpp/classes/curve_texture.hpp>
@@ -69,6 +70,35 @@ namespace godot {
         texture.instantiate();
         texture->set_gradient(gradient);
         return texture;
+    }
+
+    void SmokeServer::project_settings_register() {
+        ReloadedProjectSetting::add(ENABLED_SETTING, DEFAULT_ENABLED, Variant::BOOL);
+        ReloadedProjectSetting::add(ATLAS_SETTING, String(), Variant::STRING, PROPERTY_HINT_FILE, "*.png,*.webp,*.dds");
+        ReloadedProjectSetting::add(
+                ATLAS_FRAMES_SETTING, Vector2i(DEFAULT_ATLAS_FRAMES, DEFAULT_ATLAS_FRAMES), Variant::VECTOR2I);
+        const String distance_hint = "100.0,10000.0,10.0,suffix:m";
+        ReloadedProjectSetting::add(
+                DYNAMIC_DISTANCE_SETTING, DEFAULT_DISTANCE, Variant::FLOAT, PROPERTY_HINT_RANGE, distance_hint);
+        ReloadedProjectSetting::add(
+                STATIC_DISTANCE_SETTING, DEFAULT_DISTANCE, Variant::FLOAT, PROPERTY_HINT_RANGE, distance_hint);
+        const String density_hint = "0.25,8.0,0.25";
+        ReloadedProjectSetting::add(
+                DYNAMIC_DENSITY_SETTING, DEFAULT_DENSITY, Variant::FLOAT, PROPERTY_HINT_RANGE, density_hint);
+        ReloadedProjectSetting::add(
+                STATIC_DENSITY_SETTING, DEFAULT_DENSITY, Variant::FLOAT, PROPERTY_HINT_RANGE, density_hint);
+        const String lifetime_hint = "0.1,4.0,0.05";
+        ReloadedProjectSetting::add(
+                DYNAMIC_LIFETIME_SETTING, DEFAULT_DYNAMIC_LIFETIME, Variant::FLOAT, PROPERTY_HINT_RANGE, lifetime_hint);
+        ReloadedProjectSetting::add(
+                STATIC_LIFETIME_SETTING, DEFAULT_STATIC_LIFETIME, Variant::FLOAT, PROPERTY_HINT_RANGE, lifetime_hint);
+        const String max_particles_hint = "16,8000,1";
+        ReloadedProjectSetting::add(
+                DYNAMIC_MAX_PARTICLES_SETTING, DEFAULT_DYNAMIC_MAX_PARTICLES, Variant::INT, PROPERTY_HINT_RANGE,
+                max_particles_hint);
+        ReloadedProjectSetting::add(
+                STATIC_MAX_PARTICLES_SETTING, DEFAULT_STATIC_MAX_PARTICLES, Variant::INT, PROPERTY_HINT_RANGE,
+                max_particles_hint);
     }
 
     void SmokeServer::_bind_methods() {
@@ -158,7 +188,7 @@ namespace godot {
             streaming->stream_free(p_data.stream_rid);
         }
         const float distance = ProjectSettings::get_singleton()->get_setting(
-                p_data.kind == KIND_DYNAMIC ? DYNAMIC_DISTANCE_SETTING : STATIC_DISTANCE_SETTING, DEFAULT_DISTANCE);
+                p_data.kind == KIND_DYNAMIC ? DYNAMIC_DISTANCE_SETTING : STATIC_DISTANCE_SETTING);
         p_data.stream_rid = streaming->stream_register(stream_owner, p_emitter, p_data.transform.origin, distance);
     }
 
@@ -249,7 +279,7 @@ namespace godot {
     }
 
     Ref<Texture2D> SmokeServer::smoke_get_atlas() const {
-        const String path = ProjectSettings::get_singleton()->get_setting(ATLAS_SETTING, "");
+        const String path = ProjectSettings::get_singleton()->get_setting(ATLAS_SETTING);
         if (path.is_empty()) {
             return Ref<Texture2D>();
         }
@@ -258,26 +288,25 @@ namespace godot {
 
     double SmokeServer::smoke_get_density(const Kind p_kind) const {
         const double density = ProjectSettings::get_singleton()->get_setting(
-                p_kind == KIND_DYNAMIC ? DYNAMIC_DENSITY_SETTING : STATIC_DENSITY_SETTING, DEFAULT_DENSITY);
+                p_kind == KIND_DYNAMIC ? DYNAMIC_DENSITY_SETTING : STATIC_DENSITY_SETTING);
         return MAX(density, 0.0);
     }
 
     double SmokeServer::smoke_get_lifetime(const Ref<SmokeSource> &p_source, const Kind p_kind) const {
         ERR_FAIL_COND_V(p_source.is_null(), 0.0);
         const ProjectSettings *project_settings = ProjectSettings::get_singleton();
-        const double scale = p_kind == KIND_DYNAMIC ? static_cast<double>(project_settings->get_setting(
-                                                              DYNAMIC_LIFETIME_SETTING, DEFAULT_DYNAMIC_LIFETIME))
-                                                    : static_cast<double>(project_settings->get_setting(
-                                                              STATIC_LIFETIME_SETTING, DEFAULT_STATIC_LIFETIME));
+        const double scale = p_kind == KIND_DYNAMIC
+                                     ? static_cast<double>(project_settings->get_setting(DYNAMIC_LIFETIME_SETTING))
+                                     : static_cast<double>(project_settings->get_setting(STATIC_LIFETIME_SETTING));
         return p_source->get_particle_lifetime() * MAX(scale, 0.0);
     }
 
     int SmokeServer::smoke_get_max_particles(const Kind p_kind) const {
         const ProjectSettings *project_settings = ProjectSettings::get_singleton();
         if (p_kind == KIND_DYNAMIC) {
-            return project_settings->get_setting(DYNAMIC_MAX_PARTICLES_SETTING, DEFAULT_DYNAMIC_MAX_PARTICLES);
+            return project_settings->get_setting(DYNAMIC_MAX_PARTICLES_SETTING);
         }
-        return project_settings->get_setting(STATIC_MAX_PARTICLES_SETTING, DEFAULT_STATIC_MAX_PARTICLES);
+        return project_settings->get_setting(STATIC_MAX_PARTICLES_SETTING);
     }
 
     /// Made once per kind, source and sprite at the settings now; null when the source gives no
@@ -339,8 +368,7 @@ namespace godot {
         if (p_emitter.sprite.is_valid()) {
             sprite_material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, p_emitter.sprite);
         } else if (const Ref<Texture2D> atlas = smoke_get_atlas(); atlas.is_valid()) {
-            const Vector2i frames = ProjectSettings::get_singleton()->get_setting(
-                    ATLAS_FRAMES_SETTING, Vector2i(DEFAULT_ATLAS_FRAMES, DEFAULT_ATLAS_FRAMES));
+            const Vector2i frames = ProjectSettings::get_singleton()->get_setting(ATLAS_FRAMES_SETTING);
             sprite_material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, atlas);
             sprite_material->set_particles_anim_h_frames(MAX(frames.x, 1));
             sprite_material->set_particles_anim_v_frames(MAX(frames.y, 1));
@@ -369,7 +397,7 @@ namespace godot {
 
     void SmokeServer::_build(Emitter &p_emitter) {
         if (p_emitter.particles.is_valid() || p_emitter.source.is_null() ||
-            !static_cast<bool>(ProjectSettings::get_singleton()->get_setting(ENABLED_SETTING, DEFAULT_ENABLED))) {
+            !static_cast<bool>(ProjectSettings::get_singleton()->get_setting(ENABLED_SETTING))) {
             return;
         }
         const RenderData *data = _get_render_data(p_emitter);

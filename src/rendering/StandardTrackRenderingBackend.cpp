@@ -1,4 +1,5 @@
 #include "rendering/StandardTrackRenderingBackend.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 
 #include "tracks/TrackServer.hpp"
 
@@ -22,6 +23,10 @@ namespace godot {
         constexpr double TANGENT_STEP = 0.05;
     } // namespace
 
+    void StandardTrackRenderingBackend::project_settings_register() {
+        ReloadedProjectSetting::add(LOOK_SETTING, DEFAULT_LOOK, Variant::STRING, PROPERTY_HINT_FILE, "*.tres,*.res");
+    }
+
     void StandardTrackRenderingBackend::_bind_methods() {
         ClassDB::bind_method(
                 D_METHOD("track_get_mesh", "track_render"), &StandardTrackRenderingBackend::track_get_mesh);
@@ -34,7 +39,7 @@ namespace godot {
     }
 
     StandardTrackRenderingBackend::StandardTrackRenderingBackend() {
-        const String path = ProjectSettings::get_singleton()->get_setting(LOOK_SETTING, DEFAULT_LOOK);
+        const String path = ProjectSettings::get_singleton()->get_setting(LOOK_SETTING);
         for (const TrackData::SleeperKind kind:
              {TrackData::SLEEPER_CONCRETE, TrackData::SLEEPER_WOOD, TrackData::SLEEPER_STEEL}) {
             base_sleepers[kind] = _build_base_sleeper(kind);

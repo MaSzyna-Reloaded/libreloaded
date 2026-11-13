@@ -181,7 +181,7 @@ func _get_provider(provider_name:StringName) -> VehicleCatalogProvider:
 func _get_provider_name(vehicle:VehicleData) -> StringName:
     if vehicle.vehicle_provider:
         return vehicle.vehicle_provider
-    return StringName(ProjectSettings.get_setting(PROVIDER_SETTING, ""))
+    return StringName(ProjectSettings.get_setting(PROVIDER_SETTING))
 
 
 func _get_provider_livery_names(vehicle:VehicleInfo) -> Array[String]:
@@ -195,7 +195,7 @@ func _get_provider_livery_names(vehicle:VehicleInfo) -> Array[String]:
 
 ## The directory of [param vehicle]'s player liveries: its provider's, then its name's own
 func _get_liveries_directory(vehicle:VehicleInfo) -> String:
-    var root:String = ProjectSettings.get_setting(LIVERIES_DIRECTORY_SETTING, LIVERIES_DIRECTORY)
+    var root:String = ProjectSettings.get_setting(LIVERIES_DIRECTORY_SETTING)
     return root.path_join(String(vehicle.vehicle_provider)).path_join(vehicle.vehicle)
 
 

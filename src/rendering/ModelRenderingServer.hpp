@@ -76,6 +76,11 @@ namespace godot {
             /// registered with the backend it names
             RID _adopt_model(const Ref<SceneryModelPlacement> &p_placement, const RID &p_scenario);
 
+        public:
+            /// Registers its project settings with their defaults and hints as the library starts
+            /// (initialize_libreloaded_module(), ReloadedProjectSetting)
+            static void project_settings_register();
+
         protected:
             static void _bind_methods();
 

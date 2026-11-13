@@ -1,4 +1,5 @@
 #include "RailVehicleServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include "vehicles/base/VehicleComponent.hpp"
 #include "vehicles/rail/RailVehicleBrake.hpp"
 #include "vehicles/rail/RailVehicleController.hpp"
@@ -27,8 +28,6 @@
 #include <tuple>
 
 namespace godot {
-    /* Reports physics inconsistencies with push_error (see _check_movement) */
-    constexpr const char *DIAGNOSTICS_SETTING = "reloaded/debug/physics_diagnostics";
     const char *RailVehicleServer::vehicle_placed_signal = "vehicle_placed";
     const char *RailVehicleServer::vehicle_placement_changed_signal = "vehicle_placement_changed";
     const char *RailVehicleServer::trainset_created_signal = "trainset_created";
@@ -51,7 +50,7 @@ namespace godot {
         singleton = this;
         classifier.instantiate();
         ProjectSettings *settings = ProjectSettings::get_singleton();
-        diagnostics = settings->get_setting(DIAGNOSTICS_SETTING, false);
+        diagnostics = settings->get_setting(DIAGNOSTICS_SETTING);
         settings->connect("settings_changed", callable_mp(this, &RailVehicleServer::_on_project_settings_changed));
         // the vehicle is VehicleServer's: freed there, it leaves the route; driven by another
         // controller, that one is stepped
@@ -100,6 +99,10 @@ namespace godot {
 
     RailVehicleServer::~RailVehicleServer() {
         singleton = nullptr;
+    }
+
+    void RailVehicleServer::project_settings_register() {
+        ReloadedProjectSetting::add(DIAGNOSTICS_SETTING, DIAGNOSTICS_DEFAULT, Variant::BOOL);
     }
 
     void RailVehicleServer::_bind_methods() {
@@ -932,7 +935,7 @@ namespace godot {
 
     /* A trainset asked to stand before all its vehicles had their simulation stands now */
     void RailVehicleServer::_on_project_settings_changed() {
-        diagnostics = ProjectSettings::get_singleton()->get_setting(DIAGNOSTICS_SETTING, false);
+        diagnostics = ProjectSettings::get_singleton()->get_setting(DIAGNOSTICS_SETTING);
     }
 
     void RailVehicleServer::_on_vehicle_configured(const RID &p_vehicle) {

@@ -2,6 +2,7 @@
 #include "rendering/ModelRenderingServer.hpp"
 #include "scenery/SceneryStreamingProvider.hpp"
 #include "scenery/SceneryStreamingServer.hpp"
+#include "utils/ReloadedProjectSetting.hpp"
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/object.hpp>
@@ -12,6 +13,10 @@ namespace godot {
     const char *ModelRenderingServer::instance_cleared_signal = "instance_cleared";
     const char *ModelRenderingServer::instance_freed_signal = "instance_freed";
     ModelRenderingServer *ModelRenderingServer::singleton = nullptr;
+
+    void ModelRenderingServer::project_settings_register() {
+        ReloadedProjectSetting::add(BACKEND_SETTING, StringName(), Variant::STRING_NAME);
+    }
 
     void ModelRenderingServer::_bind_methods() {
         ClassDB::bind_method(
@@ -164,7 +169,7 @@ namespace godot {
         backend->connect(
                 ModelRenderingBackend::instance_freed_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_freed));
-        if (StringName(ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING, String())) == p_name) {
+        if (StringName(ProjectSettings::get_singleton()->get_setting(BACKEND_SETTING)) == p_name) {
             default_backend = p_name;
         }
     }
