@@ -18,8 +18,8 @@ namespace godot {
     /// A station (station_*) has a name it is also found by. A timetable (timetable_*) is a plan only: the train's name
     /// and its entries, each a station with its planned arrival and departure, any number of trains may run by it. A
     /// run (run_*) is a timetable run by a trainset: whoever drives the train moves it on from entry to entry and says
-    /// when it arrived at the current entry's station, left it or passed it - the driver knows where its train stops -
-    /// and this server records the times and works out from them how late the train is.
+    /// when it started at the current entry's station or arrived there, left it or passed it - the driver knows where
+    /// its train stops - and this server records the times and works out from them how late the train is.
     ///
     /// The dispatch (odprawa, dispatch_*): its steps one after another, each over when the
     /// vehicles report it done - the cars' passengers exchanged, the train let go, its doors
@@ -272,9 +272,10 @@ namespace godot {
             Dictionary timetable_entry_get_extra(const RID &p_timetable, int p_entry) const;
 
             /// The trainset runs the timetable, its times shifted by p_offset hours, from its first
-            /// entry - standing there where no arrival is planned. A trainset has one run at a time;
-            /// coupled into another, its run goes with it where that one has none, and ends where
-            /// it has; it ends with the trainset.
+            /// entry - starting there where no arrival is planned (run_record_start()); where one
+            /// is, whoever drives the train says whether it starts or arrives there. A trainset has
+            /// one run at a time; coupled into another, its run goes with it where that one has
+            /// none, and ends where it has; it ends with the trainset.
             RID run_create(const RID &p_timetable, const RID &p_trainset, double p_offset = 0.0);
             void run_free(const RID &p_run);
             RID run_get_timetable(const RID &p_run) const;
@@ -293,8 +294,12 @@ namespace godot {
             /// The train has arrived at the current entry's station, now: its arrival and its delay
             /// against the planned arrival, or the departure where none is planned - once
             void run_record_arrival(const RID &p_run);
-            /// The train has left the current entry's station it arrived at, now: its departure and
-            /// its delay against the planned departure - once
+            /// The train starts its run at the current entry's station, now: it stands there without
+            /// having arrived, on time until the planned departure, and leaving it is its departure
+            /// (run_record_departure()) - once
+            void run_record_start(const RID &p_run);
+            /// The train has left the current entry's station it arrived or started at, now: its
+            /// departure and its delay against the planned departure - once
             void run_record_departure(const RID &p_run);
             /// The train has passed the current entry's station without stopping, now: its
             /// departure and its delay against the planned departure - once

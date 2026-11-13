@@ -4,7 +4,7 @@
 		The stations of a scenery, the timetables of the trains calling at them and their runs, and the dispatch of a train at a stop.
 	</brief_description>
 	<description>
-		A station has a name it is also found by ([method station_find_by_name]). A timetable is a plan only: the name of its train and its entries, each a station with its planned arrival and departure; any number of trains may run by one. A run is a timetable run by a trainset: whoever drives the train moves it on from entry to entry ([method run_next_entry]) and says when it arrived at a station, left it or passed it ([method run_record_arrival], [method run_record_departure], [method run_record_passing]) - the driver knows where its train stops - and the server records the times and works out how late the train is ([method run_get_delay]).
+		A station has a name it is also found by ([method station_find_by_name]). A timetable is a plan only: the name of its train and its entries, each a station with its planned arrival and departure; any number of trains may run by one. A run is a timetable run by a trainset: whoever drives the train moves it on from entry to entry ([method run_next_entry]) and says when it started at a station or arrived there, left it or passed it ([method run_record_start], [method run_record_arrival], [method run_record_departure], [method run_record_passing]) - the driver knows where its train stops - and the server records the times and works out how late the train is ([method run_get_delay]).
 		A dispatch is kept under the vehicle the train is driven from. Its steps follow one another as the cars report them done: the passengers exchanged ([signal RailVehicleLoad.load_exchange_finished]), the train let go ([method dispatch_depart]), its doors closed ([signal RailVehicleDoors.doors_closed]). The cars open their doors and exchange by themselves; whoever drives works the cab's doors as [signal dispatch_step_changed] asks. The original keeps this as a negative [code]fStopTime[/code] of the driver and its [code]Doors()[/code] (Driver.cpp:1233-1241, 4266-4356, 6767-6801).
 	</description>
 	<tutorials>
@@ -52,7 +52,7 @@
 			<param index="1" name="trainset" type="RID" />
 			<param index="2" name="offset" type="float" default="0.0" />
 			<description>
-				The trainset [param trainset] runs [param timetable], its times shifted by [param offset] hours, from its first entry - standing there from now where no arrival is planned. A trainset has one run at a time: [code]RID()[/code] for one that has. Coupled into another trainset, a run goes with it where that one has none and ends where it has; it ends with its trainset.
+				The trainset [param trainset] runs [param timetable], its times shifted by [param offset] hours, from its first entry - starting there now where no arrival is planned ([method run_record_start]); where one is, whoever drives the train says whether it starts there or arrives ([method run_record_arrival]). A trainset has one run at a time: [code]RID()[/code] for one that has. Coupled into another trainset, a run goes with it where that one has none and ends where it has; it ends with its trainset.
 			</description>
 		</method>
 		<method name="run_entry_get_actual_arrival" qualifiers="const">
@@ -154,7 +154,7 @@
 			<return type="void" />
 			<param index="0" name="run" type="RID" />
 			<description>
-				The train of [param run] has left the current entry's station it arrived at, now: its departure is recorded with the delay against the planned departure, and [signal run_departed] is emitted - once. Nothing where it has not arrived.
+				The train of [param run] has left the current entry's station it arrived or started at, now: its departure is recorded with the delay against the planned departure, and [signal run_departed] is emitted - once. Nothing where it has neither arrived nor started.
 			</description>
 		</method>
 		<method name="run_record_passing">
@@ -162,6 +162,13 @@
 			<param index="0" name="run" type="RID" />
 			<description>
 				The train of [param run] has passed the current entry's station without stopping, now: its departure is recorded with the delay against the planned departure, and [signal run_passed] is emitted - once. Nothing where it has arrived.
+			</description>
+		</method>
+		<method name="run_record_start">
+			<return type="void" />
+			<param index="0" name="run" type="RID" />
+			<description>
+				The train of [param run] starts its run at the current entry's station, now: it stands there without having arrived - on time until the planned departure, and leaving it is its departure ([method run_record_departure]) - once. No [signal run_arrived] is emitted, and a later [method run_record_arrival] there records nothing.
 			</description>
 		</method>
 		<method name="station_create">
@@ -600,7 +607,7 @@
 			<param index="0" name="run" type="RID" />
 			<param index="1" name="entry" type="int" />
 			<description>
-				The train of [param run] left the station of [param entry] it had arrived at ([method run_record_departure]).
+				The train of [param run] left the station of [param entry] it had arrived or started at ([method run_record_departure]).
 			</description>
 		</signal>
 		<signal name="run_entry_changed">

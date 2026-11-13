@@ -165,3 +165,36 @@ func test_a_planned_arrival_at_the_start_waits_for_the_driver() -> void:
     RailVehicleServer.trainset_free(trainset)
     StationServer.timetable_free(timetable)
     StationServer.station_free(station)
+
+
+## Where an arrival is planned at the first station but the train starts there, its driver says so:
+## it stands there on time until the departure, without an arrival, and leaving it is a departure
+func test_a_train_starting_where_an_arrival_is_planned_stands_there_and_departs() -> void:
+    var previous_time:float = SimulationServer.time_of_day
+    var station:RID = StationServer.station_create()
+    var timetable:RID = StationServer.timetable_create()
+    StationServer.timetable_add_entry(timetable, station, STOP_ARRIVAL, STOP_DEPARTURE)
+    var trainset:RID = RailVehicleServer.trainset_create()
+    var run:RID = StationServer.run_create(timetable, trainset)
+    watch_signals(StationServer)
+
+    SimulationServer.time_of_day = STOP_ARRIVAL - 2.0 * MINUTE
+    StationServer.run_record_start(run)
+    assert_almost_eq(StationServer.run_entry_get_actual_arrival(run, 0), STOP_ARRIVAL - 2.0 * MINUTE, 0.0001,
+            "standing there from the start")
+    assert_signal_not_emitted(StationServer, "run_arrived", "a start is no arrival")
+    assert_almost_eq(StationServer.run_get_delay(run, STOP_DEPARTURE - MINUTE), 0.0, 0.001,
+            "on time past the planned arrival, until the departure")
+    SimulationServer.time_of_day = STOP_ARRIVAL
+    StationServer.run_record_arrival(run)
+    assert_signal_not_emitted(StationServer, "run_arrived", "started there: no arrival afterwards")
+
+    SimulationServer.time_of_day = STOP_DEPARTURE - MINUTE
+    StationServer.run_record_departure(run)
+    assert_signal_emitted_with_parameters(StationServer, "run_departed", [run, 0])
+    assert_almost_eq(StationServer.run_get_delay(run, STOP_DEPARTURE + MINUTE), -1.0, 0.001, "left 1 min early")
+    SimulationServer.time_of_day = previous_time
+    StationServer.run_free(run)
+    RailVehicleServer.trainset_free(trainset)
+    StationServer.timetable_free(timetable)
+    StationServer.station_free(station)
