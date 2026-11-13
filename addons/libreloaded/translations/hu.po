@@ -184,3 +184,55 @@ msgstr "Állomások"
 
 msgid "Show"
 msgstr "Megjelenítés"
+
+# The debug HUD's weather controls
+msgid "Weather"
+msgstr "Időjárás"
+
+msgid "Settings"
+msgstr "Beállítások"
+
+msgid "Calendar"
+msgstr "Naptár"
+
+msgid "Wind"
+msgstr "Szél"
+
+msgid "Dir"
+msgstr "Irány"
+
+msgid "Precipitation"
+msgstr "Csapadék"
+
+msgid "Clouds"
+msgstr "Felhőzet"
+
+msgid "Temperature"
+msgstr "Hőmérséklet"
+
+msgid "Fog"
+msgstr "Köd"
+
+msgid "Fog Distance"
+msgstr "Köd távolsága"
+
+msgid "Use system time"
+msgstr "Rendszeridő használata"
+
+msgid "Time"
+msgstr "Idő"
+
+msgid "Day"
+msgstr "Nap"
+
+msgid "Month"
+msgstr "Hónap"
+
+msgid "Year"
+msgstr "Év"
+
+msgid "Time Speed"
+msgstr "Idő sebessége"
+
+msgid "Pause"
+msgstr "Szünet"

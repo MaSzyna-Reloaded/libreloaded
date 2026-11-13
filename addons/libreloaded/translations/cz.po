@@ -184,3 +184,55 @@ msgstr "Stanice"
 
 msgid "Show"
 msgstr "Zobrazit"
+
+# The debug HUD's weather controls
+msgid "Weather"
+msgstr "Počasí"
+
+msgid "Settings"
+msgstr "Nastavení"
+
+msgid "Calendar"
+msgstr "Kalendář"
+
+msgid "Wind"
+msgstr "Vítr"
+
+msgid "Dir"
+msgstr "Směr"
+
+msgid "Precipitation"
+msgstr "Srážky"
+
+msgid "Clouds"
+msgstr "Oblačnost"
+
+msgid "Temperature"
+msgstr "Teplota"
+
+msgid "Fog"
+msgstr "Mlha"
+
+msgid "Fog Distance"
+msgstr "Dohled v mlze"
+
+msgid "Use system time"
+msgstr "Systémový čas"
+
+msgid "Time"
+msgstr "Čas"
+
+msgid "Day"
+msgstr "Den"
+
+msgid "Month"
+msgstr "Měsíc"
+
+msgid "Year"
+msgstr "Rok"
+
+msgid "Time Speed"
+msgstr "Rychlost času"
+
+msgid "Pause"
+msgstr "Pauza"

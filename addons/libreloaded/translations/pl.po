@@ -184,3 +184,55 @@ msgstr "Stacje"
 
 msgid "Show"
 msgstr "Pokaż"
+
+# The debug HUD's weather controls
+msgid "Weather"
+msgstr "Pogoda"
+
+msgid "Settings"
+msgstr "Ustawienia"
+
+msgid "Calendar"
+msgstr "Kalendarz"
+
+msgid "Wind"
+msgstr "Wiatr"
+
+msgid "Dir"
+msgstr "Kier."
+
+msgid "Precipitation"
+msgstr "Opad"
+
+msgid "Clouds"
+msgstr "Chmury"
+
+msgid "Temperature"
+msgstr "Temperatura"
+
+msgid "Fog"
+msgstr "Mgła"
+
+msgid "Fog Distance"
+msgstr "Zasięg mgły"
+
+msgid "Use system time"
+msgstr "Czas systemowy"
+
+msgid "Time"
+msgstr "Czas"
+
+msgid "Day"
+msgstr "Dzień"
+
+msgid "Month"
+msgstr "Miesiąc"
+
+msgid "Year"
+msgstr "Rok"
+
+msgid "Time Speed"
+msgstr "Upływ czasu"
+
+msgid "Pause"
+msgstr "Pauza"
