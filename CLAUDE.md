@@ -13,6 +13,26 @@ read from and why that keeps every layer to its own concern - and write nothing 
 says yes. Data a scenery or a starter hands in is never read as live state; a value is read from
 its owner, never from a plugin's implementation, a dump or a copy.
 
+REQUIRED, ABSOLUTE, NON-NEGOTIABLE: **libreloaded knows nothing of MaSzyna - not its names, not
+its logic, not its sources.** No MaSzyna object, field or term in code, comments or tests
+(`Mechanik`, `Mover`, `TTrain`, `CabOccupied`, `offsetflip`, `driver_mode`, ...), no citation of
+the original's sources (`drivermode.cpp:951`, `Train.cpp:8684`), and no logic carried over from the
+original where the core has its own: what the core models is taken from the core's API - a
+trainset's head, its vehicles from the head and the way each faces come from `RailVehicleServer`
+(`trainset_get_head()`, `trainset_get_vehicles()`, `trainset_vehicle_get_direction()`), never
+worked out again from cabs, a controller's direction or `vehicle_get_coupled()` walked by hand.
+**Before every commit `git diff --staged` is read line by line for it**, and whatever is found is
+taken out before the commit - an existing line the change touches included. (Operator,
+2026-11-12: the external camera kept `Mechanik->Vehicle(end::front / end::rear)` and the
+original's cab-and-direction logic beside the core's trainset API.)
+
+REQUIRED, ABSOLUTE, NON-NEGOTIABLE: **never overwrite a file of the operator's checkout to run or
+compare another version of it** - no `git show <commit>:file > file`, no copy over it and back, no
+stash around a run. The operator builds the game from this checkout (`.libreloaded-local`): a
+build during such a run ships the other version. Another version runs in a checkout of its own,
+`git worktree add <scratch dir> <commit>`, removed afterwards. (Operator, 2026-11-12: a background
+test run swapped `follow_view.gd` for the base commit's to see the new tests fail there.)
+
 **Read @AGENTS.md before doing anything in this repository.** It is not a summary of what is
 here - it is the working agreement, and it overrides your own habits. Read it in full at the
 start of the session, and re-read the relevant part before any change, not after the operator

@@ -95,8 +95,11 @@ Code generation:
   `player_leave_vehicle()`; `PlayerCameraServer`'s mode (CABIN/FREE/FOLLOW), target and follow
   view only choose the camera. The cab, its controls and everything the HUD shows of the player's
   train stay while the player looks from outside
-* for unclear/critical sections, or logic ported from the original engine instead of wrapped from Mover,
-  leave a short comment pointing to the original source (e.g. `Train.cpp:8516`, `DynObj.cpp:1812`)
+* REQUIRED, ABSOLUTE, NON-NEGOTIABLE: **no MaSzyna in libreloaded** - no MaSzyna name or term
+  (`Mechanik`, `Mover`, `CabOccupied`, ...), no citation of the original's sources
+  (`drivermode.cpp:951`), no logic of the original where the core has its own API (a trainset's
+  head, ends and facing: `RailVehicleServer.trainset_get_head()`, `trainset_get_vehicles()`,
+  `trainset_vehicle_get_direction()`) - see `CLAUDE.md`
 * GDSCRIPT: avoid type interference, use explicit type declaration
 * GDSCRIPT: do not use `!=` in `if` conditions, use `not ... == ...`
 * GDSCRIPT: do not use is_empty(), when "if not x / if x" is possible (i.e. empty strings, empty arrays)
@@ -140,9 +143,9 @@ Code generation:
   `set_<property>`/`get_<property>` accessors - see `CODE_STYLE.md`
 * PROHIBITED: **never create an `ensure_*` API**, under any name - state is initialised where it
   is created and set where it changes - see `CODE_STYLE.md`
-* PROHIBITED: **no magic numbers.** A non-self-evident literal gets a named constant; a ported
-  value keeps the original's value and a source reference (`Track.cpp:35`). Exempt: 0, 1, -1, 2
-  as themselves and literal positional indices - see `CODE_STYLE.md`
+* PROHIBITED: **no magic numbers.** A non-self-evident literal gets a named constant, named and
+  documented for what it means in the core. Exempt: 0, 1, -1, 2 as themselves and literal
+  positional indices - see `CODE_STYLE.md`
 * PROHIBITED: **a getter never changes state** - no filter ticks, flag consumption, signals,
   writes elsewhere or lazy building in any `get_*`/property getter/`_get()` - see `CODE_STYLE.md`;
   the one exception is `GameLog.get_logger()` (CODE_STYLE.md, "Logging")
@@ -257,6 +260,9 @@ Checks:
   -gtest=res://tests/a.gd,res://tests/b.gd`. `-gconfig=` is required: `.gutconfig.json`'s `dirs`
   adds the whole directory to `-gtest`
 * do not run tests or headless Godot after every edit - only before a commit, or when operator asks
+* REQUIRED, ABSOLUTE, NON-NEGOTIABLE: **a run against another version of the code - a test shown to
+  fail on the base, a probe of an older commit - goes in a `git worktree` of that commit, never by
+  overwriting a file of the operator's checkout**, which the operator builds from (`CLAUDE.md`)
 * TESTS: **redirect a headless run to a file and read the file** - do not pipe it through
   `grep | head`: `head` closes the pipe, the run dies of SIGPIPE, and a pass reads as a hang.
 * REQUIRED: **every headless Godot run (a test, a probe, `--import`, `--check-only`) passes
@@ -276,6 +282,10 @@ Checks:
 
 Before every commit:
 
+* REQUIRED, ABSOLUTE, NON-NEGOTIABLE: **`git diff --staged` is read line by line for MaSzyna** - a
+  MaSzyna name or term, a citation of the original's sources, logic of the original standing in
+  for the core's API - and whatever is found is taken out before committing, in a line the change
+  only touches as well (`CLAUDE.md`)
 * REQUIRED, ABSOLUTE: **every C++ line committed is formatted by `.clang-format`** - no exceptions,
   no "later", no leaving it to CI. Run `make style-fix STYLE_FILE=<file>` (clang-format) on every
   C++ file you touched, then `make style-check STYLE_FILE=<file>` must pass - it also runs

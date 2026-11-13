@@ -1,6 +1,7 @@
 #include "PlayerCameraServer.hpp"
 #include "PlayerServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
+#include "vehicles/rail/RailVehicleServer.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 
@@ -121,10 +122,22 @@ namespace godot {
         if (p_vehicle == target) {
             return;
         }
+        // a vehicle in no trainset (a car) is a trainset of its own
+        const RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
+        ERR_FAIL_NULL(rail_vehicles);
+        const auto trainset_of = [rail_vehicles](const RID &p_of) {
+            const RID trainset = rail_vehicles->vehicle_get_trainset(p_of);
+            return trainset.is_valid() ? trainset : p_of;
+        };
+        const bool another_trainset = trainset_of(p_vehicle) != trainset_of(target);
         target = p_vehicle;
         if (mode == CAMERA_MODE_FOLLOW && !target.is_valid()) {
             camera_set_mode(CAMERA_MODE_FREE);
             return;
+        }
+        // another trainset is shown anew, from the first view
+        if (another_trainset) {
+            follow_view = CAMERA_FOLLOW_VIEW_TRAINSET_FRONT;
         }
         emit_signal(camera_changed_signal);
     }
@@ -155,6 +168,8 @@ namespace godot {
         if (player == nullptr || !player->player_get_vehicle().is_valid()) {
             return;
         }
+        // out of the cab, the player's vehicle is shown from the first view
+        camera_set_follow_view(CAMERA_FOLLOW_VIEW_TRAINSET_FRONT);
         camera_set_target(player->player_get_vehicle());
         camera_set_mode(CAMERA_MODE_FOLLOW);
     }
