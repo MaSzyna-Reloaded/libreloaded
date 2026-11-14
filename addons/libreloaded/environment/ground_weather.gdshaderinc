@@ -30,6 +30,9 @@
 
 global uniform float reloaded_wetness;
 global uniform float reloaded_air_temperature;
+// the ground's surface's temperature (°C): the air's, come after over hours (gnd-weather's
+// WeatherSimpleGround) - its water freezes by it
+global uniform float reloaded_ground_temperature;
 // how deep the snow lies on the average, in metres
 global uniform float reloaded_snow_depth;
 // how wet the lying snow is (0 - 1): soaked by a rain or a thaw, grey slush
@@ -101,9 +104,9 @@ vec3 reloaded_weather_probe_coordinate(vec3 world_position) {
 
 // The weather at world_position from the probes, blended between them and into the open ground's
 // towards their window's sides: the open ground's share of its snow, its wet and its standing water,
-// and the temperature - 1, 1, 1 and the air's out of them or without them
+// and the surface's temperature - 1, 1, 1 and the open ground's out of them or without them
 vec4 reloaded_weather_local(vec3 world_position) {
-	vec4 open_ground = vec4(1.0, 1.0, 1.0, reloaded_air_temperature);
+	vec4 open_ground = vec4(1.0, 1.0, 1.0, reloaded_ground_temperature);
 	float inside = reloaded_weather_probe_blend(world_position);
 	if (inside <= 0.0) {
 		return open_ground;
@@ -113,9 +116,9 @@ vec4 reloaded_weather_local(vec3 world_position) {
 
 // How much of the snow a surface as warm as temperature (°C) - surface_heat warmer than that of its
 // own, a material's warm place - keeps of the open ground's: none where it is above freezing while the
-// air is not, the edge soft over a degree; the open ground's own thaw is its depth's
+// open ground is not, the edge soft over a degree; the open ground's own thaw is its depth's
 float reloaded_weather_snow_kept(float temperature, float surface_heat) {
-	float warmth = max(temperature + surface_heat, 0.0) - max(reloaded_air_temperature, 0.0);
+	float warmth = max(temperature + surface_heat, 0.0) - max(reloaded_ground_temperature, 0.0);
 	return 1.0 - smoothstep(0.0, 1.0, warmth);
 }
 
