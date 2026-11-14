@@ -60,6 +60,9 @@ global uniform bool reloaded_weather_surfaces_active;
 // (gnd-weather's WeatherServer.RAIN_EXISTS_GLOBAL)
 global uniform float reloaded_rain;
 global uniform bool reloaded_weather_rain_exists;
+// the snow falling (its share of the precipitation, 0 - 1; gnd-weather's WeatherServer.SNOWFALL_GLOBAL):
+// its flakes melting on the water
+global uniform float reloaded_snowfall;
 
 // The rain's rings on water (reloaded_weather_rain_ripples()): the drops land in cells of two sizes
 // [m], as many of the cells struck as hard as it rains; a ring runs out RAIN_RING_REACH cells over
@@ -156,18 +159,19 @@ float reloaded_weather_noise(vec2 p) {
 	);
 }
 
-// The rain's rings on water: the slope (x, z) they give its face where it rains, each drop's ring
-// spreading and fading; footprint - how wide a pixel is there (length(fwidth(world_xz))): the rings
-// go where a pixel is wider than they are, which only sparkled in the distance
-vec2 reloaded_weather_rain_ripples(vec2 world_xz, float footprint) {
-	float rain = clamp(reloaded_rain, 0.0, 1.0);
-	float shown = 1.0 - smoothstep(RAIN_RING_PIXEL_SHARP, RAIN_RING_PIXEL_GONE, footprint);
-	if (!reloaded_weather_rain_exists || shown <= 0.0) {
+// The rings on water where the drops land: the slope (x, z) they give its face, as many
+// of the cells struck as rate (0 - 1), the cells and the rings size times the drops', as high as
+// strength, each ring spreading and fading; footprint - how wide a pixel is there
+// (length(fwidth(world_xz))): the rings go where a pixel is wider than they are, which only sparkled
+// in the distance
+vec2 reloaded_weather_rings(vec2 world_xz, float footprint, float rate, float ring_size, float strength) {
+	float shown = 1.0 - smoothstep(RAIN_RING_PIXEL_SHARP * ring_size, RAIN_RING_PIXEL_GONE * ring_size, footprint);
+	if (rate <= 0.0 || shown <= 0.0) {
 		return vec2(0.0);
 	}
 	vec2 slope = vec2(0.0);
 	for (int layer = 0; layer < 2; layer++) {
-		float size = layer == 0 ? RAIN_RING_CELL_LARGE : RAIN_RING_CELL_SMALL;
+		float size = (layer == 0 ? RAIN_RING_CELL_LARGE : RAIN_RING_CELL_SMALL) * ring_size;
 		// the layers' cells apart, so their drops do not land together
 		vec2 p = world_xz / size + float(layer) * 17.3;
 		// the four cells nearest the point: a ring is under a cell wide while it is still to be seen
@@ -175,7 +179,7 @@ vec2 reloaded_weather_rain_ripples(vec2 world_xz, float footprint) {
 		for (int j = 0; j <= 1; j++) {
 			for (int i = 0; i <= 1; i++) {
 				vec2 c = cell + vec2(float(i), float(j));
-				if (reloaded_weather_hash(c * 1.7 + 4.1) > rain) {
+				if (reloaded_weather_hash(c * 1.7 + 4.1) > rate) {
 					continue;
 				}
 				float h = reloaded_weather_hash(c + 0.37);
@@ -189,7 +193,65 @@ vec2 reloaded_weather_rain_ripples(vec2 world_xz, float footprint) {
 			}
 		}
 	}
-	return slope * RAIN_RING_SLOPE * shown;
+	return slope * RAIN_RING_SLOPE * strength * shown;
+}
+
+// The rain's rings on water where it rains: the slope (x, z) they give its face; footprint as for
+// reloaded_weather_rings()
+vec2 reloaded_weather_rain_ripples(vec2 world_xz, float footprint) {
+	if (!reloaded_weather_rain_exists) {
+		return vec2(0.0);
+	}
+	return reloaded_weather_rings(world_xz, footprint, clamp(reloaded_rain, 0.0, 1.0), 1.0, 1.0);
+}
+
+// The snow's flakes landing on the unfrozen water: each rests on it a moment, flat, as it fell -
+// a clump and its six arms - and softens into the water - its arms first, then its edge blurring
+// and its white fading - and is gone in
+// RELOADED_FLAKE_MELT_SECONDS. A flake may land in a cell RELOADED_FLAKE_CELL across once a melt,
+// in as many of the cells as RELOADED_FLAKE_RATE of the snow falling; the flakes
+// RELOADED_FLAKE_RADIUS across
+const float RELOADED_FLAKE_CELL = 0.08;
+const float RELOADED_FLAKE_RADIUS = 0.016;
+const float RELOADED_FLAKE_MELT_SECONDS = 1.6;
+const float RELOADED_FLAKE_RATE = 0.35;
+
+// How much of the water at world_xz the melting flakes cover (0 - 1); footprint - how wide a pixel is
+// there (length(fwidth(world_xz))): gone where a pixel is wider than a speck
+float reloaded_weather_flakes_on_water(vec2 world_xz, float footprint) {
+	float rate = clamp(reloaded_snowfall, 0.0, 1.0) * RELOADED_FLAKE_RATE;
+	float shown = 1.0 - smoothstep(RELOADED_FLAKE_RADIUS * 0.5, RELOADED_FLAKE_RADIUS * 3.0, footprint);
+	if (rate <= 0.0 || shown <= 0.0) {
+		return 0.0;
+	}
+	vec2 p = world_xz / RELOADED_FLAKE_CELL;
+	vec2 cell = floor(p);
+	float h = reloaded_weather_hash(cell + 3.7);
+	// each cell's melts in their own time, one flake a melt at the most
+	float melt = TIME / RELOADED_FLAKE_MELT_SECONDS + h * 13.0;
+	float landing = floor(melt);
+	float age = fract(melt);
+	if (reloaded_weather_hash(cell * 1.3 + landing * 0.71) > rate) {
+		return 0.0;
+	}
+	// within the cell, its edge clear of the cell's
+	vec2 centre = cell + 0.3 + 0.4 * vec2(reloaded_weather_hash(cell + landing * 1.9), reloaded_weather_hash(cell * 2.1 + landing));
+	float radius = RELOADED_FLAKE_RADIUS * mix(0.7, 1.3, h);
+	vec2 q = (p - centre) * RELOADED_FLAKE_CELL / radius;
+	float seed = reloaded_weather_hash(cell * 0.7 + landing * 3.3);
+	// a flat flake as it fell (precipitation_snow's): a clump of crystals, each a soft lump, softening
+	// as it melts, and its six arms, the first to go
+	float clump = 0.0;
+	for (int k = 0; k < 4; k++) {
+		float hk = seed * 17.3 + float(k) * 3.17;
+		vec2 lump = vec2(fract(sin(hk) * 4375.85), fract(sin(hk * 1.7) * 2317.13)) - 0.5;
+		float lump_radius = mix(0.25, 0.5, fract(sin(hk * 2.3) * 9131.7)) * (1.0 - 0.3 * age);
+		clump = max(clump, 1.0 - smoothstep(lump_radius * 0.45 * (1.0 - age), lump_radius, length(q - lump * 0.9)));
+	}
+	float angle = atan(q.y, q.x) + seed * 6.2832;
+	float arms = pow(abs(cos(angle * 3.0)), 12.0) * (1.0 - smoothstep(0.05, 0.85, length(q))) * (1.0 - age) * (1.0 - age);
+	float speck = max(clump * 0.85, arms);
+	return speck * (1.0 - age) * shown;
 }
 
 // How much deeper than the average the snow lies at a point of the ground (0 - 2 or so): in heaps a
