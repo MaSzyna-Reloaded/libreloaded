@@ -389,6 +389,13 @@
 				Who sits in any cabin of [param vehicle] in [param role] - everybody for [constant VehiclePersonRole.VEHICLE_PERSON_ROLE_ANY].
 			</description>
 		</method>
+		<method name="vehicle_restart">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Starts [param vehicle]'s simulation anew on the controller it runs on, as that is now: a configuration changed since it started (a component's value set and applied) is kept, its state is new. Binds the same pair again (see [method vehicle_bind_controller]).
+			</description>
+		</method>
 		<method name="vehicle_send_command">
 			<return type="Variant" />
 			<param index="0" name="vehicle" type="RID" />

@@ -61,6 +61,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("controller_free", "controller"), &VehicleServer::controller_free);
         ClassDB::bind_method(
                 D_METHOD("vehicle_bind_controller", "vehicle", "controller"), &VehicleServer::vehicle_bind_controller);
+        ClassDB::bind_method(D_METHOD("vehicle_restart", "vehicle"), &VehicleServer::vehicle_restart);
         ClassDB::bind_method(
                 D_METHOD("vehicle_set_initial_velocity", "vehicle", "velocity"),
                 &VehicleServer::vehicle_set_initial_velocity);
@@ -297,6 +298,15 @@ namespace godot {
             vehicle_bind_controller(slot->vehicle, RID());
         }
         controllers.erase(p_controller);
+    }
+
+    void VehicleServer::vehicle_restart(const RID &p_vehicle) {
+        const Vehicle *vehicle = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(vehicle);
+        // a copy: binding clears the vehicle's own before it binds the controller given
+        const RID controller = vehicle->controller;
+        ERR_FAIL_COND_MSG(!controller.is_valid(), "The vehicle has no controller");
+        vehicle_bind_controller(p_vehicle, controller);
     }
 
     void VehicleServer::vehicle_bind_controller(const RID &p_vehicle, const RID &p_controller) {
