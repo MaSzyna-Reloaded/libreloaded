@@ -48,6 +48,25 @@ global uniform float reloaded_weather_probes_enabled;
 global uniform bool reloaded_weather_wet_exists;
 global uniform bool reloaded_weather_snow_exists;
 global uniform bool reloaded_weather_surfaces_active;
+// how hard the rain falls (0 - 1), the snow's share left out, and whether it rains at all
+// (gnd-weather's WeatherServer.RAIN_EXISTS_GLOBAL)
+global uniform float reloaded_rain;
+global uniform bool reloaded_weather_rain_exists;
+
+// The rain's rings on water (reloaded_weather_rain_ripples()): the drops land in cells of two sizes
+// [m], as many of the cells struck as hard as it rains; a ring runs out RAIN_RING_REACH cells over
+// its life, of a band RAIN_RING_SHARPNESS narrow and RAIN_RING_WAVES ripples, its life lasting
+// 1 / RAIN_RING_RATE_MIN..MAX seconds; the rings are drawn as near as a pixel is smaller than them
+const float RAIN_RING_CELL_LARGE = 0.33;
+const float RAIN_RING_CELL_SMALL = 0.21;
+const float RAIN_RING_REACH = 0.9;
+const float RAIN_RING_SHARPNESS = 60.0;
+const float RAIN_RING_WAVES = 40.0;
+const float RAIN_RING_RATE_MIN = 0.9;
+const float RAIN_RING_RATE_MAX = 1.4;
+const float RAIN_RING_SLOPE = 0.25;
+const float RAIN_RING_PIXEL_SHARP = 0.015;
+const float RAIN_RING_PIXEL_GONE = 0.06;
 
 // How far world_position is in the probes' window: 1 well in, down to 0 towards its sides, 0 out of
 // it or without probes - for blending what the probes tell into the open ground's
@@ -111,6 +130,42 @@ float reloaded_weather_noise(vec2 p) {
 		mix(reloaded_weather_hash(i + vec2(0.0, 1.0)), reloaded_weather_hash(i + vec2(1.0, 1.0)), u.x),
 		u.y
 	);
+}
+
+// The rain's rings on water: the slope (x, z) they give its face where it rains, each drop's ring
+// spreading and fading; footprint - how wide a pixel is there (length(fwidth(world_xz))): the rings
+// go where a pixel is wider than they are, which only sparkled in the distance
+vec2 reloaded_weather_rain_ripples(vec2 world_xz, float footprint) {
+	float rain = clamp(reloaded_rain, 0.0, 1.0);
+	float shown = 1.0 - smoothstep(RAIN_RING_PIXEL_SHARP, RAIN_RING_PIXEL_GONE, footprint);
+	if (!reloaded_weather_rain_exists || shown <= 0.0) {
+		return vec2(0.0);
+	}
+	vec2 slope = vec2(0.0);
+	for (int layer = 0; layer < 2; layer++) {
+		float size = layer == 0 ? RAIN_RING_CELL_LARGE : RAIN_RING_CELL_SMALL;
+		// the layers' cells apart, so their drops do not land together
+		vec2 p = world_xz / size + float(layer) * 17.3;
+		// the four cells nearest the point: a ring is under a cell wide while it is still to be seen
+		vec2 cell = floor(p - 0.5);
+		for (int j = 0; j <= 1; j++) {
+			for (int i = 0; i <= 1; i++) {
+				vec2 c = cell + vec2(float(i), float(j));
+				if (reloaded_weather_hash(c * 1.7 + 4.1) > rain) {
+					continue;
+				}
+				float h = reloaded_weather_hash(c + 0.37);
+				vec2 centre = c + vec2(reloaded_weather_hash(c), reloaded_weather_hash(c + 9.1));
+				float age = fract(TIME * mix(RAIN_RING_RATE_MIN, RAIN_RING_RATE_MAX, h) + h * 7.0);
+				vec2 d = p - centre;
+				float distance_to = length(d);
+				float band = distance_to - age * RAIN_RING_REACH;
+				float envelope = (1.0 - age) * (1.0 - age) * exp(-band * band * RAIN_RING_SHARPNESS);
+				slope += d / max(distance_to, 0.001) * cos(band * RAIN_RING_WAVES) * envelope;
+			}
+		}
+	}
+	return slope * RAIN_RING_SLOPE * shown;
 }
 
 // How much deeper than the average the snow lies at a point of the ground (0 - 2 or so): in heaps a
