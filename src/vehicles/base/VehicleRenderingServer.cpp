@@ -21,6 +21,10 @@
 namespace godot {
     const char *VehicleRenderingServer::vehicle_model_built_signal = "vehicle_model_built";
     const char *VehicleRenderingServer::builds_finished_signal = "builds_finished";
+    /* How much farther from the camera a vehicle's low-poly interior is drawn [m], in the instance
+     * shader parameter its materials take */
+    static constexpr const char *LOW_POLY_DEPTH_BEHIND_PARAMETER = "reloaded_depth_behind";
+    static constexpr float LOW_POLY_DEPTH_BEHIND = 0.02F;
 
     /* A vehicle far away is drawn from instances, a near one as nodes - shown and owned in the
      * editor when it is editable */
@@ -589,6 +593,12 @@ namespace godot {
         p_visual.model_missing = !p_visual.model.is_valid();
         model_vehicles[p_visual.model] = p_vehicle;
         p_visual.low_poly = create(appearance->get_low_poly_model_filename(), appearance->get_skins(), detail);
+        // the low-poly interior lies within the body, some of it in the body's own plane: drawn a
+        // little farther from the camera, the body is seen where they meet, not each in turn
+        if (p_visual.low_poly.is_valid()) {
+            models->instance_set_shader_parameter(
+                    p_visual.low_poly, LOW_POLY_DEPTH_BEHIND_PARAMETER, LOW_POLY_DEPTH_BEHIND);
+        }
         // the passengers carry no skin of their own
         p_visual.passengers =
                 create(appearance->get_passengers_model_filename(), PackedStringArray(),
