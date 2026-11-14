@@ -730,6 +730,14 @@ anti_aliasing/quality/use_taa=true
 
 [shader_globals]
 
+reloaded_wind_speed={
+"type": "float",
+"value": 0.0
+}
+reloaded_wind_direction={
+"type": "vec2",
+"value": Vector2(1, 0)
+}
 reloaded_hdr_output={
 "type": "bool",
 "value": false

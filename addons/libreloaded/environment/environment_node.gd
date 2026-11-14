@@ -296,6 +296,12 @@ func _process_dirty() -> void:
         # what falls and blows is SimulationServer's; whatever draws it follows its weather_changed
         SimulationServer.precipitation = precipitation
         SimulationServer.set_wind(get_wind_speed(), get_wind_direction())
+        # the wind for the materials it moves (a water's waves): its speed [m/s] and the way it
+        # blows over the ground, along the world's X and Z
+        var wind_direction: Vector3 = get_wind_direction()
+        RenderingServer.global_shader_parameter_set("reloaded_wind_speed", get_wind_speed())
+        RenderingServer.global_shader_parameter_set(
+            "reloaded_wind_direction", Vector2(wind_direction.x, wind_direction.z))
         # rain_params of the "rain_windscreen" materials (opengl33renderer.cpp:752-754): the share of
         # active droplets and the time they take to return after a wiper pass
         RenderingServer.global_shader_parameter_set("reloaded_rain_intensity", precipitation)
