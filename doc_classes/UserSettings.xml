@@ -32,6 +32,12 @@
 				The project's own value of the project setting [param name], whatever the player set: the value of [code]project.godot[/code], or else the setting's registered default ([method ReloadedProjectSetting.add]) - the default a settings screen offers.
 			</description>
 		</method>
+		<method name="get_registered_declarations" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Every section a plugin has registered with [method register_declarations], in the order it was registered: one [Dictionary] per section, shaped as the game's own settings declarations are ("title" and "settings"). The settings screen appends these to its own sections, so a plugin needs no entry there.
+			</description>
+		</method>
 		<method name="get_setting" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="section" type="String" />
@@ -63,6 +69,13 @@
 			<param index="2" name="value" type="Variant" />
 			<description>
 				Sets [param key] of [param section] in memory and saves it at once, and only this key - the rest of the configuration may hold changes not saved yet.
+			</description>
+		</method>
+		<method name="register_declarations">
+			<return type="void" />
+			<param index="0" name="sections" type="Array" />
+			<description>
+				Adds [param sections] - one or more [Dictionary], each shaped as a section of the game's own settings declarations ("title" and "settings") - to what [method get_registered_declarations] returns. A plugin calls this once, at its own init, to show its own rows in the settings screen without the game naming it.
 			</description>
 		</method>
 		<method name="save_config">

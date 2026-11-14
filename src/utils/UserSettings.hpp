@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -25,6 +26,10 @@ namespace godot {
             String data_dir;
             /// The configuration as the file has it - last loaded or saved - what a change is told from
             String saved_text;
+            /// A plugin's own settings-screen sections, registered once at its own init
+            /// (register_declarations()) in the shape of the game's own JSON ("title" and "settings"):
+            /// the screen appends them to its own, so a plugin needs no change there
+            Array registered_declarations;
 
             static constexpr const char *DATA_DIR_SECTION = "reloaded";
             static constexpr const char *DATA_DIR_KEY = "data_dir";
@@ -98,6 +103,15 @@ namespace godot {
             /// The game's own data - its worlds and their assets - absolute: the data_dir the player
             /// chose, relative to the directory the game sits in (data_dir_changed)
             String get_data_dir() const;
+
+            /// A plugin's own sections for the settings screen, in its own init - one Dictionary per
+            /// section, each shaped as the game's settings.json has it ("title" and "settings"). The
+            /// screen merges get_registered_declarations() into its own, so the plugin needs no entry
+            /// in the game's own declarations
+            void register_declarations(const Array &p_sections);
+            /// Every section a plugin has registered with register_declarations(), in the order
+            /// registered
+            Array get_registered_declarations() const;
     };
 
 } // namespace godot

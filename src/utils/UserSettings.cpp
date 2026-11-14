@@ -67,6 +67,9 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("persist_setting", "section", "key", "value"), &UserSettings::persist_setting);
         ClassDB::bind_method(D_METHOD("get_data_dir"), &UserSettings::get_data_dir);
 
+        ClassDB::bind_method(D_METHOD("register_declarations", "sections"), &UserSettings::register_declarations);
+        ClassDB::bind_method(D_METHOD("get_registered_declarations"), &UserSettings::get_registered_declarations);
+
         ADD_SIGNAL(MethodInfo(config_changed_signal));
         ADD_SIGNAL(MethodInfo(
                 setting_changed_signal, PropertyInfo(Variant::STRING, "section"),
@@ -282,5 +285,13 @@ namespace godot {
 
     String UserSettings::get_data_dir() const {
         return data_dir;
+    }
+
+    void UserSettings::register_declarations(const Array &p_sections) {
+        registered_declarations.append_array(p_sections);
+    }
+
+    Array UserSettings::get_registered_declarations() const {
+        return registered_declarations;
     }
 } // namespace godot
