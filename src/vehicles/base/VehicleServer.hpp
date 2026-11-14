@@ -182,6 +182,9 @@ namespace godot {
              * its simulation, this one takes the scenery's values and starts its own. RID()
              * unbinds; binding the same pair again restarts the vehicle's simulation. */
             void vehicle_bind_controller(const RID &p_vehicle, const RID &p_controller);
+            /* The vehicle's simulation started anew on the controller it runs on, as that is now
+             * - its configuration changed since it started kept - binding the same pair again */
+            void vehicle_restart(const RID &p_vehicle);
             /* The controller object bound to the vehicle, 0 without one - C++ only and unbound,
              * for the servers that step and couple the vehicles */
             uint64_t vehicle_get_controller_instance_id(const RID &p_vehicle) const;
