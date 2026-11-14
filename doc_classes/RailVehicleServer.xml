@@ -486,6 +486,15 @@
 				Whether [param vehicle] is a rail vehicle ([method vehicle_attach]).
 			</description>
 		</method>
+		<method name="vehicle_is_preparable" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				Whether nothing keeps [param vehicle] from being prepared: its engine power
+				source's own [method RailVehicleEnginePowerSource.is_power_available], or always
+				for a vehicle with no such component.
+			</description>
+		</method>
 		<method name="vehicle_is_reversed_in_trainset" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="vehicle" type="RID" />

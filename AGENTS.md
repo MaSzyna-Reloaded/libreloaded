@@ -22,6 +22,7 @@ Planning and architecture:
   or the operator decides. Ask whose rule it is before writing a line of the fix
 * REQUIRED: the backend a layer happens to be implemented on (e.g. the vendored Mover) **never
   appears in its public interface** - not in a method name, a parameter or a returned type
+* REQUIRED, ABSOLUTE: libreloaded should not mention libmaszyna nor maszyna sources
 * REQUIRED, ABSOLUTE: **a string is translated in the repository whose code uses it** - a
   plugin's or a game's own `.po` beside its code (`addons/<addon>/translations/`), listed by the
   game that loads it in `locale/translations`; never in another layer's catalogue (a game built on
