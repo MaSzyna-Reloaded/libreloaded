@@ -42,6 +42,10 @@ global uniform sampler3D reloaded_weather_ground : filter_linear, repeat_enable;
 global uniform vec3 reloaded_weather_probe_origin;
 global uniform vec3 reloaded_weather_probe_size;
 global uniform float reloaded_weather_probes_enabled;
+// where the wet's sheen and the standing water fade out, in metres off the camera (x - y), and where
+// the camera is (gnd-weather's WeatherNode water_reflections_fade_start, _end)
+global uniform vec2 reloaded_weather_reflections_fade;
+global uniform vec3 reloaded_weather_camera_position;
 // which of the weather there is on the surfaces - the wet, the snow lying - and whether any of it
 // lies there (gnd-weather's WeatherServer.WET_EXISTS_GLOBAL and the rest, told once a change by
 // whoever draws the weather): without one nothing of it is worked out, without any a surface stays
@@ -121,13 +125,14 @@ const float RELOADED_SNOW_COVER_DEPTH = 0.03;
 const vec3 RELOADED_SNOW_ALBEDO = vec3(0.86, 0.88, 0.92);
 const vec3 RELOADED_SLUSH_ALBEDO = vec3(0.5, 0.53, 0.55);
 
-// How near a pixel is for the wet's reflections to show (1 - 0), by how wide it is in the
-// world (length(fwidth(world_position)), fragment() only): some 30 m off at 1080p for a surface facing
-// the eye, gone by some 55 m, the sooner for the ground seen aslant. Beyond, the wet is as rough (0.7)
-// as the screen space reflections skip: the wet scenery reflected everywhere cost them every
+// How near world_position is for the wet's reflections to show (1 - 0): all of them up to
+// reloaded_weather_reflections_fade.x metres off the camera, none from .y. Beyond, the wet is as rough
+// (0.7) as the screen space reflections skip: the wet scenery reflected everywhere cost them every
 // pixel of the screen
-float reloaded_weather_reflections_near(float pixel_size) {
-	return 1.0 - smoothstep(0.03, 0.06, pixel_size);
+float reloaded_weather_reflections_near(vec3 world_position) {
+	float off = distance(world_position, reloaded_weather_camera_position);
+	return 1.0 - smoothstep(reloaded_weather_reflections_fade.x,
+		max(reloaded_weather_reflections_fade.y, reloaded_weather_reflections_fade.x + 0.1), off);
 }
 
 float reloaded_weather_hash(vec2 p) {
@@ -283,7 +288,7 @@ void reloaded_weather_surface_puddled(inout vec3 surface_albedo, inout float sur
 		return;
 	}
 	// before any branch on the pixel's own: the derivatives are good only in uniform control flow
-	float reflections_near = reloaded_weather_reflections_near(length(fwidth(world_position)));
+	float reflections_near = reloaded_weather_reflections_near(world_position);
 	vec4 local = reloaded_weather_local(world_position);
 	// wet: darker (the water fills the pores) and glossier
 	if (reloaded_weather_wet_exists) {
@@ -317,7 +322,7 @@ float reloaded_weather_apply_heated(inout vec3 surface_albedo, inout float surfa
 	vec3 normal = normalize(world_normal);
 	// before any branch on the pixel's own: the derivatives are good only in uniform control flow
 	float footprint = length(fwidth(world_position.xz));
-	float reflections_near = reloaded_weather_reflections_near(length(fwidth(world_position)));
+	float reflections_near = reloaded_weather_reflections_near(world_position);
 	vec3 weather_normal = normal;
 	vec4 local = reloaded_weather_local(world_position);
 	snow_share *= local.r * reloaded_weather_snow_kept(local.a, surface_heat);
