@@ -78,6 +78,16 @@ func test_hover_outlines_and_captions_the_control() -> void:
     assert_null(_mesh.material_overlay)
 
 
+func test_the_outline_is_as_wide_whatever_the_scale_of_the_mesh() -> void:
+    _move_to(_over_control())
+    var width:float = (_mesh.material_overlay as BaseMaterial3D).stencil_outline_thickness
+    _move_to(Vector2.ONE)
+    _mesh.scale = Vector3.ONE * 40.0
+    _move_to(_over_control())
+    assert_almost_eq((_mesh.material_overlay as BaseMaterial3D).stencil_outline_thickness * 40.0, width, 0.00001)
+    assert_almost_eq(_mesh.material_overlay.next_pass.grow_amount * 40.0, width, 0.00001, "what grows the outline")
+
+
 func test_click_presses_and_releases() -> void:
     _move_to(_over_control())
     assert_true(_left_button(true))
@@ -335,3 +345,59 @@ func test_a_control_under_another_control_is_its_own() -> void:
     _left_button(false)
     assert_eq(_calls, ["child pressed"] as Array[String])
     CabinHUDMouseSystem.control_free(child_control)
+
+
+func test_a_control_of_one_axis_takes_it_whichever_way_the_hand_starts() -> void:
+    CabinHUDMouseSystem.control_free(_control)
+    var travels:Array[float] = []
+    _control = CabinHUDMouseSystem.control_create(_mesh.get_instance_id(), "handle", "", Callable(), Callable(),
+            Callable(), Callable(), Basis.IDENTITY, Vector3.UP, func(travel:float) -> void: travels.append(travel),
+            Vector2(1.0, 0.0))
+    _move_to(_over_control())
+    _left_button(true)
+    _drag_by(Vector2(1.0, 20.0))
+    _drag_by(Vector2(30.0, 0.0))
+    _left_button(false)
+    assert_eq(travels, [1.0, 30.0] as Array[float], "a first move mostly down left it locked on the axis of no sign")
+
+
+## A long thin mesh for a control, a handle's rod, off the view's middle
+func _make_rod() -> MeshInstance3D:
+    # in place of the box of before_each(), nearer on screen than the tolerance
+    CabinHUDMouseSystem.control_free(_control)
+    var rod:MeshInstance3D = MeshInstance3D.new()
+    var box:BoxMesh = BoxMesh.new()
+    box.size = Vector3(2.0, 0.01, 0.01)
+    rod.mesh = box
+    rod.position = Vector3(0.0, 1.0, -3.0)
+    add_child_autofree(rod)
+    _control = CabinHUDMouseSystem.control_create(rod.get_instance_id(), "rod", "", Callable(), Callable(),
+            Callable(), Callable(), Basis.IDENTITY, Vector3.UP, Callable(), Vector2.ZERO)
+    return rod
+
+
+func test_a_thin_control_is_taken_near_any_of_its_length_not_at_its_middle_alone() -> void:
+    var rod:MeshInstance3D = _make_rod()
+    var near_its_end:Vector2 = _camera.unproject_position(rod.position + Vector3(0.8, 0.0, 0.0))
+    _captions.clear()
+    _move_to(near_its_end + Vector2(0.0, 8.0))
+    assert_eq(_captions, ["rod||"], "8 pixels off it, far from its middle")
+    _move_to(Vector2.ZERO)
+    _captions.clear()
+    _move_to(near_its_end + Vector2(0.0, 40.0))
+    assert_eq(_captions, [] as Array[String], "too far off it")
+
+
+func test_a_control_hidden_by_an_occluder_is_not_taken_from_beside_it() -> void:
+    var rod:MeshInstance3D = _make_rod()
+    var wall:MeshInstance3D = MeshInstance3D.new()
+    var box:BoxMesh = BoxMesh.new()
+    box.size = Vector3(4.0, 4.0, 0.01)
+    wall.mesh = box
+    wall.position = Vector3(0.0, 1.0, -2.0)
+    add_child_autofree(wall)
+    var occluder:RID = CabinHUDMouseSystem.occluder_create(wall.get_instance_id())
+    _captions.clear()
+    _move_to(_camera.unproject_position(rod.position + Vector3(0.8, 0.0, 0.0)) + Vector2(0.0, 8.0))
+    assert_eq(_captions, [] as Array[String])
+    CabinHUDMouseSystem.occluder_free(occluder)

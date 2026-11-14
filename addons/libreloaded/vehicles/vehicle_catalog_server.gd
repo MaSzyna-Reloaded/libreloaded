@@ -173,6 +173,13 @@ func vehicle_get_appearance(vehicle:VehicleData) -> VehicleAppearance:
     return provider.vehicle_get_appearance(vehicle) if provider else null
 
 
+## [param vehicle]'s exterior in its livery, to look at, built by its provider
+## (VehicleCatalogProvider.vehicle_create_preview()); null when the provider is not there or has none
+func vehicle_create_preview(vehicle:VehicleData) -> Node3D:
+    var provider:VehicleCatalogProvider = _get_provider(_get_provider_name(vehicle))
+    return provider.vehicle_create_preview(vehicle) if provider else null
+
+
 ## The provider registered as [param provider_name]; null for none
 func _get_provider(provider_name:StringName) -> VehicleCatalogProvider:
     return instance_from_id(_providers.get(provider_name, 0)) as VehicleCatalogProvider

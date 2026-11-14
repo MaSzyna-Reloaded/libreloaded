@@ -154,9 +154,85 @@ msgstr "后视镜"
 msgid "radio call 1"
 msgstr "无线电1号频道呼叫"
 
+msgid "wiper 1 handle"
+msgstr "雨刷手柄1"
+
+msgid "wiper 2 handle"
+msgstr "雨刷手柄2"
+
+msgid "wiper 3 handle"
+msgstr "雨刷手柄3"
+
+msgid "wiper 4 handle"
+msgstr "雨刷手柄4"
+
+msgid "wiper 1 valve"
+msgstr "雨刷阀门1"
+
+msgid "wiper 2 valve"
+msgstr "雨刷阀门2"
+
+msgid "wiper 3 valve"
+msgstr "雨刷阀门3"
+
+msgid "wiper 4 valve"
+msgstr "雨刷阀门4"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "车站"
 
 msgid "Show"
 msgstr "显示"
+
+# The debug HUD's weather controls
+msgid "Weather"
+msgstr "天气"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Calendar"
+msgstr "日历"
+
+msgid "Wind"
+msgstr "风"
+
+msgid "Dir"
+msgstr "方向"
+
+msgid "Precipitation"
+msgstr "降水"
+
+msgid "Clouds"
+msgstr "云"
+
+msgid "Temperature"
+msgstr "温度"
+
+msgid "Fog"
+msgstr "雾"
+
+msgid "Fog Distance"
+msgstr "雾距离"
+
+msgid "Use system time"
+msgstr "使用系统时间"
+
+msgid "Time"
+msgstr "时间"
+
+msgid "Day"
+msgstr "日"
+
+msgid "Month"
+msgstr "月"
+
+msgid "Year"
+msgstr "年"
+
+msgid "Time Speed"
+msgstr "时间流速"
+
+msgid "Pause"
+msgstr "暂停"

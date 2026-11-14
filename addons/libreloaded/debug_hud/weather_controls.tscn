@@ -90,16 +90,16 @@ focus_mode = 0
 custom_minimum_size = Vector2(170, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 1.0
-step = 0.01
+max_value = 30.0
+step = 0.1
 
 [node name="WindValueLabel" type="Label" parent="Weather/WindGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
-text = "0%"
+text = "0.0 m/s"
 horizontal_alignment = 2
 
 [node name="WindDirectionGroup" type="VBoxContainer" parent="Weather"]
@@ -130,7 +130,7 @@ step = 0.1
 
 [node name="WindDirectionValueLabel" type="Label" parent="Weather/WindDirectionGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -146,7 +146,7 @@ theme_override_constants/separation = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.76, 0.72, 0.9)
 theme_override_font_sizes/font_size = 12
-text = "Rain"
+text = "Precipitation"
 
 [node name="Row" type="HBoxContainer" parent="Weather/RainGroup"]
 layout_mode = 2
@@ -165,7 +165,7 @@ step = 0.01
 
 [node name="RainValueLabel" type="Label" parent="Weather/RainGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -200,11 +200,47 @@ step = 0.01
 
 [node name="CloudValueLabel" type="Label" parent="Weather/CloudGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
 text = "0%"
+horizontal_alignment = 2
+
+[node name="TemperatureGroup" type="VBoxContainer" parent="Weather"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Header" type="Label" parent="Weather/TemperatureGroup"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.72, 0.9)
+theme_override_font_sizes/font_size = 12
+text = "Temperature"
+
+[node name="Row" type="HBoxContainer" parent="Weather/TemperatureGroup"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="TemperatureSlider" type="HSlider" parent="Weather/TemperatureGroup/Row"]
+unique_name_in_owner = true
+focus_mode = 0
+custom_minimum_size = Vector2(170, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -15.0
+max_value = 45.0
+step = 0.5
+
+[node name="TemperatureValueLabel" type="Label" parent="Weather/TemperatureGroup/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
+theme_override_font_sizes/font_size = 13
+text = "15.0 °C"
 horizontal_alignment = 2
 
 [node name="FogDensityGroup" type="VBoxContainer" parent="Fog"]
@@ -237,7 +273,7 @@ value = 0.15
 
 [node name="FogDensityValueLabel" type="Label" parent="Fog/FogDensityGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -275,7 +311,7 @@ value = 470.0
 
 [node name="FogDistanceValueLabel" type="Label" parent="Fog/FogDistanceGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -297,7 +333,6 @@ text = "--"
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
-alignment = 1
 
 [node name="SystemTimeCheckBox" type="CheckBox" parent="Settings/SystemTimeGroup/Row"]
 unique_name_in_owner = true
@@ -334,7 +369,7 @@ step = 0.01
 
 [node name="TimeValueLabel" type="Label" parent="Calendar/TimeGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -370,7 +405,7 @@ value = 1.0
 
 [node name="DayValueLabel" type="Label" parent="Calendar/DayGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -406,7 +441,7 @@ value = 1.0
 
 [node name="MonthValueLabel" type="Label" parent="Calendar/MonthGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -442,7 +477,7 @@ value = 1900.0
 
 [node name="YearValueLabel" type="Label" parent="Calendar/YearGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -486,7 +521,7 @@ ticks_on_borders = true
 
 [node name="TimeScaleValueLabel" type="Label" parent="Settings/TimeScaleGroup/Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(56, 0)
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.89, 0.85, 0.88)
 theme_override_font_sizes/font_size = 13
@@ -497,3 +532,4 @@ autostart = true
 
 [connection signal="timeout" from="ClockTimer" to="." method="_on_clock_timer_timeout"]
 [connection signal="toggled" from="Settings/TimeScaleGroup/Row/PauseButton" to="." method="_on_pause_button_toggled"]
+[connection signal="value_changed" from="Weather/TemperatureGroup/Row/TemperatureSlider" to="." method="_on_temperature_changed"]

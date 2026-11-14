@@ -7,6 +7,10 @@ const GROUP: StringName = &"reloaded_environment"
 ## Render layer of the cab interior - with reloaded/cabin/improve_shadows_quality the cab is lit by a
 ## sun of its own that reaches only this layer (SkyEnvironment._create_cabin_light())
 const CABIN_RENDER_LAYER: int = 1 << 18
+## Render layer of the sun and the moon (SkyEnvironment's directional lights, the cab's among them),
+## alone: a camera that draws the scene but not its light - a weather's shelter map - leaves it out of
+## its cull mask, since the engine renders a directional light's shadows for every camera seeing it
+const SUN_RENDER_LAYER: int = 1 << 16
 ## Wind speed the 0-1 wind_strength maps onto, m/s
 const WIND_SPEED_MIN: float = 0.15
 const WIND_SPEED_MAX: float = 3.0
@@ -165,9 +169,18 @@ const MAX_SIMULATION_SPEED: float = 100.0
         precipitation = value
         _dirty_visuals = true
 
+## The ground starts under snow in winter, if the air is cold enough to keep it - the original's
+## sceneries (SceneryContentNode), whose winter textures are snowed in
+@export var winter_snow_cover: bool = false:
+    set(value):
+        winter_snow_cover = value
+        _dirty_visuals = true
+
 @export_range(-15.0, 45.0, 0.1, "suffix:°C") var temperature: float = 15.0:
     set(value):
         SimulationServer.air_temperature = value
+        # what falls - snow, sleet or rain - follows it
+        _dirty_visuals = true
     get:
         return SimulationServer.air_temperature
 
@@ -287,6 +300,12 @@ func _process_dirty() -> void:
         # what falls and blows is SimulationServer's; whatever draws it follows its weather_changed
         SimulationServer.precipitation = precipitation
         SimulationServer.set_wind(get_wind_speed(), get_wind_direction())
+        # the wind for the materials it moves (a water's waves): its speed [m/s] and the way it
+        # blows over the ground, along the world's X and Z
+        var wind_direction: Vector3 = get_wind_direction()
+        RenderingServer.global_shader_parameter_set("reloaded_wind_speed", get_wind_speed())
+        RenderingServer.global_shader_parameter_set(
+            "reloaded_wind_direction", Vector2(wind_direction.x, wind_direction.z))
         # rain_params of the "rain_windscreen" materials (opengl33renderer.cpp:752-754): the share of
         # active droplets and the time they take to return after a wiper pass
         RenderingServer.global_shader_parameter_set("reloaded_rain_intensity", precipitation)

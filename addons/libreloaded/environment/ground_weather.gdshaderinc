@@ -1,0 +1,444 @@
+// The weather on a material's surface - the ground's and whatever stands on it: snow lying on what
+// faces up, grey slush when it is soaked, the wet darkening and smoothing everything. For the
+// spatial shaders of the scenery's materials:
+//
+//   #include "res://addons/libreloaded/environment/ground_weather.gdshaderinc"
+//   varying vec3 world_position;
+//   void vertex() {
+//       // not INV_VIEW_MATRIX * VERTEX in fragment(): a double precision build keeps the view's
+//       // origin there its own way, kilometres off far from the world's origin
+//       world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+//   }
+//   void fragment() {
+//       vec3 albedo = ...;
+//       float roughness = ...;
+//       vec3 world_normal = mat3(INV_VIEW_MATRIX) * NORMAL;
+//       reloaded_weather_surface(albedo, roughness, world_normal, world_position);
+//       ALBEDO = albedo;
+//       ROUGHNESS = roughness;
+//   }
+//
+// The ground's state is the environment's, in these globals, whichever weather the game draws sets
+// them (gnd-weather's WeatherServer with gnd_weather/ground_globals_prefix "reloaded_"). A game
+// whose weather does more serves a ground_weather.gdshaderinc of its own under this path (a
+// ResourceFormatLoader in front of the engine's), with the functions below.
+//
+// Where the weather's probes reach (reloaded_weather_*: gnd-weather's WeatherNode weather_probe_*),
+// the snow, the wet and their warmth are the ground's there: less under a roof - a volume's, or the
+// scene's own geometry (gnd-weather's shelter map), as little as reached it while it gathered - none
+// where a heat source warms it above freezing; without them, the open ground's everywhere.
+
+global uniform float reloaded_wetness;
+global uniform float reloaded_air_temperature;
+// the ground's surface's temperature (°C): the air's, come after over hours (gnd-weather's
+// WeatherSimpleGround) - its water freezes by it
+global uniform float reloaded_ground_temperature;
+// how deep the snow lies on the average, in metres
+global uniform float reloaded_snow_depth;
+// how wet the lying snow is (0 - 1): soaked by a rain or a thaw, grey slush
+global uniform float reloaded_snow_wetness;
+
+// the weather probes' (gnd-weather's WeatherProbes): the open ground's share of the snow (r), the wet
+// (g) and the standing water (b) at each, and its temperature (a, °C) - addressed round in the
+// texture - their window's corner and size in the world, and whether there are any
+global uniform sampler3D reloaded_weather_ground : filter_linear, repeat_enable;
+global uniform vec3 reloaded_weather_probe_origin;
+global uniform vec3 reloaded_weather_probe_size;
+global uniform float reloaded_weather_probes_enabled;
+// where the wet's sheen and the standing water fade out, in metres off the camera (x - y), and where
+// the camera is (gnd-weather's WeatherNode water_reflections_fade_start, _end)
+global uniform vec2 reloaded_weather_reflections_fade;
+global uniform vec3 reloaded_weather_camera_position;
+// which of the weather there is on the surfaces - the wet, the snow lying - and whether any of it
+// lies there (gnd-weather's WeatherServer.WET_EXISTS_GLOBAL and the rest, told once a change by
+// whoever draws the weather): without one nothing of it is worked out, without any a surface stays
+// its own
+global uniform bool reloaded_weather_wet_exists;
+global uniform bool reloaded_weather_snow_exists;
+global uniform bool reloaded_weather_surfaces_active;
+// how hard the rain falls (0 - 1), the snow's share left out, and whether it rains at all
+// (gnd-weather's WeatherServer.RAIN_EXISTS_GLOBAL)
+global uniform float reloaded_rain;
+global uniform bool reloaded_weather_rain_exists;
+// the snow falling (its share of the precipitation, 0 - 1; gnd-weather's WeatherServer.SNOWFALL_GLOBAL):
+// its flakes melting on the water
+global uniform float reloaded_snowfall;
+
+// The rain's rings on water (reloaded_weather_rain_ripples()): the drops land in cells of two sizes
+// [m], as many of the cells struck as hard as it rains; a ring runs out RAIN_RING_REACH cells over
+// its life, of a band RAIN_RING_SHARPNESS narrow and RAIN_RING_WAVES ripples, its life lasting
+// 1 / RAIN_RING_RATE_MIN..MAX seconds; the rings are drawn as near as a pixel is smaller than them
+const float RAIN_RING_CELL_LARGE = 0.33;
+const float RAIN_RING_CELL_SMALL = 0.21;
+const float RAIN_RING_REACH = 0.9;
+const float RAIN_RING_SHARPNESS = 60.0;
+const float RAIN_RING_WAVES = 40.0;
+const float RAIN_RING_RATE_MIN = 0.9;
+const float RAIN_RING_RATE_MAX = 1.4;
+const float RAIN_RING_SLOPE = 0.25;
+const float RAIN_RING_PIXEL_SHARP = 0.015;
+const float RAIN_RING_PIXEL_GONE = 0.06;
+
+// How far world_position is in the probes' window: 1 well in, down to 0 towards its sides, 0 out of
+// it or without probes - for blending what the probes tell into the open ground's
+float reloaded_weather_probe_blend(vec3 world_position) {
+	vec3 in_window = (world_position - reloaded_weather_probe_origin) / max(reloaded_weather_probe_size, vec3(0.001));
+	if (reloaded_weather_probes_enabled < 0.5 || any(lessThan(in_window, vec3(0.0))) || any(greaterThan(in_window, vec3(1.0)))) {
+		return 0.0;
+	}
+	vec3 from_side = min(in_window, 1.0 - in_window);
+	return smoothstep(0.0, 0.08, min(from_side.x, from_side.z)) * smoothstep(0.0, 0.08, from_side.y);
+}
+
+// How much of a probe's cell, from its top, a surface blends into the cell above (of its height): a
+// slope crossing the cells has no step
+const float RELOADED_WEATHER_PROBE_BLEND = 0.2;
+
+// Where world_position's weather is in the probes' textures: a probe holds the weather of what lies in
+// its cell (gnd-weather's WeatherProbes), so a surface reads the cell it is in - blended between two
+// cells, a platform's top took the one under it, which the platform itself shelters - and across,
+// blended between the probes
+vec3 reloaded_weather_probe_coordinate(vec3 world_position) {
+	float cell = reloaded_weather_probe_size.y / float(max(textureSize(reloaded_weather_ground, 0).y, 1));
+	float height = world_position.y / cell;
+	float above = smoothstep(1.0 - RELOADED_WEATHER_PROBE_BLEND, 1.0, fract(height));
+	return vec3(world_position.x, (floor(height) + 0.5 + above) * cell, world_position.z) / reloaded_weather_probe_size;
+}
+
+// The weather at world_position from the probes, blended between them and into the open ground's
+// towards their window's sides: the open ground's share of its snow, its wet and its standing water,
+// and the surface's temperature - 1, 1, 1 and the open ground's out of them or without them
+vec4 reloaded_weather_local(vec3 world_position) {
+	vec4 open_ground = vec4(1.0, 1.0, 1.0, reloaded_ground_temperature);
+	float inside = reloaded_weather_probe_blend(world_position);
+	if (inside <= 0.0) {
+		return open_ground;
+	}
+	return mix(open_ground, texture(reloaded_weather_ground, reloaded_weather_probe_coordinate(world_position)), inside);
+}
+
+// How much of the snow a surface as warm as temperature (°C) - surface_heat warmer than that of its
+// own, a material's warm place - keeps of the open ground's: none where it is above freezing while the
+// open ground is not, the edge soft over a degree; the open ground's own thaw is its depth's
+float reloaded_weather_snow_kept(float temperature, float surface_heat) {
+	float warmth = max(temperature + surface_heat, 0.0) - max(reloaded_ground_temperature, 0.0);
+	return 1.0 - smoothstep(0.0, 1.0, warmth);
+}
+
+// the depth at which the snow covers the ground (WeatherServer.SNOW_COVER_DEPTH)
+const float RELOADED_SNOW_COVER_DEPTH = 0.03;
+
+const vec3 RELOADED_SNOW_ALBEDO = vec3(0.86, 0.88, 0.92);
+const vec3 RELOADED_SLUSH_ALBEDO = vec3(0.5, 0.53, 0.55);
+
+// How near world_position is for the wet's reflections to show (1 - 0): all of them up to
+// reloaded_weather_reflections_fade.x metres off the camera, none from .y. Beyond, the wet is as rough
+// (0.7) as the screen space reflections skip: the wet scenery reflected everywhere cost them every
+// pixel of the screen
+float reloaded_weather_reflections_near(vec3 world_position) {
+	float off = distance(world_position, reloaded_weather_camera_position);
+	return 1.0 - smoothstep(reloaded_weather_reflections_fade.x,
+		max(reloaded_weather_reflections_fade.y, reloaded_weather_reflections_fade.x + 0.1), off);
+}
+
+float reloaded_weather_hash(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
+// value noise, 0 - 1
+float reloaded_weather_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(
+		mix(reloaded_weather_hash(i), reloaded_weather_hash(i + vec2(1.0, 0.0)), u.x),
+		mix(reloaded_weather_hash(i + vec2(0.0, 1.0)), reloaded_weather_hash(i + vec2(1.0, 1.0)), u.x),
+		u.y
+	);
+}
+
+// The rings on water where the drops land: the slope (x, z) they give its face, as many
+// of the cells struck as rate (0 - 1), the cells and the rings size times the drops', as high as
+// strength, each ring spreading and fading; footprint - how wide a pixel is there
+// (length(fwidth(world_xz))): the rings go where a pixel is wider than they are, which only sparkled
+// in the distance
+vec2 reloaded_weather_rings(vec2 world_xz, float footprint, float rate, float ring_size, float strength) {
+	float shown = 1.0 - smoothstep(RAIN_RING_PIXEL_SHARP * ring_size, RAIN_RING_PIXEL_GONE * ring_size, footprint);
+	if (rate <= 0.0 || shown <= 0.0) {
+		return vec2(0.0);
+	}
+	vec2 slope = vec2(0.0);
+	for (int layer = 0; layer < 2; layer++) {
+		float size = (layer == 0 ? RAIN_RING_CELL_LARGE : RAIN_RING_CELL_SMALL) * ring_size;
+		// the layers' cells apart, so their drops do not land together
+		vec2 p = world_xz / size + float(layer) * 17.3;
+		// the four cells nearest the point: a ring is under a cell wide while it is still to be seen
+		vec2 cell = floor(p - 0.5);
+		for (int j = 0; j <= 1; j++) {
+			for (int i = 0; i <= 1; i++) {
+				vec2 c = cell + vec2(float(i), float(j));
+				if (reloaded_weather_hash(c * 1.7 + 4.1) > rate) {
+					continue;
+				}
+				float h = reloaded_weather_hash(c + 0.37);
+				vec2 centre = c + vec2(reloaded_weather_hash(c), reloaded_weather_hash(c + 9.1));
+				float age = fract(TIME * mix(RAIN_RING_RATE_MIN, RAIN_RING_RATE_MAX, h) + h * 7.0);
+				vec2 d = p - centre;
+				float distance_to = length(d);
+				float band = distance_to - age * RAIN_RING_REACH;
+				float envelope = (1.0 - age) * (1.0 - age) * exp(-band * band * RAIN_RING_SHARPNESS);
+				slope += d / max(distance_to, 0.001) * cos(band * RAIN_RING_WAVES) * envelope;
+			}
+		}
+	}
+	return slope * RAIN_RING_SLOPE * strength * shown;
+}
+
+// The rain's rings on water where it rains: the slope (x, z) they give its face; footprint as for
+// reloaded_weather_rings()
+vec2 reloaded_weather_rain_ripples(vec2 world_xz, float footprint) {
+	if (!reloaded_weather_rain_exists) {
+		return vec2(0.0);
+	}
+	return reloaded_weather_rings(world_xz, footprint, clamp(reloaded_rain, 0.0, 1.0), 1.0, 1.0);
+}
+
+// The snow's flakes landing on the unfrozen water: each rests on it a moment, flat, as it fell -
+// a clump and its six arms - and softens into the water - its arms first, then its edge blurring
+// and its white fading - and is gone in
+// RELOADED_FLAKE_MELT_SECONDS. A flake may land in a cell RELOADED_FLAKE_CELL across once a melt,
+// in as many of the cells as RELOADED_FLAKE_RATE of the snow falling; the flakes
+// RELOADED_FLAKE_RADIUS across
+const float RELOADED_FLAKE_CELL = 0.08;
+const float RELOADED_FLAKE_RADIUS = 0.016;
+const float RELOADED_FLAKE_MELT_SECONDS = 1.6;
+const float RELOADED_FLAKE_RATE = 0.35;
+
+// How much of the water at world_xz the melting flakes cover (0 - 1); footprint - how wide a pixel is
+// there (length(fwidth(world_xz))): gone where a pixel is wider than a speck
+float reloaded_weather_flakes_on_water(vec2 world_xz, float footprint) {
+	float rate = clamp(reloaded_snowfall, 0.0, 1.0) * RELOADED_FLAKE_RATE;
+	float shown = 1.0 - smoothstep(RELOADED_FLAKE_RADIUS * 0.5, RELOADED_FLAKE_RADIUS * 3.0, footprint);
+	if (rate <= 0.0 || shown <= 0.0) {
+		return 0.0;
+	}
+	vec2 p = world_xz / RELOADED_FLAKE_CELL;
+	vec2 cell = floor(p);
+	float h = reloaded_weather_hash(cell + 3.7);
+	// each cell's melts in their own time, one flake a melt at the most
+	float melt = TIME / RELOADED_FLAKE_MELT_SECONDS + h * 13.0;
+	float landing = floor(melt);
+	float age = fract(melt);
+	if (reloaded_weather_hash(cell * 1.3 + landing * 0.71) > rate) {
+		return 0.0;
+	}
+	// within the cell, its edge clear of the cell's
+	vec2 centre = cell + 0.3 + 0.4 * vec2(reloaded_weather_hash(cell + landing * 1.9), reloaded_weather_hash(cell * 2.1 + landing));
+	float radius = RELOADED_FLAKE_RADIUS * mix(0.7, 1.3, h);
+	vec2 q = (p - centre) * RELOADED_FLAKE_CELL / radius;
+	float seed = reloaded_weather_hash(cell * 0.7 + landing * 3.3);
+	// a flat flake as it fell (precipitation_snow's): a clump of crystals, each a soft lump, softening
+	// as it melts, and its six arms, the first to go
+	float clump = 0.0;
+	for (int k = 0; k < 4; k++) {
+		float hk = seed * 17.3 + float(k) * 3.17;
+		vec2 lump = vec2(fract(sin(hk) * 4375.85), fract(sin(hk * 1.7) * 2317.13)) - 0.5;
+		float lump_radius = mix(0.25, 0.5, fract(sin(hk * 2.3) * 9131.7)) * (1.0 - 0.3 * age);
+		clump = max(clump, 1.0 - smoothstep(lump_radius * 0.45 * (1.0 - age), lump_radius, length(q - lump * 0.9)));
+	}
+	float angle = atan(q.y, q.x) + seed * 6.2832;
+	float arms = pow(abs(cos(angle * 3.0)), 12.0) * (1.0 - smoothstep(0.05, 0.85, length(q))) * (1.0 - age) * (1.0 - age);
+	float speck = max(clump * 0.85, arms);
+	return speck * (1.0 - age) * shown;
+}
+
+// How much deeper than the average the snow lies at a point of the ground (0 - 2 or so): in heaps a
+// metre or two across
+float reloaded_weather_snow_heaping(vec2 p) {
+	float heaps = reloaded_weather_noise(p * 0.8) * 0.6 + reloaded_weather_noise(p * 2.1 + 5.3) * 0.4;
+	return mix(0.65, 1.35, heaps) * mix(0.75, 1.25, reloaded_weather_noise(p * 0.11 + 11.7));
+}
+
+// How much of a surface facing up as much the snow of `cover` (0 - 1) covers: the first snow dusts
+// everything evenly, the ground showing through, and lies thicker in patches that grow and run
+// together into a full cover - thin, it was a few white blots on bare ground
+float reloaded_weather_snow_patches(vec2 world_xz, float cover) {
+	// three octaves, turned against each other so the value noise's grid does not show
+	vec2 p = world_xz * 0.45;
+	float patches = reloaded_weather_noise(p) * 0.55;
+	p = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p * 2.03 + 17.1;
+	patches += reloaded_weather_noise(p) * 0.3;
+	p = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p * 2.01 + 3.7;
+	patches += reloaded_weather_noise(p) * 0.15;
+	float dusting = smoothstep(0.0, 0.35, cover) * mix(0.45, 0.65, patches);
+	float lying = smoothstep(1.0 - cover * 1.4, 1.0 - cover * 1.4 + 0.35, patches);
+	return max(dusting, lying);
+}
+
+// reloaded_weather_snow() with the weather there given (reloaded_weather_local()'s)
+float reloaded_weather_snow_at(vec3 world_normal, vec3 world_position, vec4 local) {
+	float facing_up = smoothstep(0.25, 0.75, normalize(world_normal).y);
+	float depth = reloaded_snow_depth * local.r * reloaded_weather_snow_kept(local.a, 0.0);
+	float cover = clamp(depth * reloaded_weather_snow_heaping(world_position.xz) / RELOADED_SNOW_COVER_DEPTH, 0.0, 1.0);
+	if (facing_up <= 0.0 || cover <= 0.001) {
+		return 0.0;
+	}
+	return facing_up * reloaded_weather_snow_patches(world_position.xz, cover);
+}
+
+// How much snow lies on a surface (0 - 1): on what faces up, in patches while the cover is thin, as
+// much of it as lies there (reloaded_weather_local())
+float reloaded_weather_snow(vec3 world_normal, vec3 world_position) {
+	if (!reloaded_weather_snow_exists) {
+		return 0.0;
+	}
+	float facing_up = smoothstep(0.25, 0.75, normalize(world_normal).y);
+	if (facing_up <= 0.0) {
+		return 0.0;
+	}
+	return reloaded_weather_snow_at(world_normal, world_position, reloaded_weather_local(world_position));
+}
+
+// The deepest a surface is raised by the snow, in metres, however deep it lies (#define it before
+// including this to change it): a deeper snow would bury what the game does not bury - rails,
+// a platform's edge
+#ifndef RELOADED_SNOW_MAX_DEPTH
+#define RELOADED_SNOW_MAX_DEPTH 1.0
+#endif
+
+// reloaded_weather_snow_depth() with the weather there given (reloaded_weather_local()'s)
+float reloaded_weather_snow_depth_at(vec3 world_normal, vec3 world_position, vec4 local) {
+	float facing_up = smoothstep(0.5, 0.9, normalize(world_normal).y);
+	float depth = reloaded_snow_depth * local.r * reloaded_weather_snow_kept(local.a, 0.0) * reloaded_weather_snow_heaping(world_position.xz);
+	return facing_up * min(depth, RELOADED_SNOW_MAX_DEPTH);
+}
+
+// How deep the snow lies at a point of a surface facing up, in metres: as deep as it lies on the
+// average, heaped up here. For vertex(), to raise the surface by:
+//   vec3 world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+//   vec3 world_normal = normalize(mat3(MODEL_MATRIX) * NORMAL);
+//   float depth = reloaded_weather_snow_depth(world_normal, world_position);
+//   VERTEX += inverse(mat3(MODEL_MATRIX)) * vec3(0.0, depth, 0.0);
+// It moves vertices, so it shows on a dense mesh (a terrain) and not on a box of eight corners.
+float reloaded_weather_snow_depth(vec3 world_normal, vec3 world_position) {
+	if (!reloaded_weather_snow_exists) {
+		return 0.0;
+	}
+	return reloaded_weather_snow_depth_at(world_normal, world_position, reloaded_weather_local(world_position));
+}
+
+// The surface's normal turned by the heaps the snow lies in (world space), where there is snow
+vec3 reloaded_weather_snow_normal(vec3 world_normal, vec3 world_position) {
+	if (!reloaded_weather_snow_exists) {
+		return world_normal;
+	}
+	float e = 0.15;
+	// the probes' once: they stand metres apart, the samples a span
+	vec4 local = reloaded_weather_local(world_position);
+	float here = reloaded_weather_snow_depth_at(world_normal, world_position, local);
+	if (here <= 0.0001) {
+		return world_normal;
+	}
+	float dx = reloaded_weather_snow_depth_at(world_normal, world_position + vec3(e, 0.0, 0.0), local) - here;
+	float dz = reloaded_weather_snow_depth_at(world_normal, world_position + vec3(0.0, 0.0, e), local) - here;
+	return normalize(world_normal - vec3(dx, 0.0, dz) / e);
+}
+
+// The weather on a surface: the wet and the snow on it. puddling - how much water the surface would
+// hold standing (a paving 1, a soil 0.3, a ballast 0), for a weather that draws it
+void reloaded_weather_surface_puddled(inout vec3 surface_albedo, inout float surface_roughness, vec3 world_normal, vec3 world_position, float puddling) {
+	if (!reloaded_weather_surfaces_active) {
+		return;
+	}
+	// before any branch on the pixel's own: the derivatives are good only in uniform control flow
+	float reflections_near = reloaded_weather_reflections_near(world_position);
+	vec4 local = reloaded_weather_local(world_position);
+	// wet: darker (the water fills the pores) and glossier
+	if (reloaded_weather_wet_exists) {
+		float wet = clamp(reloaded_wetness * local.g, 0.0, 1.0);
+		surface_albedo *= mix(1.0, 0.62, wet);
+		surface_roughness = mix(surface_roughness, min(surface_roughness, mix(0.7, 0.18, reflections_near)), wet * 0.85);
+	}
+	// soaked, it greys to a glistening slush
+	float snow = reloaded_weather_snow_exists ? reloaded_weather_snow_at(world_normal, world_position, local) : 0.0;
+	float slush = clamp(reloaded_snow_wetness * 0.8, 0.0, 1.0);
+	surface_albedo = mix(surface_albedo, mix(RELOADED_SNOW_ALBEDO, RELOADED_SLUSH_ALBEDO, slush), snow);
+	surface_roughness = mix(surface_roughness, mix(0.75, 0.3, slush), snow);
+}
+
+// Everything the weather does to a surface, each part worked out once and only where it is - for a
+// material taking its colour, roughness and normal from it (fragment() only): the wet, the snow
+// lying with its heaps in the light as near as a pixel is small enough to show them. world_normal -
+// the surface's own (world space) in, the weather's out; returns how far the snow covers the surface,
+// for its own bumps (its normal map) to go under it. puddling - as for
+// reloaded_weather_surface_puddled(). snow_share - how much of the snow on the open ground lies on
+// the surface: 0 none (a road cleared of it), 1 as much, more where it was heaped up (the banks a
+// plough leaves); surface_heat - how much warmer than where it stands the surface is of its own (°C,
+// a material's warm place: a chimney, a boiler room's wall, an engine's cover). The snow and the
+// wet are as much as lies where it is (reloaded_weather_local())
+float reloaded_weather_apply_heated(inout vec3 surface_albedo, inout float surface_roughness, inout vec3 world_normal,
+		vec3 world_position, float puddling, float snow_share, float surface_heat) {
+	// a branch on the globals alone: the control flow stays uniform for the derivatives below
+	if (!reloaded_weather_surfaces_active) {
+		return 0.0;
+	}
+	vec3 normal = normalize(world_normal);
+	// before any branch on the pixel's own: the derivatives are good only in uniform control flow
+	float footprint = length(fwidth(world_position.xz));
+	float reflections_near = reloaded_weather_reflections_near(world_position);
+	vec3 weather_normal = normal;
+	vec4 local = reloaded_weather_local(world_position);
+	snow_share *= local.r * reloaded_weather_snow_kept(local.a, surface_heat);
+
+	if (reloaded_weather_wet_exists) {
+		float wet = clamp(reloaded_wetness * local.g, 0.0, 1.0);
+		surface_albedo *= mix(1.0, 0.62, wet);
+		surface_roughness = mix(surface_roughness, min(surface_roughness, mix(0.7, 0.18, reflections_near)), wet * 0.85);
+	}
+
+	float snow = 0.0;
+	float facing_up = smoothstep(0.25, 0.75, normal.y);
+	if (reloaded_weather_snow_exists && snow_share > 0.0 && facing_up > 0.0) {
+		float depth = reloaded_snow_depth * snow_share;
+		float heaping = reloaded_weather_snow_heaping(world_position.xz);
+		float cover = clamp(depth * heaping / RELOADED_SNOW_COVER_DEPTH, 0.0, 1.0);
+		if (cover > 0.001) {
+			snow = facing_up * reloaded_weather_snow_patches(world_position.xz, cover);
+		}
+		if (snow > 0.001) {
+			float slush = clamp(reloaded_snow_wetness * 0.8, 0.0, 1.0);
+			surface_albedo = mix(surface_albedo, mix(RELOADED_SNOW_ALBEDO, RELOADED_SLUSH_ALBEDO, slush), snow);
+			surface_roughness = mix(surface_roughness, mix(0.75, 0.3, slush), snow);
+			// the heaps in the light, near enough to show
+			float near = 1.0 - smoothstep(0.1, 0.4, footprint);
+			if (near > 0.0) {
+				float e = 0.15;
+				float heap_depth = smoothstep(0.5, 0.9, normal.y) * min(depth, RELOADED_SNOW_MAX_DEPTH);
+				float dx = (reloaded_weather_snow_heaping(world_position.xz + vec2(e, 0.0)) - heaping) * heap_depth;
+				float dz = (reloaded_weather_snow_heaping(world_position.xz + vec2(0.0, e)) - heaping) * heap_depth;
+				vec3 snow_normal = normalize(normal - vec3(dx, 0.0, dz) * (near / e));
+				weather_normal = normalize(mix(weather_normal, snow_normal, snow));
+			}
+		}
+	}
+	world_normal = weather_normal;
+	return snow;
+}
+
+// reloaded_weather_apply_heated() with the surface as warm as where it stands
+float reloaded_weather_apply_snow_share(inout vec3 surface_albedo, inout float surface_roughness, inout vec3 world_normal,
+		vec3 world_position, float puddling, float snow_share) {
+	return reloaded_weather_apply_heated(surface_albedo, surface_roughness, world_normal, world_position, puddling, snow_share, 0.0);
+}
+
+// reloaded_weather_apply_snow_share() with as much snow as on the open ground
+float reloaded_weather_apply(inout vec3 surface_albedo, inout float surface_roughness, inout vec3 world_normal,
+		vec3 world_position, float puddling) {
+	return reloaded_weather_apply_snow_share(surface_albedo, surface_roughness, world_normal, world_position, puddling, 1.0);
+}
+
+void reloaded_weather_surface(inout vec3 surface_albedo, inout float surface_roughness, vec3 world_normal, vec3 world_position) {
+	reloaded_weather_surface_puddled(surface_albedo, surface_roughness, world_normal, world_position, 0.5);
+}

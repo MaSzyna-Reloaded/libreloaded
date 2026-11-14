@@ -21,6 +21,10 @@
 namespace godot {
     const char *VehicleRenderingServer::vehicle_model_built_signal = "vehicle_model_built";
     const char *VehicleRenderingServer::builds_finished_signal = "builds_finished";
+    /* How much farther from the camera a vehicle's low-poly interior is drawn [m], in the instance
+     * shader parameter its materials take */
+    static constexpr const char *LOW_POLY_DEPTH_BEHIND_PARAMETER = "reloaded_depth_behind";
+    static constexpr float LOW_POLY_DEPTH_BEHIND = 0.02F;
 
     /* A vehicle far away is drawn from instances, a near one as nodes - shown and owned in the
      * editor when it is editable */
@@ -275,6 +279,17 @@ namespace godot {
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_snow_material", "vehicle", "material"),
+                &VehicleRenderingServer::vehicle_set_snow_material);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_set_snow", "vehicle", "snow"), &VehicleRenderingServer::vehicle_set_snow);
+        ClassDB::bind_method(D_METHOD("vehicle_get_snow", "vehicle"), &VehicleRenderingServer::vehicle_get_snow);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_set_shader_parameter", "vehicle", "name", "value"),
+                &VehicleRenderingServer::vehicle_set_shader_parameter);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_wiper_sweeps", "vehicle"), &VehicleRenderingServer::vehicle_get_wiper_sweeps);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
                 &VehicleRenderingServer::vehicle_set_shown_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_is_detailed", "vehicle"), &VehicleRenderingServer::vehicle_is_detailed);
@@ -463,6 +478,7 @@ namespace godot {
         visual->detailed = true;
         model_vehicles[p_model] = p_vehicle;
         _bind_parts(p_vehicle, *visual);
+        _send_snow(p_vehicle, *visual);
         // a model handed over is one built - by whoever owns it, before this server could hear it
         emit_signal(vehicle_model_built_signal, p_vehicle);
     }
@@ -471,6 +487,64 @@ namespace godot {
         const Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL_V(visual, RID());
         return visual->model;
+    }
+
+    /* The snow drawn now, if any, is drawn with it from now on */
+    void
+    VehicleRenderingServer::vehicle_set_snow_material(const RID &p_vehicle, const Ref<ShaderMaterial> &p_material) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        visual->snow_overlay = p_material;
+        if (visual->snow_material.is_valid()) {
+            visual->snow_material.unref();
+            _lay_snow(p_vehicle, *visual);
+        }
+        _send_snow(p_vehicle, *visual);
+    }
+
+    void VehicleRenderingServer::vehicle_set_snow(const RID &p_vehicle, const float p_snow) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        visual->snow = CLAMP(p_snow, 0.0F, 1.0F);
+        if (Math::abs(visual->snow - visual->snow_sent) > SNOW_SEND_THRESHOLD ||
+            (visual->snow == 0.0F && visual->snow_sent != 0.0F)) {
+            _send_snow(p_vehicle, *visual);
+        }
+    }
+
+    float VehicleRenderingServer::vehicle_get_snow(const RID &p_vehicle) const {
+        const Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(visual, 0.0F);
+        return visual->snow;
+    }
+
+    void VehicleRenderingServer::vehicle_set_shader_parameter(
+            const RID &p_vehicle, const StringName &p_name, const Variant &p_value) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        // a null is kept too: it takes the uniform off models built again
+        visual->shader_parameters[p_name] = p_value;
+        _lay_shader_parameters(*visual);
+    }
+
+    PackedVector4Array VehicleRenderingServer::vehicle_get_wiper_sweeps(const RID &p_vehicle) const {
+        ERR_FAIL_COND_V(!vehicles.has(p_vehicle), PackedVector4Array());
+        return _vehicle_get_wiper_sweeps(p_vehicle);
+    }
+
+    void VehicleRenderingServer::_lay_shader_parameters(const Visual &p_visual) {
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        if (models == nullptr) {
+            return;
+        }
+        for (const Variant &name: p_visual.shader_parameters.keys()) {
+            if (p_visual.model.is_valid()) {
+                models->instance_set_shader_parameter(p_visual.model, name, p_visual.shader_parameters[name]);
+            }
+            for (const RID &instance: p_visual.attachments) {
+                models->instance_set_shader_parameter(instance, name, p_visual.shader_parameters[name]);
+            }
+        }
     }
 
     void VehicleRenderingServer::vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin) {
@@ -508,6 +582,12 @@ namespace godot {
     }
 
     void VehicleRenderingServer::_free_models(const RID &p_vehicle, Visual &p_visual) {
+        // the snow's overlay goes with the models - taken off the ones handed over, which stay their
+        // owner's; the models built next get one anew (_send_snow())
+        if (p_visual.snow_material.is_valid()) {
+            p_visual.snow_material.unref();
+            _lay_snow(p_vehicle, p_visual);
+        }
         _vehicle_models_freed(p_vehicle);
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         model_vehicles.erase(p_visual.model);
@@ -589,6 +669,12 @@ namespace godot {
         p_visual.model_missing = !p_visual.model.is_valid();
         model_vehicles[p_visual.model] = p_vehicle;
         p_visual.low_poly = create(appearance->get_low_poly_model_filename(), appearance->get_skins(), detail);
+        // the low-poly interior lies within the body, some of it in the body's own plane: drawn a
+        // little farther from the camera, the body is seen where they meet, not each in turn
+        if (p_visual.low_poly.is_valid()) {
+            models->instance_set_shader_parameter(
+                    p_visual.low_poly, LOW_POLY_DEPTH_BEHIND_PARAMETER, LOW_POLY_DEPTH_BEHIND);
+        }
         // the passengers carry no skin of their own
         p_visual.passengers =
                 create(appearance->get_passengers_model_filename(), PackedStringArray(),
@@ -601,6 +687,9 @@ namespace godot {
             }
         }
         _vehicle_models_created(p_vehicle);
+        // the new instances carry the snow the vehicle has, if it is drawn in detail
+        _send_snow(p_vehicle, p_visual);
+        _lay_shader_parameters(p_visual);
         _register_pickable(p_vehicle, p_visual);
     }
 
@@ -707,6 +796,41 @@ namespace godot {
         if (models != nullptr && p_visual.model.is_valid() && !p_visual.poses.is_empty()) {
             models->instance_set_part_poses(p_visual.model, p_visual.poses);
         }
+    }
+
+    /* The snow drawn while the vehicle is drawn in detail: an overlay of its own that draws how much
+     * of it there is, laid over its models when it comes and taken off when it goes - the vehicles
+     * far away take no material for it. More or less of it changes the overlay alone. */
+    void VehicleRenderingServer::_send_snow(const RID &p_vehicle, Visual &p_visual) {
+        p_visual.snow_sent = p_visual.snow;
+        const bool drawn = p_visual.detailed && p_visual.snow > SNOW_DRAWN_MIN && p_visual.snow_overlay.is_valid();
+        if (drawn == p_visual.snow_material.is_valid()) {
+            if (drawn) {
+                p_visual.snow_material->set_shader_parameter(VEHICLE_SNOW_PARAMETER, p_visual.snow);
+            }
+            return;
+        }
+        if (drawn) {
+            p_visual.snow_material = p_visual.snow_overlay->duplicate();
+            p_visual.snow_material->set_shader_parameter(VEHICLE_SNOW_PARAMETER, p_visual.snow);
+        } else {
+            p_visual.snow_material.unref();
+        }
+        _lay_snow(p_vehicle, p_visual);
+    }
+
+    /* The snow's overlay, or none, over the exterior and its attachments - never over the low-poly
+     * interior or the passengers - and over what a plugin's renderer draws of its own */
+    void VehicleRenderingServer::_lay_snow(const RID &p_vehicle, const Visual &p_visual) {
+        if (ModelRenderingServer *models = ModelRenderingServer::get_instance(); models != nullptr) {
+            if (p_visual.model.is_valid()) {
+                models->instance_set_material_overlay(p_visual.model, p_visual.snow_material);
+            }
+            for (const RID &instance: p_visual.attachments) {
+                models->instance_set_material_overlay(instance, p_visual.snow_material);
+            }
+        }
+        _vehicle_snow_changed(p_vehicle, p_visual.snow_material);
     }
 
     /// A vehicle far from the camera is rendered from RenderingServer instances instead of a node
@@ -865,6 +989,9 @@ namespace godot {
             p_visual.holder = ObjectID();
         }
         _register_pickable(p_vehicle, p_visual);
+        // the snow is drawn in detail only - after the pickable, whose outline gave the model back
+        // the overlay it had
+        _send_snow(p_vehicle, p_visual);
         if (p_detailed) {
             _place(p_vehicle, p_visual);
         }

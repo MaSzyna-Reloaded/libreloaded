@@ -397,7 +397,8 @@ func sit_down() -> void:
     cabin_view.global_transform = cabin.get_camera_transform()
     var basis:Basis = cabin.global_basis
     var rear:bool = RailVehicleServer.cabin_get_kind(cabin.get_cabin()) == RailVehicleCabinKind.RAIL_VEHICLE_CABIN_REAR
-    var facing:Basis = basis if rear else basis.rotated(Vector3.UP, PI)
+    # about the cab's own vertical: a cab leaning on a canted curve would leave the head leaning in it
+    var facing:Basis = basis if rear else basis * Basis(Vector3.UP, PI)
     # turned by the MMD's driverNangle: from that facing, yaw then pitch - the original's frame is
     # Godot's turned about the vertical, not mirrored, so the signs carry over (Camera.cpp:205-216)
     var view_angle:Vector2 = cabin.get_driver_view_angle()

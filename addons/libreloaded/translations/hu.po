@@ -154,9 +154,85 @@ msgstr "visszapillantó tükrök"
 msgid "radio call 1"
 msgstr "hívójel 1"
 
+msgid "wiper 1 handle"
+msgstr "ablaktörlő fogantyú 1"
+
+msgid "wiper 2 handle"
+msgstr "ablaktörlő fogantyú 2"
+
+msgid "wiper 3 handle"
+msgstr "ablaktörlő fogantyú 3"
+
+msgid "wiper 4 handle"
+msgstr "ablaktörlő fogantyú 4"
+
+msgid "wiper 1 valve"
+msgstr "1. ablaktörlő szelep"
+
+msgid "wiper 2 valve"
+msgstr "2. ablaktörlő szelep"
+
+msgid "wiper 3 valve"
+msgstr "3. ablaktörlő szelep"
+
+msgid "wiper 4 valve"
+msgstr "4. ablaktörlő szelep"
+
 # the debug HUD's Stations window (MaszynaStationsPanel)
 msgid "Stations"
 msgstr "Állomások"
 
 msgid "Show"
 msgstr "Megjelenítés"
+
+# The debug HUD's weather controls
+msgid "Weather"
+msgstr "Időjárás"
+
+msgid "Settings"
+msgstr "Beállítások"
+
+msgid "Calendar"
+msgstr "Naptár"
+
+msgid "Wind"
+msgstr "Szél"
+
+msgid "Dir"
+msgstr "Irány"
+
+msgid "Precipitation"
+msgstr "Csapadék"
+
+msgid "Clouds"
+msgstr "Felhőzet"
+
+msgid "Temperature"
+msgstr "Hőmérséklet"
+
+msgid "Fog"
+msgstr "Köd"
+
+msgid "Fog Distance"
+msgstr "Köd távolsága"
+
+msgid "Use system time"
+msgstr "Rendszeridő használata"
+
+msgid "Time"
+msgstr "Idő"
+
+msgid "Day"
+msgstr "Nap"
+
+msgid "Month"
+msgstr "Hónap"
+
+msgid "Year"
+msgstr "Év"
+
+msgid "Time Speed"
+msgstr "Idő sebessége"
+
+msgid "Pause"
+msgstr "Szünet"

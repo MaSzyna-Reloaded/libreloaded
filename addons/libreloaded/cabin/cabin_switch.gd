@@ -121,7 +121,10 @@ func _update_state() -> void:
 
 func _update_mesh_target() -> void:
     _target_mesh_position = mesh_position_offset + (switch_position - value_offset) * mesh_position
-    _target_mesh_rotation = mesh_rotation_offset + (switch_position - value_offset) * mesh_rotation
+    if position_rotations:
+        _target_mesh_rotation = _position_rotation(switch_position - value_offset)
+    else:
+        _target_mesh_rotation = mesh_rotation_offset + (switch_position - value_offset) * mesh_rotation
 
 func _on_command_received(vehicle_rid:RID, p_command:String, p_p1:Variant, _p_p2:Variant) -> void:
     # the command goes to the vehicle the control drives - an EMU's master controller to its motor car
@@ -165,12 +168,7 @@ func _process_tool(delta):
         _current_position = _current_position.lerp(_target_mesh_position, weight)
 
     if is_instance_valid(_mesh):
-        var new_basis = _mesh_original_basis
-        new_basis *= Basis(Vector3.RIGHT, deg_to_rad(_current_rotation.x))
-        new_basis *= Basis(Vector3.UP, deg_to_rad(_current_rotation.y))
-        new_basis *= Basis(Vector3.FORWARD, deg_to_rad(_current_rotation.z))
-        _mesh.transform.basis = new_basis
-        _mesh.position = _mesh_original_position + _current_position
+        _place_mesh(_mesh, _mesh_original_basis, _mesh_original_position, _current_rotation, _current_position)
 
 func _apply_control_value(p_value:Variant) -> void:
     switch_position = int(p_value)

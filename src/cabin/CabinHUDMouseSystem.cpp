@@ -21,9 +21,12 @@ namespace godot {
         /// How strongly a small hovered control itself is tinted with the outline colour
         constexpr float SMALL_OUTLINE_FILL_ALPHA = 0.12;
 
-        /// How far from a small control the cursor may be and still take it - a toggle a few
-        /// pixels wide is otherwise hard to hit
+        /// How far from a control the cursor may be and still take it - a toggle a few pixels wide,
+        /// a handle's thin rod are otherwise hard to hit
         constexpr double PICK_TOLERANCE_PIXELS = 12.0;
+        /// A box's corners, a triangle's points in a mesh's faces
+        constexpr int BOX_CORNERS = 8;
+        constexpr int FACE_POINTS = 3;
         /// How far from upright a control's axis of turning has to lie for the control to be
         /// turned by its top (sine of the axis' tilt, 0.87 - 60 degrees). A brake valve on a slanted
         /// panel leans less and keeps its handle.
@@ -322,6 +325,13 @@ namespace godot {
                 drag_gesture = Vector2();
                 drag_signs = controls[held].drag_signs.is_zero_approx() ? _increase_signs(controls[held])
                                                                         : controls[held].drag_signs;
+                // a control of one axis takes that one, whichever way the hand starts: locked on the
+                // other, of no sign, it did not move until let go
+                if (Math::is_zero_approx(drag_signs.x)) {
+                    drag_axis = DRAG_AXIS_VERTICAL;
+                } else if (Math::is_zero_approx(drag_signs.y)) {
+                    drag_axis = DRAG_AXIS_HORIZONTAL;
+                }
                 drag_cursor_position = button->get_position();
                 Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
             }
@@ -409,30 +419,75 @@ namespace godot {
             return exact;
         }
 
-        // the nearest control middle on screen, then a ray through it to be sure it shows there
+        // the control whose faces come nearest on screen, along any of their edges: the rod of a
+        // handle or a small knob is taken along its whole length, not at its middle alone
         RID nearest;
-        Vector2 nearest_middle;
+        Vector3 nearest_point;
         double nearest_distance = PICK_TOLERANCE_PIXELS;
         for (const KeyValue<RID, Control> &entry: controls) {
-            const MeshInstance3D *mesh = mesh_of(entry.value.pickable.parts[0].mesh);
-            if (mesh == nullptr || !mesh->is_visible_in_tree()) {
-                continue;
-            }
-            const Vector3 middle = mesh->get_global_transform().xform(mesh->get_aabb().get_center());
-            if (view->is_position_behind(middle)) {
-                continue;
-            }
-            const Vector2 screen_middle = view->unproject_position(middle);
-            const double distance = screen_middle.distance_to(p_position);
-            if (distance < nearest_distance) {
-                nearest_distance = distance;
-                nearest = entry.key;
-                nearest_middle = screen_middle;
+            for (const Part &part: entry.value.pickable.parts) {
+                const MeshInstance3D *mesh = mesh_of(part.mesh);
+                if (mesh == nullptr || !mesh->is_visible_in_tree()) {
+                    continue;
+                }
+                const Transform3D transform = mesh->get_global_transform();
+                // the box on screen first: it rejects nearly every mesh
+                const AABB box = mesh->get_aabb();
+                Rect2 on_screen;
+                bool in_front = false;
+                for (int corner = 0; corner < BOX_CORNERS; ++corner) {
+                    const Vector3 point = transform.xform(box.get_endpoint(corner));
+                    if (view->is_position_behind(point)) {
+                        continue;
+                    }
+                    const Vector2 projected = view->unproject_position(point);
+                    on_screen = in_front ? on_screen.expand(projected) : Rect2(projected, Vector2());
+                    in_front = true;
+                }
+                if (!in_front || !on_screen.grow(static_cast<real_t>(nearest_distance)).has_point(p_position)) {
+                    continue;
+                }
+                for (int64_t index = 0; index < part.faces.size(); ++index) {
+                    const Vector3 start = transform.xform(part.faces[index]);
+                    const int64_t next = index % FACE_POINTS == FACE_POINTS - 1 ? index - FACE_POINTS + 1 : index + 1;
+                    const Vector3 end = transform.xform(part.faces[next]);
+                    if (view->is_position_behind(start) || view->is_position_behind(end)) {
+                        continue;
+                    }
+                    const Vector2 screen_start = view->unproject_position(start);
+                    const Vector2 along = view->unproject_position(end) - screen_start;
+                    const real_t length_squared = along.length_squared();
+                    const real_t share =
+                            length_squared > 0.0f
+                                    ? CLAMP((p_position - screen_start).dot(along) / length_squared, 0.0f, 1.0f)
+                                    : 0.0f;
+                    const double distance = p_position.distance_to(screen_start + along * share);
+                    if (distance < nearest_distance) {
+                        nearest_distance = distance;
+                        nearest = entry.key;
+                        nearest_point = start.lerp(end, share);
+                    }
+                }
             }
         }
-        if (!nearest.is_valid() || _pick_exact(view, nearest_middle, p_r_point) != nearest) {
+        if (!nearest.is_valid()) {
             return RID();
         }
+        // it shows there: nothing but its own meshes, an occluder too, lies nearer on the way to it
+        const Vector3 from = view->get_global_transform().origin;
+        const Vector<Part> &own_parts = controls[nearest].pickable.parts;
+        for (const KeyValue<RID, Pickable> &entry: occluders) {
+            bool own = false;
+            for (const Part &part: own_parts) {
+                own = own || (!entry.value.parts.is_empty() && entry.value.parts[0].mesh == part.mesh);
+            }
+            double distance = from.distance_to(nearest_point);
+            Vector3 occluded_point;
+            if (!own && _hit(entry.value, from, nearest_point, distance, occluded_point)) {
+                return RID();
+            }
+        }
+        p_r_point = nearest_point;
         return nearest;
     }
 
@@ -479,15 +534,23 @@ namespace godot {
 
     void CabinHUDMouseSystem::_set_outline(const RID &p_control, const bool p_outlined) {
         const Control &control = controls[p_control];
-        Ref<Material> material;
-        if (p_outlined) {
-            material = control.small ? small_outline_material : large_outline_material;
-        }
         for (const Part &part: control.pickable.parts) {
             MeshInstance3D *mesh = mesh_of(part.mesh);
             if (mesh != nullptr) {
-                mesh->set_material_overlay(material);
+                mesh->set_material_overlay(p_outlined ? _outline_of(*mesh, control.small) : Ref<Material>());
             }
         }
+    }
+
+    Ref<Material> CabinHUDMouseSystem::_outline_of(const MeshInstance3D &p_mesh, const bool p_small) const {
+        const Vector3 scale = p_mesh.get_global_transform().basis.get_scale().abs();
+        const double mean_scale = (scale.x + scale.y + scale.z) / 3.0;
+        if (Math::is_equal_approx(mean_scale, 1.0) || Math::is_zero_approx(mean_scale)) {
+            return p_small ? small_outline_material : large_outline_material;
+        }
+        // the outline grows in the mesh's own space: a model may scale a control by tens (an EU07's
+        // valves, 42.5 times), its outline then wider than the cab's desk
+        return p_small ? mouse_picking::outline_material(SMALL_OUTLINE_WIDTH / mean_scale, SMALL_OUTLINE_FILL_ALPHA)
+                       : mouse_picking::outline_material(LARGE_OUTLINE_WIDTH / mean_scale, 0.0);
     }
 } // namespace godot
