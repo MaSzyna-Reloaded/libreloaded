@@ -48,3 +48,15 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
   an opaque surface's traced ray reaches the sky), and its reflection goes into the sky's at the
   last cascade, where `scene_forward_clustered.glsl` overwrote the blend. Without it water had a
   hard edge where SDFGI ends: blurred, darker probe reflections within, the sky beyond
+* `0006-local-sdfgi-sharp-reflections.patch` - on `0005-local-sdfgi-transparent-reflections.patch`,
+  a surface within SDFGI's cascades takes its reflection from the probes only as its lobe grows as
+  wide as their texels (some 30 degrees, `SDFGI_OCT_SIZE` 6): from a roughness of 0.35, all of it
+  from 0.6 (`SDFGI_PROBE_ROUGHNESS_FROM`, `SDFGI_PROBE_ROUGHNESS_FULL`), the opaque surfaces'
+  (`gi.glsl`) as the transparent ones'. Below, the reflection is traced through the distance field
+  and the sky's is taken where the ray leaves it. Without it a smooth surface of a roughness of 0.2
+  and more - water raised by a wind - took a blur of everything around it from the probes, darker
+  and duller than the sky's reflection beyond the cascades: a hard square on every lake. A traced
+  ray takes as a hit only what it comes nearer to than it starts from the surface it leaves
+  (`start_clearance`): the hit's softness grows to some 4 cells with the roughness, farther than
+  the ray's start is pushed off its own surface, and water of a roughness of 0.15 and more traced
+  its reflection into itself - dark within the cascades, the same square
