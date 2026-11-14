@@ -4,6 +4,8 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include "utils/UserSettingsProvider.hpp"
+
 namespace godot {
     /* A plugin of Rails Reloaded, compiled into this library (CMake LIBRELOADED_PLUGINS): what it is
      * for the player - its name, description and logo - and what it adds to the core at two points
@@ -38,6 +40,11 @@ namespace godot {
             /* The plugin's own state a problem report carries, read once as the report is opened;
              * empty unless the plugin gives one */
             virtual Dictionary dump_state() const;
+            /* The plugin's settings, added to the game's (UserSettings) as it starts, after the
+             * plugins' classes and before their servers; none - null */
+            virtual Ref<UserSettingsProvider> get_user_settings_provider() const {
+                return {};
+            }
 
             String get_name() const;
             String get_description() const;
