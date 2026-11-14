@@ -34,6 +34,7 @@ func _update_track_data() -> void:
     TrackServer.track_update_properties(_track_rid, damage_flag, friction, joint_spacing)
     TrackServer.track_set_velocity(_track_rid, speed_limit)
     TrackServer.track_set_meta(_track_rid, meta)
+    TrackServer.track_set_covered(_track_rid, structure == TrackData.STRUCTURE_TUNNEL)
 
 func _process_dirty(_delta: float) -> void:
     super._process_dirty(_delta)
@@ -54,6 +55,7 @@ func _create_track() -> void:
     _track_rid = TrackServer.track_create()
     _track_render_rid = TrackRenderingServer.track_create(_track_rid)
     TrackRenderingServer.track_set_scenario(_track_render_rid, get_world_3d().scenario)
+    TrackRenderingServer.track_set_looks(_track_render_rid, looks)
 
 func _free_track() -> void:
     if _track_render_rid.is_valid():

@@ -376,7 +376,6 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         SceneryStreamingServer::project_settings_register();
         SimulationServer::project_settings_register();
         SmokeServer::project_settings_register();
-        StandardTrackRenderingBackend::project_settings_register();
         TrackRenderingServer::project_settings_register();
         TrackServer::project_settings_register();
         UserSettings::project_settings_register();

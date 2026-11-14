@@ -248,6 +248,8 @@ namespace godot {
                 &RailVehicleServer::vehicle_find_vehicle);
         ClassDB::bind_method(
                 D_METHOD("coupler_get_distance", "vehicle", "other"), &RailVehicleServer::coupler_get_distance);
+        ClassDB::bind_method(D_METHOD("engine_get_temperature", "vehicle"), &RailVehicleServer::engine_get_temperature);
+        ClassDB::bind_method(D_METHOD("body_get_temperature", "vehicle"), &RailVehicleServer::body_get_temperature);
         ClassDB::bind_method(D_METHOD("vehicle_get_curve", "vehicle"), &RailVehicleServer::vehicle_get_curve);
 
         ADD_SIGNAL(MethodInfo(vehicle_emergency_signal_received_signal, PropertyInfo(Variant::RID, "vehicle")));
@@ -2426,6 +2428,25 @@ namespace godot {
         neighbour->set_end(found_end);
         neighbour->set_distance(found_distance);
         return neighbour;
+    }
+
+    double RailVehicleServer::engine_get_temperature(const RID &p_vehicle) const {
+        const VehiclePlacement *placement = vehicles.getptr(p_vehicle);
+        const RailVehicleController *controller = placement != nullptr ? _get_controller(*placement) : nullptr;
+        const Ref<RailVehicleEngine> engine =
+                controller != nullptr ? controller->get_component(VehicleComponentType::COMPONENT_ENGINE) : nullptr;
+        if (engine.is_valid()) {
+            return engine->get_temperature();
+        }
+        const SimulationServer *simulation = SimulationServer::get_instance();
+        return simulation != nullptr ? simulation->get_air_temperature() : SimulationServer::DEFAULT_AIR_TEMPERATURE;
+    }
+
+    double RailVehicleServer::body_get_temperature(const RID &p_vehicle) const {
+        const SimulationServer *simulation = SimulationServer::get_instance();
+        const double air =
+                simulation != nullptr ? simulation->get_air_temperature() : SimulationServer::DEFAULT_AIR_TEMPERATURE;
+        return air + (MAX(0.0, engine_get_temperature(p_vehicle) - air) * BODY_ENGINE_HEAT_SHARE);
     }
 
     double RailVehicleServer::coupler_get_distance(const RID &p_vehicle, const RID &p_other) const {

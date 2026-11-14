@@ -106,6 +106,8 @@ namespace godot {
 
             /// Drawn over the instance's own materials (an outline), none for nothing
             virtual void instance_set_material_overlay(const RID &p_instance, const Ref<Material> &p_material) = 0;
+            /// What is drawn over the instance's own materials, none for nothing
+            virtual Ref<Material> instance_get_material_overlay(const RID &p_instance) const = 0;
             /// A per-instance uniform of the instance's shaders ("instance uniform"), on all its meshes -
             /// kept across a rebuild; null takes it off
             virtual void

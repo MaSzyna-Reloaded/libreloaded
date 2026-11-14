@@ -4,7 +4,7 @@
 		The core's tracks, drawn as their [TrackData] says.
 	</brief_description>
 	<description>
-		Registered with [TrackRenderingServer] as [code]standard[/code], the default backend. A rail track is two rails on a bed of its kind - a ballast prism, a slab, or a street the rails are embedded in - over its formation, banked or cut as its [code]formation_*[/code] say; a road its carriageway and shoulders. Its sleepers - one every [member TrackData.sleeper_spacing], none on a slab or an embedded bed - are MultiMesh chunks drawn within 150 m of the camera, as DoS drew them; a kind of sleeper the look gives no mesh of gets the backend's own. It draws with the renderer's assets, a [TrackRenderingLook] (the project setting [code]reloaded/tracks/look[/code]). Each curve of a switch is drawn as a track of its own; the blades are not drawn.
+		Registered with [TrackRenderingServer] as [code]standard[/code], the default backend. A rail track is two rails on a bed of its kind - a ballast prism, a slab, or a street the rails are embedded in - over its formation, banked or cut as its [code]formation_*[/code] say; a road its carriageway and shoulders. Its sleepers - one every [member TrackData.sleeper_spacing], none on a slab or an embedded bed - are MultiMesh chunks drawn within 150 m of the camera, as DoS drew them; a kind of sleeper the look gives no mesh of gets the backend's own. It draws each track with the [TrackRenderingLook] its owner gives it ([method TrackRenderingServer.track_set_looks]); without one, bare surfaces. Each curve of a switch is drawn as a track of its own; the blades are not drawn.
 	</description>
 	<tutorials>
 	</tutorials>

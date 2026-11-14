@@ -10,6 +10,9 @@ const CLOCK_REFRESH_INTERVAL: float = 0.1
 ## The time speeds the slider steps through. 0 is not one of them - a slider nudged to its end must
 ## not stop the world; stopping it is the pause button's
 const TIME_SCALE_STEPS: Array[float] = [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 20.0]
+## The strongest wind the slider sets [m/s] - a storm's; the weakest the environment's own
+## (EnvironmentNode.WIND_SPEED_MIN)
+const WIND_SPEED_SLIDER_MAX: float = 30.0
 
 ## The environment of the world being shown (attach_environment()); null in the menu, where the HUD
 ## and this window are hidden
@@ -21,6 +24,7 @@ var _refresh_timer: Timer
 @onready var _wind_value_label: Label = %WindValueLabel
 @onready var _rain_value_label: Label = %RainValueLabel
 @onready var _cloud_value_label: Label = %CloudValueLabel
+@onready var _temperature_value_label: Label = %TemperatureValueLabel
 @onready var _fog_density_value_label: Label = %FogDensityValueLabel
 @onready var _fog_distance_value_label: Label = %FogDistanceValueLabel
 @onready var _time_value_label: Label = %TimeValueLabel
@@ -36,6 +40,7 @@ var _refresh_timer: Timer
 @onready var _wind_direction_value_label: Label = %WindDirectionValueLabel
 @onready var _rain_slider: HSlider = %RainSlider
 @onready var _cloud_slider: HSlider = %CloudSlider
+@onready var _temperature_slider: HSlider = %TemperatureSlider
 @onready var _fog_density_slider: HSlider = %FogDensitySlider
 @onready var _fog_distance_slider: HSlider = %FogDistanceSlider
 @onready var _time_slider: HSlider = %TimeSlider
@@ -46,6 +51,8 @@ var _refresh_timer: Timer
 
 
 func _ready() -> void:
+    # the wind in metres a second, not the environment's 0 - 1 strength
+    _wind_strength_slider.max_value = WIND_SPEED_SLIDER_MAX
     _wind_strength_slider.value_changed.connect(_on_wind_strength_changed)
     _wind_direction_slider.value_changed.connect(_on_wind_direction_changed)
     _rain_slider.value_changed.connect(_on_rain_changed)
@@ -124,14 +131,16 @@ func _process_dirty() -> void:
     _month_value_label.text = str(_environment_node.month)
     _year_slider.set_value_no_signal(_environment_node.year)
     _year_value_label.text = str(_environment_node.year)
-    _wind_strength_slider.set_value_no_signal(_environment_node.wind_strength)
-    _wind_value_label.text = _format_percent(_environment_node.wind_strength)
+    _wind_strength_slider.set_value_no_signal(_environment_node.get_wind_speed())
+    _wind_value_label.text = _format_speed(_environment_node.get_wind_speed())
     _wind_direction_slider.set_value_no_signal(_environment_node.wind_direction)
     _wind_direction_value_label.text = _format_degrees(_environment_node.wind_direction)
     _rain_slider.set_value_no_signal(_environment_node.precipitation)
     _rain_value_label.text = _format_percent(_environment_node.precipitation)
     _cloud_slider.set_value_no_signal(_environment_node.cloudiness)
     _cloud_value_label.text = _format_percent(_environment_node.cloudiness)
+    _temperature_slider.set_value_no_signal(_environment_node.temperature)
+    _temperature_value_label.text = _format_temperature(_environment_node.temperature)
     _fog_density_slider.set_value_no_signal(_environment_node.fog_density)
     _fog_density_value_label.text = _format_percent(_environment_node.fog_density)
     _fog_distance_slider.set_value_no_signal(_environment_node.fog_distance)
@@ -172,8 +181,10 @@ func _on_clock_timer_timeout() -> void:
 
 
 func _on_wind_strength_changed(value: float) -> void:
-    _wind_value_label.text = _format_percent(value)
-    _environment_node.wind_strength = value
+    _wind_value_label.text = _format_speed(value)
+    # the strength the speed is of (EnvironmentNode.get_wind_speed())
+    _environment_node.wind_strength = maxf(
+            inverse_lerp(EnvironmentNode.WIND_SPEED_MIN, EnvironmentNode.WIND_SPEED_MAX, value), 0.0)
 
 
 func _on_wind_direction_changed(value: float) -> void:
@@ -189,6 +200,12 @@ func _on_rain_changed(value: float) -> void:
 func _on_cloud_changed(value: float) -> void:
     _cloud_value_label.text = _format_percent(value)
     _environment_node.cloudiness = value
+
+
+## The air's temperature: snow, sleet or rain falls as it is
+func _on_temperature_changed(value: float) -> void:
+    _temperature_value_label.text = _format_temperature(value)
+    _environment_node.temperature = value
 
 
 func _on_fog_density_changed(value: float) -> void:
@@ -244,6 +261,14 @@ func _on_pause_button_toggled(toggled_on: bool) -> void:
 
 func _format_percent(value: float) -> String:
     return "%d%%" % int(round(value * 100.0))
+
+
+func _format_speed(value: float) -> String:
+    return "%.1f m/s" % value
+
+
+func _format_temperature(value: float) -> String:
+    return "%.1f °C" % value
 
 
 func _format_degrees(value: float) -> String:
