@@ -86,6 +86,7 @@
 #include "utils/ReloadedTranslationServer.hpp"
 #include "utils/Units.hpp"
 #include "utils/UserSettings.hpp"
+#include "utils/UserSettingsProvider.hpp"
 #include "utils/WorkerTaskQueue.hpp"
 #include "vehicles/base/GenericVehicleComponent.hpp"
 #include "vehicles/base/GenericVehicleComponentNode.hpp"
@@ -207,6 +208,8 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
     if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
         GDREGISTER_ABSTRACT_CLASS(UserSettings);
+        GDREGISTER_VIRTUAL_CLASS(UserSettingsProvider);
+        GDREGISTER_CLASS(UserSettingsFileProvider);
         GDREGISTER_CLASS(ProcessMemory);
         GDREGISTER_ABSTRACT_CLASS(ReloadedProjectSetting);
         GDREGISTER_CLASS(SimulationServer);
