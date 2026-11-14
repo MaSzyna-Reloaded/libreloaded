@@ -24,8 +24,9 @@
 // ResourceFormatLoader in front of the engine's), with the functions below.
 //
 // Where the weather's probes reach (reloaded_weather_*: gnd-weather's WeatherNode weather_probe_*),
-// the snow, the wet and their warmth are the ground's there: less under a roof, none where a heat
-// source warms it above freezing; without them, the open ground's everywhere.
+// the snow, the wet and their warmth are the ground's there: less under a roof - a volume's, or the
+// scene's own geometry (gnd-weather's shelter map), as little as reached it while it gathered - none
+// where a heat source warms it above freezing; without them, the open ground's everywhere.
 
 global uniform float reloaded_wetness;
 global uniform float reloaded_air_temperature;
@@ -79,6 +80,21 @@ float reloaded_weather_probe_blend(vec3 world_position) {
 	return smoothstep(0.0, 0.08, min(from_side.x, from_side.z)) * smoothstep(0.0, 0.08, from_side.y);
 }
 
+// How much of a probe's cell, from its top, a surface blends into the cell above (of its height): a
+// slope crossing the cells has no step
+const float RELOADED_WEATHER_PROBE_BLEND = 0.2;
+
+// Where world_position's weather is in the probes' textures: a probe holds the weather of what lies in
+// its cell (gnd-weather's WeatherProbes), so a surface reads the cell it is in - blended between two
+// cells, a platform's top took the one under it, which the platform itself shelters - and across,
+// blended between the probes
+vec3 reloaded_weather_probe_coordinate(vec3 world_position) {
+	float cell = reloaded_weather_probe_size.y / float(max(textureSize(reloaded_weather_ground, 0).y, 1));
+	float height = world_position.y / cell;
+	float above = smoothstep(1.0 - RELOADED_WEATHER_PROBE_BLEND, 1.0, fract(height));
+	return vec3(world_position.x, (floor(height) + 0.5 + above) * cell, world_position.z) / reloaded_weather_probe_size;
+}
+
 // The weather at world_position from the probes, blended between them and into the open ground's
 // towards their window's sides: the open ground's share of its snow, its wet and its standing water,
 // and the temperature - 1, 1, 1 and the air's out of them or without them
@@ -88,7 +104,7 @@ vec4 reloaded_weather_local(vec3 world_position) {
 	if (inside <= 0.0) {
 		return open_ground;
 	}
-	return mix(open_ground, texture(reloaded_weather_ground, world_position / reloaded_weather_probe_size), inside);
+	return mix(open_ground, texture(reloaded_weather_ground, reloaded_weather_probe_coordinate(world_position)), inside);
 }
 
 // How much of the snow a surface as warm as temperature (°C) - surface_heat warmer than that of its

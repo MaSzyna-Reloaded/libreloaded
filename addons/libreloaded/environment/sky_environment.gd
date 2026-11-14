@@ -712,6 +712,7 @@ func get_shadow_atlas_size() -> int:
 
 func _apply_directional_light_settings(light: DirectionalLight3D, view: ShadowView) -> void:
     var cabin: bool = view == ShadowView.CABIN
+    light.layers = EnvironmentNode.SUN_RENDER_LAYER
     light.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(REVERSE_CULL_FACE_SETTING))
     # the cab light casts shadows only while there is a cab to look at; it keeps lighting the cab
     # seen from outside

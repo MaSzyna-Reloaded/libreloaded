@@ -7,6 +7,10 @@ const GROUP: StringName = &"reloaded_environment"
 ## Render layer of the cab interior - with reloaded/cabin/improve_shadows_quality the cab is lit by a
 ## sun of its own that reaches only this layer (SkyEnvironment._create_cabin_light())
 const CABIN_RENDER_LAYER: int = 1 << 18
+## Render layer of the sun and the moon (SkyEnvironment's directional lights, the cab's among them),
+## alone: a camera that draws the scene but not its light - a weather's shelter map - leaves it out of
+## its cull mask, since the engine renders a directional light's shadows for every camera seeing it
+const SUN_RENDER_LAYER: int = 1 << 16
 ## Wind speed the 0-1 wind_strength maps onto, m/s
 const WIND_SPEED_MIN: float = 0.15
 const WIND_SPEED_MAX: float = 3.0
