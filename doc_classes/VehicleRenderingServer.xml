@@ -134,6 +134,14 @@
 				The cabin whose interior is drawn, by whoever shows it, in the place of the low-poly interior's cab it stands for - which a plugin's renderer hides, whoever drives (the player's cab). [code]RID()[/code] while none is: every low-poly cab is drawn.
 			</description>
 		</method>
+		<method name="vehicle_set_skins">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="skins" type="PackedStringArray" />
+			<description>
+				The vehicle in other skins - its livery ([member VehicleAppearance.skins]): the models built from its appearance keep standing, their replaceable materials take [param skins] ([method ModelRenderingServer.instance_set_skins]), and the vehicle's appearance, a copy of the one set, has them for the next build.
+			</description>
+		</method>
 		<method name="vehicle_set_transform">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />

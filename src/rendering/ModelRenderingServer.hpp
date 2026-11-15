@@ -173,6 +173,9 @@ namespace godot {
             /// A per-instance uniform of the instance's shaders ("instance uniform"), on all its meshes -
             /// kept across a rebuild; null takes it off
             void instance_set_shader_parameter(const RID &p_instance, const StringName &p_name, const Variant &p_value);
+            /// The instance's replaceable materials take the skins - in what is built, as it stands,
+            /// with nothing built again
+            void instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins);
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const;

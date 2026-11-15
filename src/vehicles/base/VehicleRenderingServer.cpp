@@ -275,6 +275,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_appearance", "vehicle"), &VehicleRenderingServer::vehicle_get_appearance);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_skins", "vehicle", "skins"), &VehicleRenderingServer::vehicle_set_skins);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_models", "vehicle", "model", "low_poly"),
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
@@ -453,6 +455,28 @@ namespace godot {
         const Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL_V(visual, Ref<VehicleAppearance>());
         return visual->appearance;
+    }
+
+    void VehicleRenderingServer::vehicle_set_skins(const RID &p_vehicle, const PackedStringArray &p_skins) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        ERR_FAIL_COND(visual->appearance.is_null());
+        // the appearance is whoever set it's: the vehicle takes a copy in the skins
+        visual->appearance = visual->appearance->duplicate();
+        visual->appearance->set_skins(p_skins);
+        if (!visual->own_models) {
+            return;
+        }
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        ERR_FAIL_NULL(models);
+        for (const RID &model: {visual->model, visual->low_poly, visual->passengers}) {
+            if (model.is_valid()) {
+                models->instance_set_skins(model, p_skins);
+            }
+        }
+        for (const RID &attachment: visual->attachments) {
+            models->instance_set_skins(attachment, p_skins);
+        }
     }
 
     void VehicleRenderingServer::vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly) {

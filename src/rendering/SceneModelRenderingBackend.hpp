@@ -129,6 +129,7 @@ namespace godot {
             void instance_set_material_overlay(const RID &p_instance, const Ref<Material> &p_material) override;
             void instance_set_shader_parameter(
                     const RID &p_instance, const StringName &p_name, const Variant &p_value) override;
+            void instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins) override;
             Dictionary instance_intersect_segment(
                     const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const override;
     };

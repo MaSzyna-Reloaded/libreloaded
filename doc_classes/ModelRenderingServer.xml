@@ -269,6 +269,14 @@
 				A per-instance uniform of the instance's shaders ([code]instance uniform[/code]), on all its meshes, kept when the instance is built again. [code]null[/code] takes it off.
 			</description>
 		</method>
+		<method name="instance_set_skins">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="skins" type="PackedStringArray" />
+			<description>
+				The instance's replaceable materials take [param skins] - in what is built, as it stands, with nothing built again.
+			</description>
+		</method>
 		<method name="instance_set_transform">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
