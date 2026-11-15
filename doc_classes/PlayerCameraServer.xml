@@ -15,6 +15,20 @@
 				Shift+F4: following, the next view of [enum CameraFollowView]; else the vehicle the player drives is followed from the first view, [constant CAMERA_FOLLOW_VIEW_TRAINSET_FRONT].
 			</description>
 		</method>
+		<method name="camera_follow_from">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="transform" type="Transform3D" />
+			<description>
+				The following camera following [param vehicle] from [param transform], taken as its shot: the view stands there, with no flight to its own view. The target and the mode are set at once and told once ([signal camera_changed]).
+			</description>
+		</method>
+		<method name="camera_get_follow_from" qualifiers="const">
+			<return type="Transform3D" />
+			<description>
+				The place [method camera_follow_from] put the following camera to follow from.
+			</description>
+		</method>
 		<method name="camera_get_follow_view" qualifiers="const">
 			<return type="int" enum="PlayerCameraServer.CameraFollowView" />
 			<description>
@@ -38,6 +52,12 @@
 			<return type="RID" />
 			<description>
 				The vehicle the following camera follows, an invalid [RID] for none.
+			</description>
+		</method>
+		<method name="camera_has_follow_from" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Whether the camera follows from the place [method camera_follow_from] put it, until the camera changes otherwise.
 			</description>
 		</method>
 		<method name="camera_place">

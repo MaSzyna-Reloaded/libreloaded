@@ -451,7 +451,10 @@ func _on_camera_changed() -> void:
         follow_view.view = PlayerCameraServer.camera_get_follow_view()
         # another vehicle, or following anew: its view applied in full, flown to from where the view
         # is - or from beside the vehicle, when it is far; the same one keeps its view and offsets
-        if not (previous == follow_view and follow_view.vehicle == target):
+        # put to follow from a place (camera_follow_from()), it stands there, the place its shot
+        if PlayerCameraServer.camera_has_follow_from():
+            follow_view.activate_from(target, PlayerCameraServer.camera_get_follow_from())
+        elif not (previous == follow_view and follow_view.vehicle == target):
             var from:Transform3D = previous.global_transform
             if from.origin.distance_to(VehicleServer.vehicle_get_transform(target).origin) > _follow_jump_distance:
                 from = PlayerCameraServer.camera_get_show_transform(target)
