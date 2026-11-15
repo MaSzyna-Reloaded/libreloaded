@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CabinSystem" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The cabin layer.
+	</brief_description>
+	<description>
+		Kept apart from vehicle commands ([method VehicleServer.vehicle_send_command]), which execute on the vehicle immediately.
+		Holds a [CabinState] per cabin and a registry of cabin control handlers. A cabin is its [VehicleServer] handle ([RailVehicleServer] knows which of the vehicle's cabs it is), a vehicle its [VehicleServer] handle - never its scenery name, which two vehicles may share and one may lack. Cabin controls only report manipulations through [method act]; the handlers are registered by the [CabinLogic] attached to the vehicle (a plugin's) - for the cabin its driver sits in - and translate them into vehicle commands. [CabinSystem] itself has no cabin logic and forwards nothing by default.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="act">
+			<return type="Variant" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="control_id" type="StringName" />
+			<param index="2" name="action" type="StringName" />
+			<param index="3" name="value" type="Variant" default="null" />
+			<description>
+				Reports a manipulation of a cabin control: [param action] is one of [code]increase[/code], [code]decrease[/code], [code]hold[/code], [code]release[/code], [code]toggle[/code], [code]set[/code]. Returns the handler's result, or [code]null[/code] when no handler is registered for the control.
+			</description>
+		</method>
+		<method name="cabin_get_dashboard_light_enabled">
+			<return type="bool" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				Whether the dashboard light of the cabin is lit; a cab not shown works it out first.
+			</description>
+		</method>
+		<method name="cabin_get_instrument_light_enabled">
+			<return type="bool" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				Whether the instrument light of the cabin is lit; a cab not shown works it out first.
+			</description>
+		</method>
+		<method name="cabin_get_light_level">
+			<return type="float" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				The level (0..1) the cab light shines at; a cab not shown works it out first.
+			</description>
+		</method>
+		<method name="cabin_get_timetable_light_enabled">
+			<return type="bool" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				Whether the timetable light of the cabin is lit; a cab not shown works it out first.
+			</description>
+		</method>
+		<method name="cabin_set_dashboard_light_enabled">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				Lights or puts out the dashboard light of the cabin.
+			</description>
+		</method>
+		<method name="cabin_set_instrument_light_enabled">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				Lights or puts out the instrument light of the cabin.
+			</description>
+		</method>
+		<method name="cabin_set_light_level">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="level" type="float" />
+			<description>
+				The cab light of a cabin at [param level] (0..1); the vehicle's drawing follows [signal cabin_light_level_changed].
+			</description>
+		</method>
+		<method name="cabin_set_timetable_light_enabled">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				Lights or puts out the timetable light of the cabin.
+			</description>
+		</method>
+		<method name="cabin_show">
+			<return type="Cabin3D" />
+			<param index="0" name="cabin_rid" type="RID" />
+			<param index="1" name="parent" type="Node" />
+			<description>
+				The interior of the cabin built under [param parent], which rides on its vehicle (the caller mounts it) - the cab keeps its own place in the vehicle's frame. It is built within [method Node.add_child], so it returns built. One interior a vehicle is shown: the one of another of its cabins is rebuilt for this one. [code]null[/code] for a vehicle without a cab.
+			</description>
+		</method>
+		<method name="get_actions" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				The manipulations a control can report ([method act]).
+			</description>
+		</method>
+		<method name="get_cabin_state">
+			<return type="CabinState" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				The state of the cabin, made on first use.
+			</description>
+		</method>
+		<method name="get_control">
+			<return type="Variant" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="control_id" type="StringName" />
+			<description>
+				The current value of a control of the cabin.
+			</description>
+		</method>
+		<method name="get_controls" qualifiers="const">
+			<return type="Array" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				Control ids with a registered handler in the cabin, sorted.
+			</description>
+		</method>
+		<method name="get_state">
+			<return type="Dictionary" />
+			<param index="0" name="cabin" type="RID" />
+			<description>
+				A copy of the current values of the cabin's controls, by control id.
+			</description>
+		</method>
+		<method name="has_control" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="control_id" type="StringName" />
+			<description>
+				Whether the cabin has a handler for the control.
+			</description>
+		</method>
+		<method name="register_control">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="control_id" type="StringName" />
+			<param index="2" name="handler" type="Callable" />
+			<description>
+				Registers the handler of a control of the cabin: [code]handler(state: CabinState, action: StringName, value: Variant) -&gt; Variant[/code].
+			</description>
+		</method>
+		<method name="register_display_process">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="callable" type="Callable" />
+			<description>
+				[code]callable(state: CabinState, delta: float)[/code] for what only the cab shows - its lights: run with the simulation while the interior of the cabin's vehicle is shown, and for a cab not shown when it is about to be ([method cabin_show]) or something reads it ([method cabin_get_light_level], ...). It must work its result out of the state as it is, not of the time passed.
+			</description>
+		</method>
+		<method name="register_process">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="callable" type="Callable" />
+			<description>
+				[code]callable(state: CabinState, delta: float)[/code], called with every step of the simulation while registered. The list is replaced, never changed in place, so a step walks the one it started with even when a callable registers or unregisters on the way.
+			</description>
+		</method>
+		<method name="state_computed_value_register">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="key" type="String" />
+			<param index="2" name="callable" type="Callable" />
+			<description>
+				The cab shows a value of the vehicle's state as it computes it, not as the vehicle has it: [code]callable() -&gt; Variant[/code], asked by [method vehicle_state_value] for [param key] of this vehicle until [method state_computed_value_unregister].
+			</description>
+		</method>
+		<method name="state_computed_value_unregister">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="key" type="String" />
+			<description>
+				Ends [method state_computed_value_register] of [param key].
+			</description>
+		</method>
+		<method name="unregister_control">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="control_id" type="StringName" />
+			<param index="2" name="handler" type="Callable" />
+			<description>
+				Unregisters the handler of the control, if it is still [param handler].
+			</description>
+		</method>
+		<method name="unregister_display_process">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="callable" type="Callable" />
+			<description>
+				Ends [method register_display_process].
+			</description>
+		</method>
+		<method name="unregister_process">
+			<return type="void" />
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="callable" type="Callable" />
+			<description>
+				Ends [method register_process].
+			</description>
+		</method>
+		<method name="vehicle_attach_cab_logic">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="logic" type="CabinLogic" />
+			<description>
+				The cab logic of a vehicle; [code]null[/code] detaches it. One per vehicle, whoever drives it - the player's cab and the AI act on the same controls - registered for the cabin its driver sits in ([method RailVehicleServer.vehicle_get_driver_cabin]) while somebody drives it.
+			</description>
+		</method>
+		<method name="vehicle_component" qualifiers="const">
+			<return type="VehicleComponent" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="type" type="int" enum="VehicleComponentType.Type" />
+			<description>
+				One component of the vehicle, by kind - for an element that reads a value often enough to want the typed property rather than the dump.
+			</description>
+		</method>
+		<method name="vehicle_config" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				The vehicle's configuration ([method VehicleServer.vehicle_dump_config]).
+			</description>
+		</method>
+		<method name="vehicle_get_cab_logic" qualifiers="const">
+			<return type="CabinLogic" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				The cab logic attached to the vehicle, or [code]null[/code].
+			</description>
+		</method>
+		<method name="vehicle_get_cabin_scene" qualifiers="const">
+			<return type="PackedScene" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				The cab interior of the vehicle ([method vehicle_set_cabin_scene]), or [code]null[/code].
+			</description>
+		</method>
+		<method name="vehicle_has_low_voltage" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				Whether the vehicle has its low voltage, without which every lamp of its cab is dark.
+			</description>
+		</method>
+		<method name="vehicle_hide_cabin">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				The cab interior freed; a camera put into it is to be taken out first.
+			</description>
+		</method>
+		<method name="vehicle_set_cabin_scene">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="scene" type="PackedScene" />
+			<description>
+				The cab interior of a vehicle, a scene rooted in a [Cabin3D] - what [method cabin_show] builds. Only a view: the cab logic is the vehicle's ([method vehicle_attach_cab_logic]).
+			</description>
+		</method>
+		<method name="vehicle_state" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				The whole vehicle's state, by name. [VehicleServer] builds it once per step and keeps it until the step or a command moves it on, so the dozens of elements of a cab asking in one frame share one dump. An element that reads one value often enough to care takes its component instead ([method vehicle_component]).
+			</description>
+		</method>
+		<method name="vehicle_state_value">
+			<return type="Variant" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="key" type="String" />
+			<param index="2" name="default_value" type="Variant" default="null" />
+			<description>
+				One named value of the vehicle's state. A value the cab computes ([method state_computed_value_register]) is answered by its callable.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="cabin_dashboard_light_changed">
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				The dashboard light of a cabin came on or went out ([method cabin_set_dashboard_light_enabled]).
+			</description>
+		</signal>
+		<signal name="cabin_instrument_light_changed">
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				The instrument light of a cabin came on or went out ([method cabin_set_instrument_light_enabled]).
+			</description>
+		</signal>
+		<signal name="cabin_light_level_changed">
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="level" type="float" />
+			<description>
+				The light of a cabin shines at another level ([method cabin_set_light_level]).
+			</description>
+		</signal>
+		<signal name="cabin_timetable_light_changed">
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				The timetable light of a cabin came on or went out ([method cabin_set_timetable_light_enabled]).
+			</description>
+		</signal>
+		<signal name="control_changed">
+			<param index="0" name="cabin" type="RID" />
+			<param index="1" name="control_id" type="StringName" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				A control of a cabin has another value ([method CabinState.set_value]).
+			</description>
+		</signal>
+		<signal name="vehicle_cabin_built">
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="cabin" type="Cabin3D" />
+			<description>
+				The interior of a vehicle's cab was built and is shown now - in the tree and drawn ([method cabin_show], which hands the same [param cabin] to whoever shows it); once per interior, showing another cab of the vehicle rebuilds the same one. Never emitted for a cab scene merely set ([method vehicle_set_cabin_scene]).
+			</description>
+		</signal>
+		<signal name="vehicle_cabin_scene_changed">
+			<param index="0" name="vehicle_rid" type="RID" />
+			<description>
+				The vehicle has a cab scene to show now ([method vehicle_set_cabin_scene]) - one its builder hands over after the vehicle has its simulation, and may already be driven.
+			</description>
+		</signal>
+		<signal name="vehicle_command_received">
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="command" type="String" />
+			<param index="2" name="p1" type="Variant" />
+			<param index="3" name="p2" type="Variant" />
+			<description>
+				A command reached the vehicle, from wherever - the console, a keybind, another cab. Relayed here so a cabin element can react without ever holding the vehicle itself - for the vehicles of the shown cabs' trainsets only.
+			</description>
+		</signal>
+	</signals>
+</class>

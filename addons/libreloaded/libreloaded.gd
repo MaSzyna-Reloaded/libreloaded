@@ -16,7 +16,6 @@ func _enable_plugin():
     add_autoload_singleton("VehicleCatalogServer", "res://addons/libreloaded/vehicles/vehicle_catalog_server.gd")
     add_autoload_singleton("TranscriptSystem", "res://addons/libreloaded/sound/transcript_system.gd")
     add_autoload_singleton("ScenerySoundServer", "res://addons/libreloaded/sound/scenery_sound_server.gd")
-    add_autoload_singleton("CabinSystem", "res://addons/libreloaded/cabin/cabin_system.gd")
     add_autoload_singleton("WorldSceneryProvider", "res://addons/libreloaded/world/world_scenery_provider.gd")
 
     add_custom_type(
@@ -61,7 +60,6 @@ func _disable_plugin():
 
     remove_autoload_singleton("WorldSceneryProvider")
     remove_autoload_singleton("ScenerySoundServer")
-    remove_autoload_singleton("CabinSystem")
     remove_autoload_singleton("TranscriptSystem")
     remove_autoload_singleton("Console")
     remove_autoload_singleton("VehicleCatalogServer")

@@ -1,5 +1,8 @@
 #include "cabin/Cabin3D.hpp"
 #include "cabin/CabinHUDMouseSystem.hpp"
+#include "cabin/CabinLogic.hpp"
+#include "cabin/CabinState.hpp"
+#include "cabin/CabinSystem.hpp"
 #include "cache/ResourceCache.hpp"
 #include "driver/DriverImplementation.hpp"
 #include "driver/DriverServer.hpp"
@@ -187,6 +190,7 @@ SceneryMeshRenderingServer *scenery_mesh_rendering_server_singleton = nullptr;
 SmokeServer *smoke_server_singleton = nullptr;
 ReloadedTranslationServer *maszyna_translation_server_singleton = nullptr;
 CabinHUDMouseSystem *cabin_hud_mouse_system_singleton = nullptr;
+CabinSystem *cabin_system_singleton = nullptr;
 SignallingServer *signalling_server_singleton = nullptr;
 ScenarioEventServer *scenario_event_server_singleton = nullptr;
 SceneryHUDMouseServer *scenery_hud_mouse_server_singleton = nullptr;
@@ -335,6 +339,9 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(Cabin3D);
         GDREGISTER_CLASS(TrainSoundListener3D);
         GDREGISTER_ABSTRACT_CLASS(CabinHUDMouseSystem);
+        GDREGISTER_CLASS(CabinState);
+        GDREGISTER_CLASS(CabinLogic);
+        GDREGISTER_ABSTRACT_CLASS(CabinSystem);
         GDREGISTER_CLASS(RailVehicle3D);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleHeating);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleRadio);
@@ -443,6 +450,10 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         Engine::get_singleton()->register_singleton("RoadVehicleServer", road_vehicle_server_singleton); // 10e
         vehicle_server_singleton->implementation_register(
                 RoadVehicleServer::IMPLEMENTATION_NAME, road_vehicle_server_singleton->get_instance_id());
+        // after SimulationServer, VehicleServer and RailVehicleServer are registered: the constructor
+        // follows their clock, commands, freed vehicles and drivers' cabins
+        cabin_system_singleton = memnew(CabinSystem);
+        Engine::get_singleton()->register_singleton("CabinSystem", cabin_system_singleton); // 10f
         // after TrackServer is registered: the constructor follows its switches; before the plugins'
         // servers, which draw the signal heads' lights
         signalling_server_singleton = memnew(SignallingServer);
@@ -672,6 +683,14 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     if (signalling_server_singleton != nullptr) {
         memdelete(signalling_server_singleton);
         signalling_server_singleton = nullptr;
+    }
+
+    if (Engine::get_singleton()->has_singleton("CabinSystem")) {
+        Engine::get_singleton()->unregister_singleton("CabinSystem"); // 10f
+    }
+    if (cabin_system_singleton != nullptr) {
+        memdelete(cabin_system_singleton);
+        cabin_system_singleton = nullptr;
     }
 
     if (Engine::get_singleton()->has_singleton("RoadVehicleServer")) {

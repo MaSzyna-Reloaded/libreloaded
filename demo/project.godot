@@ -40,7 +40,6 @@ TractionRenderingServer="*res://addons/libreloaded/traction/traction_rendering_s
 VehicleCatalogServer="*res://addons/libreloaded/vehicles/vehicle_catalog_server.gd"
 Console="*uid://d046w0soh2iou"
 TranscriptSystem="*res://addons/libreloaded/sound/transcript_system.gd"
-CabinSystem="*res://addons/libreloaded/cabin/cabin_system.gd"
 ScenerySoundServer="*res://addons/libreloaded/sound/scenery_sound_server.gd"
 DebugMenu="*uid://cggqb75a8w8r"
 SceneryServer="*res://addons/libreloaded/scenery/scenery_server.gd"
