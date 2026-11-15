@@ -1,5 +1,7 @@
 #include "cabin/Cabin3D.hpp"
+#include "cabin/CabinComponentInfo.hpp"
 #include "cabin/CabinHUDMouseSystem.hpp"
+#include "cabin/CabinImplementation.hpp"
 #include "cabin/CabinLogic.hpp"
 #include "cabin/CabinState.hpp"
 #include "cabin/CabinSystem.hpp"
@@ -341,6 +343,8 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(CabinHUDMouseSystem);
         GDREGISTER_CLASS(CabinState);
         GDREGISTER_CLASS(CabinLogic);
+        GDREGISTER_CLASS(CabinComponentInfo);
+        GDREGISTER_CLASS(CabinImplementation);
         GDREGISTER_ABSTRACT_CLASS(CabinSystem);
         GDREGISTER_CLASS(RailVehicle3D);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleHeating);

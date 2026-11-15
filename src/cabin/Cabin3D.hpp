@@ -54,6 +54,8 @@ namespace godot {
             double shake_accumulator = 0.0;
 
             RID cabin;
+            /// The implementation that builds this cab, by its name
+            StringName implementation;
             bool has_cab_model = true;
             bool cab_window_open = false;
             Vector3 camera_bound_min;
@@ -108,6 +110,9 @@ namespace godot {
              * comes with it */
             void set_cabin(const RID &p_cabin);
             RID get_cabin() const;
+            /// The name of the implementation that builds this cab (CabinSystem.implementation_register())
+            void set_implementation(const StringName &p_implementation);
+            StringName get_implementation() const;
             void set_has_cab_model(bool p_has_cab_model);
             bool get_has_cab_model() const;
             void set_cab_window_open(bool p_open);

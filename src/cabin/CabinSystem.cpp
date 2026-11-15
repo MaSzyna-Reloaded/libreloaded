@@ -91,6 +91,11 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_control", "cabin", "control_id"), &CabinSystem::get_control);
         ClassDB::bind_method(D_METHOD("get_state", "cabin"), &CabinSystem::get_state);
         ClassDB::bind_method(D_METHOD("get_actions"), &CabinSystem::get_actions);
+        ClassDB::bind_method(
+                D_METHOD("implementation_register", "name", "implementation"), &CabinSystem::implementation_register);
+        ClassDB::bind_method(D_METHOD("implementation_unregister", "name"), &CabinSystem::implementation_unregister);
+        ClassDB::bind_method(D_METHOD("component_list", "implementation"), &CabinSystem::component_list);
+        ClassDB::bind_method(D_METHOD("component_create", "implementation", "name"), &CabinSystem::component_create);
 
         ADD_SIGNAL(MethodInfo(
                 control_changed_signal, PropertyInfo(Variant::RID, "cabin"),
@@ -141,8 +146,8 @@ namespace godot {
                 callable_mp(this, &CabinSystem::_on_vehicle_driver_cabin_changed));
     }
 
-    /* What the cabs hold of the scripts - handlers, processes, cab logics and the cabs' states -
-     * is let go when the tree goes away at quit: the engine finishes the script
+    /* What the cabs hold of the scripts - handlers, processes, cab logics, the cabs' states and
+     * implementations - is let go when the tree goes away at quit: the engine finishes the script
      * languages before it frees this singleton, and a script's callable freed after that is freed
      * twice. Followed once there is a tree, from the first thing taken. */
     void CabinSystem::_follow_tree_exit() {
@@ -169,6 +174,7 @@ namespace godot {
         cabin_scenes.clear();
         cabins.clear();
         state_computed_values.clear();
+        implementations.clear();
     }
 
     CabinSystem::~CabinSystem() {
@@ -624,4 +630,24 @@ namespace godot {
         return get_cabin_state(p_cabin)->get_values().duplicate();
     }
 
+    void
+    CabinSystem::implementation_register(const StringName &p_name, const Ref<CabinImplementation> &p_implementation) {
+        ERR_FAIL_COND(p_implementation.is_null());
+        _follow_tree_exit();
+        implementations[p_name] = p_implementation;
+    }
+
+    void CabinSystem::implementation_unregister(const StringName &p_name) {
+        implementations.erase(p_name);
+    }
+
+    TypedArray<CabinComponentInfo> CabinSystem::component_list(const StringName &p_implementation) const {
+        const Ref<CabinImplementation> *implementation = implementations.getptr(p_implementation);
+        return implementation != nullptr ? (*implementation)->component_list() : TypedArray<CabinComponentInfo>();
+    }
+
+    Node3D *CabinSystem::component_create(const StringName &p_implementation, const StringName &p_name) const {
+        const Ref<CabinImplementation> *implementation = implementations.getptr(p_implementation);
+        return implementation != nullptr ? (*implementation)->component_create(p_name) : nullptr;
+    }
 } // namespace godot

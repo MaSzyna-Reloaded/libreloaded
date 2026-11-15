@@ -1,10 +1,13 @@
 #pragma once
+#include "cabin/CabinComponentInfo.hpp"
+#include "cabin/CabinImplementation.hpp"
 #include "cabin/CabinLogic.hpp"
 #include "cabin/CabinState.hpp"
 #include "utils/RIDHash.hpp"
 #include "vehicles/base/VehicleComponent.hpp"
 #include "vehicles/base/VehicleComponentType.hpp"
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -14,6 +17,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/rid.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 namespace godot {
     class Cabin3D;
@@ -69,6 +73,8 @@ namespace godot {
             HashMap<RID, ObjectID, RIDHasher, RIDComparator> cabins;
             /// Values of a vehicle's state the cab computes rather than reads, by name
             HashMap<RID, HashMap<String, Callable>, RIDHasher, RIDComparator> state_computed_values;
+            /// What builds the cabs, by the name a cab gives (Cabin3D::implementation)
+            HashMap<StringName, Ref<CabinImplementation>> implementations;
             /// Whether what is held of the scripts is let go when the tree goes away (_follow_tree_exit())
             bool following_tree_exit = false;
 
@@ -133,5 +139,15 @@ namespace godot {
             /// Manipulations a control can report (act())
             PackedStringArray get_actions() const;
             Dictionary get_state(const RID &p_cabin);
+
+            /// p_implementation builds the cabs that name p_name; a name registered again is built by the new one
+            void implementation_register(const StringName &p_name, const Ref<CabinImplementation> &p_implementation);
+            void implementation_unregister(const StringName &p_name);
+            /* The controls the implementation registered as p_implementation can make
+             * (CabinImplementation::component_list()); none for no implementation */
+            TypedArray<CabinComponentInfo> component_list(const StringName &p_implementation) const;
+            /* A control the implementation registered as p_implementation makes by p_name, with its
+             * defaults (CabinImplementation::component_create()); null for no such one */
+            Node3D *component_create(const StringName &p_implementation, const StringName &p_name) const;
     };
 } // namespace godot

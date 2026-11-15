@@ -88,6 +88,21 @@
 				The interior of the cabin built under [param parent], which rides on its vehicle (the caller mounts it) - the cab keeps its own place in the vehicle's frame. It is built within [method Node.add_child], so it returns built. One interior a vehicle is shown: the one of another of its cabins is rebuilt for this one. [code]null[/code] for a vehicle without a cab.
 			</description>
 		</method>
+		<method name="component_create" qualifiers="const">
+			<return type="Node3D" />
+			<param index="0" name="implementation" type="StringName" />
+			<param index="1" name="name" type="StringName" />
+			<description>
+				A control the implementation registered as [param implementation] makes by [param name] - a name of [method component_list] - with its defaults; [code]null[/code] for no such implementation or control.
+			</description>
+		</method>
+		<method name="component_list" qualifiers="const">
+			<return type="CabinComponentInfo[]" />
+			<param index="0" name="implementation" type="StringName" />
+			<description>
+				The controls the implementation registered as [param implementation] can make, each once; none for no such implementation.
+			</description>
+		</method>
 		<method name="get_actions" qualifiers="const">
 			<return type="PackedStringArray" />
 			<description>
@@ -129,6 +144,21 @@
 			<param index="1" name="control_id" type="StringName" />
 			<description>
 				Whether the cabin has a handler for the control.
+			</description>
+		</method>
+		<method name="implementation_register">
+			<return type="void" />
+			<param index="0" name="name" type="StringName" />
+			<param index="1" name="implementation" type="CabinImplementation" />
+			<description>
+				[param implementation] builds the cabs whose [member Cabin3D.implementation] is [param name]; a name registered again is built by the new one.
+			</description>
+		</method>
+		<method name="implementation_unregister">
+			<return type="void" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				Forgets the implementation registered as [param name].
 			</description>
 		</method>
 		<method name="register_control">
