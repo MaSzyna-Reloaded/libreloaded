@@ -1,8 +1,11 @@
 #pragma once
+#include "vehicles/base/VehicleComponent.hpp"
+#include "vehicles/base/VehicleComponentInfo.hpp"
 #include "vehicles/base/VehicleController.hpp"
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/rid.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 namespace godot {
     /* What simulates vehicles - registered with VehicleServer under a name a vehicle's controller
@@ -21,5 +24,13 @@ namespace godot {
             virtual void stepping_advance(
                     const Vector<RID> &p_vehicles, const Vector<Ref<VehicleController>> &p_controllers,
                     double p_delta) {}
+            /* The components it can make, each once - every kind of engine its own */
+            virtual TypedArray<VehicleComponentInfo> component_list() const {
+                return {};
+            }
+            /* A component of a name component_list() gives, with its defaults; none for another */
+            virtual Ref<VehicleComponent> component_create(const StringName &p_name) const {
+                return {};
+            }
     };
 } // namespace godot

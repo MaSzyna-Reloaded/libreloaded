@@ -49,6 +49,8 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("implementation_unregister", "name"), &VehicleServer::implementation_unregister);
         ClassDB::bind_method(D_METHOD("implementation_get", "name"), &VehicleServer::implementation_get);
         ClassDB::bind_method(D_METHOD("implementation_get_list"), &VehicleServer::implementation_get_list);
+        ClassDB::bind_method(D_METHOD("component_list", "implementation"), &VehicleServer::component_list);
+        ClassDB::bind_method(D_METHOD("component_create", "implementation", "name"), &VehicleServer::component_create);
         ClassDB::bind_method(D_METHOD("stepping_advance", "delta"), &VehicleServer::stepping_advance);
         ClassDB::bind_method(D_METHOD("stepping_set_enabled", "enabled"), &VehicleServer::stepping_set_enabled);
         ClassDB::bind_method(D_METHOD("stepping_is_enabled"), &VehicleServer::stepping_is_enabled);
@@ -178,6 +180,21 @@ namespace godot {
             result.push_back(entry.key);
         }
         return result;
+    }
+
+    TypedArray<VehicleComponentInfo> VehicleServer::component_list(const StringName &p_implementation) const {
+        const ObjectID *id = implementations.getptr(p_implementation);
+        const VehicleImplementationServer *implementation =
+                id != nullptr ? Object::cast_to<VehicleImplementationServer>(ObjectDB::get_instance(*id)) : nullptr;
+        return implementation != nullptr ? implementation->component_list() : TypedArray<VehicleComponentInfo>();
+    }
+
+    Ref<VehicleComponent>
+    VehicleServer::component_create(const StringName &p_implementation, const StringName &p_name) const {
+        const ObjectID *id = implementations.getptr(p_implementation);
+        const VehicleImplementationServer *implementation =
+                id != nullptr ? Object::cast_to<VehicleImplementationServer>(ObjectDB::get_instance(*id)) : nullptr;
+        return implementation != nullptr ? implementation->component_create(p_name) : Ref<VehicleComponent>();
     }
 
     void VehicleServer::stepping_set_enabled(const bool p_enabled) {

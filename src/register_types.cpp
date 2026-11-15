@@ -92,6 +92,7 @@
 #include "vehicles/base/GenericVehicleComponentNode.hpp"
 #include "vehicles/base/VehicleAppearance.hpp"
 #include "vehicles/base/VehicleComponent.hpp"
+#include "vehicles/base/VehicleComponentInfo.hpp"
 #include "vehicles/base/VehicleComponentType.hpp"
 #include "vehicles/base/VehicleController.hpp"
 #include "vehicles/base/VehicleCurvePointItem.hpp"
@@ -242,6 +243,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(RoadVehicleServer);
         GDREGISTER_CLASS(RailVehicleNeighbour);
         GDREGISTER_CLASS(VehicleAppearance);
+        GDREGISTER_CLASS(VehicleComponentInfo);
         GDREGISTER_ABSTRACT_CLASS(VehicleRenderingServer);
         GDREGISTER_CLASS(RailVehicleAppearance);
         GDREGISTER_CLASS(RailVehicleRenderingServer);

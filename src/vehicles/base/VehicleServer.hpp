@@ -1,5 +1,6 @@
 #pragma once
 #include "utils/RIDHash.hpp"
+#include "vehicles/base/VehicleComponentInfo.hpp"
 #include "vehicles/base/VehicleComponentType.hpp"
 #include "vehicles/base/VehicleController.hpp"
 #include "vehicles/base/VehiclePerson.hpp"
@@ -159,6 +160,12 @@ namespace godot {
             /// The implementation registered as p_name, by its ObjectID; 0 for none
             uint64_t implementation_get(const StringName &p_name) const;
             PackedStringArray implementation_get_list() const;
+            /* The components the implementation registered as p_implementation can make
+             * (VehicleImplementationServer::component_list()); none for no implementation */
+            TypedArray<VehicleComponentInfo> component_list(const StringName &p_implementation) const;
+            /* A component the implementation registered as p_implementation makes by p_name, with its
+             * defaults (VehicleImplementationServer::component_create()); none for no such one */
+            Ref<VehicleComponent> component_create(const StringName &p_implementation, const StringName &p_name) const;
 
             /* One step of every vehicle: each implementation is handed its own vehicles, at once.
              * Driven by SimulationServer's clock, and callable directly with an explicit delta

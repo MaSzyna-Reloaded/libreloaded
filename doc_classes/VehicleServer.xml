@@ -81,6 +81,21 @@
 				The person over to another cabin, of the same vehicle or another one (a gangway), in the role it has. [constant ERR_UNAVAILABLE] for a driver going where one already drives.
 			</description>
 		</method>
+		<method name="component_create" qualifiers="const">
+			<return type="VehicleComponent" />
+			<param index="0" name="implementation" type="StringName" />
+			<param index="1" name="name" type="StringName" />
+			<description>
+				A component the implementation registered as [param implementation] makes by [param name] - a name of [method component_list] - with its defaults; [code]null[/code] for no such implementation or component.
+			</description>
+		</method>
+		<method name="component_list" qualifiers="const">
+			<return type="VehicleComponentInfo[]" />
+			<param index="0" name="implementation" type="StringName" />
+			<description>
+				The components the implementation registered as [param implementation] can make, each once; none for no such implementation.
+			</description>
+		</method>
 		<method name="controller_configure">
 			<return type="void" />
 			<param index="0" name="controller" type="RID" />
