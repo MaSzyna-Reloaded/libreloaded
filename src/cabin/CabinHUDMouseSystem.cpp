@@ -5,7 +5,9 @@
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -322,7 +324,12 @@ namespace godot {
                 drag_gesture = Vector2();
                 drag_signs = controls[held].drag_signs.is_zero_approx() ? _increase_signs(controls[held])
                                                                         : controls[held].drag_signs;
-                drag_cursor_position = button->get_position();
+                // where the cursor stands in the window, as warp_mouse() takes it back: the event's
+                // position is the view's, off by the view's place in the window when it is a
+                // SubViewport beside panels
+                const SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+                drag_cursor_position =
+                        tree != nullptr ? tree->get_root()->get_mouse_position() : button->get_position();
                 Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
             }
             return true;
