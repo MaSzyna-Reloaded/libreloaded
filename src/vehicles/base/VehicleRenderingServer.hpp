@@ -283,6 +283,11 @@ namespace godot {
              * vehicle_set_models() hands it. */
             void vehicle_set_appearance(const RID &p_vehicle, const Ref<VehicleAppearance> &p_appearance);
             Ref<VehicleAppearance> vehicle_get_appearance(const RID &p_vehicle) const;
+            /* The vehicle in other skins - its livery (VehicleAppearance.skins): the models built
+             * from its appearance keep standing, their replaceable materials take the skins
+             * (ModelRenderingServer.instance_set_skins()), and the appearance has them for the
+             * next build */
+            void vehicle_set_skins(const RID &p_vehicle, const PackedStringArray &p_skins);
             /* The exterior and the low-poly interior, as ModelRenderingServer instances somebody else
              * owns - a vehicle assembled by hand */
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);

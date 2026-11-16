@@ -117,6 +117,16 @@ func livery_list(vehicle:VehicleInfo) -> Array[VehicleLivery]:
     return liveries
 
 
+## The formations [param vehicle] runs in, as its provider lists them (VehicleCatalogProvider.
+## formation_list()); none when the provider is not there
+func formation_list(vehicle:VehicleInfo) -> Array[VehicleFormation]:
+    var provider:VehicleCatalogProvider = _get_provider(vehicle.vehicle_provider)
+    if provider:
+        return provider.formation_list(vehicle)
+    var none:Array[VehicleFormation] = []
+    return none
+
+
 ## The livery [param livery_name] of [param vehicle]; null when it has none of that name
 func livery_get(vehicle:VehicleInfo, livery_name:String) -> VehicleLivery:
     for livery:VehicleLivery in livery_list(vehicle):

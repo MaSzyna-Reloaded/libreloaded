@@ -5,7 +5,9 @@
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -78,6 +80,9 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("occluder_free", "occluder"), &CabinHUDMouseSystem::occluder_free);
         ClassDB::bind_method(D_METHOD("mouse_input", "event"), &CabinHUDMouseSystem::mouse_input);
         ClassDB::bind_method(D_METHOD("control_get_hovered"), &CabinHUDMouseSystem::control_get_hovered);
+        ClassDB::bind_method(
+                D_METHOD("control_get_mesh_instance_id", "control"),
+                &CabinHUDMouseSystem::control_get_mesh_instance_id);
 
         BIND_CONSTANT(DRAG_STEP_PIXELS);
 
@@ -255,6 +260,13 @@ namespace godot {
         return hovered;
     }
 
+    int64_t CabinHUDMouseSystem::control_get_mesh_instance_id(const RID &p_control) const {
+        const Control *control = controls.getptr(p_control);
+        return control != nullptr && !control->pickable.parts.is_empty()
+                       ? static_cast<int64_t>(control->pickable.parts[0].mesh)
+                       : 0;
+    }
+
     bool CabinHUDMouseSystem::mouse_input(const Ref<InputEvent> &p_event) {
         const Ref<InputEventMouseMotion> motion = p_event;
         if (motion.is_valid()) {
@@ -322,7 +334,12 @@ namespace godot {
                 drag_gesture = Vector2();
                 drag_signs = controls[held].drag_signs.is_zero_approx() ? _increase_signs(controls[held])
                                                                         : controls[held].drag_signs;
-                drag_cursor_position = button->get_position();
+                // where the cursor stands in the window, as warp_mouse() takes it back: the event's
+                // position is the view's, off by the view's place in the window when it is a
+                // SubViewport beside panels
+                const SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+                drag_cursor_position =
+                        tree != nullptr ? tree->get_root()->get_mouse_position() : button->get_position();
                 Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
             }
             return true;
@@ -402,6 +419,11 @@ namespace godot {
         if (view == nullptr || !view->is_current() ||
             Input::get_singleton()->get_mouse_mode() != Input::MOUSE_MODE_VISIBLE ||
             view->get_viewport()->gui_get_hovered_control() != nullptr) {
+            return RID();
+        }
+        // a cursor outside the view - beside it, over the panels of a SubViewport's window - picks
+        // nothing: the ray through it would still run into the cab
+        if (!view->get_viewport()->get_visible_rect().has_point(p_position)) {
             return RID();
         }
         RID exact = _pick_exact(view, p_position, p_r_point);

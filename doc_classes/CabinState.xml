@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CabinState" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		State of one cabin.
+	</brief_description>
+	<description>
+		The state of a [VehicleServer] cabin, of the vehicle it is attached to. Owned by [CabinSystem] and handed to every registered cabin control handler, which may read and modify it.
+		The vehicle is reached only by its [VehicleServer] handle (commands and state).
+		A cab works three vehicles: the one it is in, the one its controls drive (an EMU's motor car) and the one carrying its pantographs. A control names its own ([enum Target]).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_value" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="control_id" type="StringName" />
+			<param index="1" name="default" type="Variant" default="null" />
+			<description>
+				The current value of the control, or [param default] when it has none.
+			</description>
+		</method>
+		<method name="is_pressed" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="control_id" type="StringName" />
+			<param index="1" name="action" type="StringName" />
+			<param index="2" name="value" type="Variant" />
+			<description>
+				Whether a push control ends up pressed by the manipulation: held, or toggled to the given value - a toggle without one (e.g. from the console) flips its current position.
+			</description>
+		</method>
+		<method name="send_vehicle_command" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="command" type="StringName" />
+			<param index="1" name="p1" type="Variant" default="null" />
+			<param index="2" name="p2" type="Variant" default="null" />
+			<param index="3" name="target" type="int" enum="CabinState.Target" default="0" />
+			<description>
+				A command of a control, to its [param target].
+			</description>
+		</method>
+		<method name="set_value">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+				Sets the current value of the control; [signal CabinSystem.control_changed] is emitted when it changes.
+			</description>
+		</method>
+		<method name="vehicle_component" qualifiers="const">
+			<return type="VehicleComponent" />
+			<param index="0" name="type" type="int" enum="VehicleComponentType.Type" />
+			<param index="1" name="target" type="int" enum="CabinState.Target" default="0" />
+			<description>
+				One component of a [param target] - what a cab logic reads on every step: the dump is composed anew for each read in a step.
+			</description>
+		</method>
+		<method name="vehicle_of" qualifiers="static">
+			<return type="RID" />
+			<param index="0" name="occupied" type="RID" />
+			<param index="1" name="target" type="int" enum="CabinState.Target" />
+			<description>
+				The vehicle of a [param target] of the cab in [param occupied].
+			</description>
+		</method>
+		<method name="vehicle_state" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				The vehicle's state, through [method CabinSystem.vehicle_state].
+			</description>
+		</method>
+		<method name="vehicle_state_value" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="default_value" type="Variant" default="null" />
+			<param index="2" name="target" type="int" enum="CabinState.Target" default="0" />
+			<description>
+				One named value of a [param target]'s state - what a control driven by a state's name reads.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="cabin" type="RID" setter="set_cabin" getter="get_cabin" default="RID()">
+			The [VehicleServer] cabin.
+		</member>
+		<member name="dashboard_light_enabled" type="bool" setter="set_dashboard_light_enabled" getter="get_dashboard_light_enabled" default="false">
+			Whether the dashboard light is lit. Written only by [method CabinSystem.cabin_set_dashboard_light_enabled].
+		</member>
+		<member name="data" type="Dictionary" setter="set_data" getter="get_data" default="{}">
+			Private state of the cabin logic behaviours (timers, state machines, ...).
+		</member>
+		<member name="instrument_light_enabled" type="bool" setter="set_instrument_light_enabled" getter="get_instrument_light_enabled" default="false">
+			Whether the instrument light is lit. Written only by [method CabinSystem.cabin_set_instrument_light_enabled].
+		</member>
+		<member name="light_level" type="float" setter="set_light_level" getter="get_light_level" default="0.0">
+			The level (0..1) the cab light shines at. Written only by [method CabinSystem.cabin_set_light_level].
+		</member>
+		<member name="timetable_light_enabled" type="bool" setter="set_timetable_light_enabled" getter="get_timetable_light_enabled" default="false">
+			Whether the timetable light is lit. Written only by [method CabinSystem.cabin_set_timetable_light_enabled].
+		</member>
+		<member name="values" type="Dictionary" setter="set_values" getter="get_values" default="{}">
+			The current value of each physical control (button pressed, switch position, ...), by control id.
+		</member>
+		<member name="vehicle_rid" type="RID" setter="set_vehicle_rid" getter="get_vehicle_rid" default="RID()">
+			The vehicle the cabin is in.
+		</member>
+	</members>
+	<constants>
+		<constant name="OCCUPIED" value="0" enum="Target">
+			The vehicle the cab is in.
+		</constant>
+		<constant name="CONTROLLED" value="1" enum="Target">
+			The vehicle its controls drive.
+		</constant>
+		<constant name="PANTOGRAPH_UNIT" value="2" enum="Target">
+			The vehicle carrying its pantographs, the controlled one without it.
+		</constant>
+		<constant name="NONE" value="0" enum="Light">
+			No light of the cab.
+		</constant>
+		<constant name="CAB" value="1" enum="Light">
+			The cab light, at its level ([signal CabinSystem.cabin_light_level_changed]).
+		</constant>
+		<constant name="INSTRUMENT" value="2" enum="Light">
+			The instrument light ([signal CabinSystem.cabin_instrument_light_changed]).
+		</constant>
+		<constant name="DASHBOARD" value="3" enum="Light">
+			The dashboard light ([signal CabinSystem.cabin_dashboard_light_changed]).
+		</constant>
+		<constant name="TIMETABLE" value="4" enum="Light">
+			The timetable light ([signal CabinSystem.cabin_timetable_light_changed]).
+		</constant>
+	</constants>
+</class>

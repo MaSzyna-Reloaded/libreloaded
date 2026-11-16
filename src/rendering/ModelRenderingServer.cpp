@@ -103,6 +103,8 @@ namespace godot {
                 D_METHOD("instance_set_material_overlay", "instance", "material"),
                 &ModelRenderingServer::instance_set_material_overlay);
         ClassDB::bind_method(
+                D_METHOD("instance_set_skins", "instance", "skins"), &ModelRenderingServer::instance_set_skins);
+        ClassDB::bind_method(
                 D_METHOD("instance_find_nearest_hit", "from", "to"), &ModelRenderingServer::instance_find_nearest_hit);
         ClassDB::bind_method(
                 D_METHOD("instance_set_shader_parameter", "instance", "name", "value"),
@@ -466,6 +468,12 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_shader_parameter(p_instance, p_name, p_value);
+    }
+
+    void ModelRenderingServer::instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_skins(p_instance, p_skins);
     }
 
     Dictionary ModelRenderingServer::instance_intersect_segment(

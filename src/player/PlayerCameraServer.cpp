@@ -29,6 +29,10 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("camera_show_vehicle", "vehicle"), &PlayerCameraServer::camera_show_vehicle);
         ClassDB::bind_method(D_METHOD("camera_place", "transform"), &PlayerCameraServer::camera_place);
         ClassDB::bind_method(
+                D_METHOD("camera_follow_from", "vehicle", "transform"), &PlayerCameraServer::camera_follow_from);
+        ClassDB::bind_method(D_METHOD("camera_has_follow_from"), &PlayerCameraServer::camera_has_follow_from);
+        ClassDB::bind_method(D_METHOD("camera_get_follow_from"), &PlayerCameraServer::camera_get_follow_from);
+        ClassDB::bind_method(
                 D_METHOD("camera_get_show_transform", "vehicle"), &PlayerCameraServer::camera_get_show_transform);
 
         BIND_ENUM_CONSTANT(CAMERA_MODE_CABIN);
@@ -110,6 +114,7 @@ namespace godot {
                 p_mode == CAMERA_MODE_CABIN && (player == nullptr || !player->player_get_vehicle().is_valid()),
                 "The player drives no vehicle");
         ERR_FAIL_COND_MSG(p_mode == CAMERA_MODE_FOLLOW && !target.is_valid(), "No vehicle to follow");
+        follow_from_set = false;
         mode = p_mode;
         emit_signal(camera_changed_signal);
     }
@@ -122,6 +127,16 @@ namespace godot {
         if (p_vehicle == target) {
             return;
         }
+        follow_from_set = false;
+        _target_take(p_vehicle);
+        if (mode == CAMERA_MODE_FOLLOW && !target.is_valid()) {
+            camera_set_mode(CAMERA_MODE_FREE);
+            return;
+        }
+        emit_signal(camera_changed_signal);
+    }
+
+    void PlayerCameraServer::_target_take(const RID &p_vehicle) {
         // a vehicle in no trainset (a car) is a trainset of its own
         const RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance();
         ERR_FAIL_NULL(rail_vehicles);
@@ -129,17 +144,11 @@ namespace godot {
             const RID trainset = rail_vehicles->vehicle_get_trainset(p_of);
             return trainset.is_valid() ? trainset : p_of;
         };
-        const bool another_trainset = trainset_of(p_vehicle) != trainset_of(target);
-        target = p_vehicle;
-        if (mode == CAMERA_MODE_FOLLOW && !target.is_valid()) {
-            camera_set_mode(CAMERA_MODE_FREE);
-            return;
-        }
         // another trainset is shown anew, from the first view
-        if (another_trainset) {
+        if (trainset_of(p_vehicle) != trainset_of(target)) {
             follow_view = CAMERA_FOLLOW_VIEW_TRAINSET_FRONT;
         }
-        emit_signal(camera_changed_signal);
+        target = p_vehicle;
     }
 
     RID PlayerCameraServer::camera_get_target() const {
@@ -152,6 +161,7 @@ namespace godot {
             return;
         }
         follow_view = p_view;
+        follow_from_set = false;
         emit_signal(camera_changed_signal);
     }
 
@@ -221,5 +231,24 @@ namespace godot {
         // placed first, as camera_show_vehicle(): the free camera is there before the view is free
         emit_signal(camera_placed_signal, p_transform);
         camera_set_mode(CAMERA_MODE_FREE);
+    }
+
+    void PlayerCameraServer::camera_follow_from(const RID &p_vehicle, const Transform3D &p_transform) {
+        const VehicleServer *vehicles = VehicleServer::get_instance();
+        ERR_FAIL_NULL(vehicles);
+        ERR_FAIL_COND(!vehicles->vehicle_exists(p_vehicle));
+        _target_take(p_vehicle);
+        mode = CAMERA_MODE_FOLLOW;
+        follow_from = p_transform;
+        follow_from_set = true;
+        emit_signal(camera_changed_signal);
+    }
+
+    bool PlayerCameraServer::camera_has_follow_from() const {
+        return follow_from_set;
+    }
+
+    Transform3D PlayerCameraServer::camera_get_follow_from() const {
+        return follow_from;
     }
 } // namespace godot

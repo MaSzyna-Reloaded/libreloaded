@@ -203,6 +203,37 @@ func activate(p_vehicle:RID, p_from:Transform3D) -> void:
     _dirty = true
 
 
+## Follows the vehicle from p_from, taken as the shot of the selected view - the offsets that put the
+## view there, so it stands there with no flight; the drive-by view, which stands by the track, flies
+## from it as activate() does
+func activate_from(p_vehicle:RID, p_from:Transform3D) -> void:
+    activate(p_vehicle, p_from)
+    _process_dirty()
+    if not _view_vehicle.is_valid():
+        return
+    _dirty = false
+    var view_transform:Transform3D = VehicleServer.vehicle_get_transform(_view_vehicle)
+    var target:Vector3 = view_transform * _look_offset
+    var arm:Vector3 = view_transform * _view_offset - target
+    # the view stands on the arm along its own Z, which looks back at what it looks at
+    var back:Vector3 = p_from.basis.z.normalized()
+    var heading:float = atan2(back.x, back.z)
+    var elevation:float = clampf(asin(back.y), -ELEVATION_LIMIT, ELEVATION_LIMIT)
+    var distance:float = maxf(p_from.origin.distance_to(target), _min_distance)
+    var look_point:Vector3 = p_from.origin - back * distance
+    var offsets:Offsets = _offsets[view]
+    offsets.orbit = Vector2(angle_difference(atan2(arm.x, arm.z), heading),
+            atan2(arm.y, Vector2(arm.x, arm.z).length()) - elevation)
+    offsets.zoom = distance / arm.length()
+    offsets.shift = view_transform.basis.inverse() * (look_point - target)
+    _shown.orbit = offsets.orbit
+    _shown.shift = offsets.shift
+    _shown.zoom = offsets.zoom
+    _flight = Vector3.ZERO
+    _look_flight = Vector3.ZERO
+    _look_point = look_point
+
+
 func _input(event:InputEvent) -> void:
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
         Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED if event.pressed else Input.MOUSE_MODE_VISIBLE)

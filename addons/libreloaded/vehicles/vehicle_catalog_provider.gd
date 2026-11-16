@@ -19,6 +19,13 @@ func livery_list(_vehicle:VehicleInfo) -> Array[VehicleLivery]:
     return none
 
 
+## The formations [param vehicle], one of its vehicle_list(), runs in, each in the liveries of its
+## vehicles; none for a vehicle that runs alone
+func formation_list(_vehicle:VehicleInfo) -> Array[VehicleFormation]:
+    var none:Array[VehicleFormation] = []
+    return none
+
+
 ## [param vehicle] seen from its side, in its livery, as long as it is - what a list of vehicles shows;
 ## await it, as it may take frames to render; null for none
 func vehicle_get_side_view(_vehicle:VehicleData) -> Texture2D:

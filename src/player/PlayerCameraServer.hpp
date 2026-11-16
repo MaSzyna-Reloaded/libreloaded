@@ -51,6 +51,13 @@ namespace godot {
             CameraMode mode = CAMERA_MODE_FREE;
             RID target;
             CameraFollowView follow_view = CAMERA_FOLLOW_VIEW_TRAINSET_FRONT;
+            /// The place the following camera was put to follow from (camera_follow_from()), until the
+            /// camera changes otherwise
+            Transform3D follow_from;
+            bool follow_from_set = false;
+
+            /// The vehicle followed, its trainset shown anew from the first view; nothing told
+            void _target_take(const RID &p_vehicle);
 
             void _on_vehicle_freed(const RID &p_vehicle);
             /// Let go while looked from its cab, the free camera
@@ -88,6 +95,13 @@ namespace godot {
             Transform3D camera_get_show_transform(const RID &p_vehicle) const;
             /// The free camera at p_transform (a place shown: a station of the HUD's list)
             void camera_place(const Transform3D &p_transform);
+            /// The following camera following p_vehicle from p_transform, taken as its shot: it
+            /// stands there, with no flight to its own view - the target and the mode set at once,
+            /// told once (camera_changed)
+            void camera_follow_from(const RID &p_vehicle, const Transform3D &p_transform);
+            /// Whether the camera follows from the place camera_follow_from() put it, and that place
+            bool camera_has_follow_from() const;
+            Transform3D camera_get_follow_from() const;
     };
 } // namespace godot
 

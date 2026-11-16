@@ -32,7 +32,12 @@ Planning and architecture:
   (`RELOADED_WEATHER_PUDDLES`), never its negation (`NO_*`, `disabled_*`)
 * REQUIRED, ABSOLUTE: **a server is a singleton, never a class of static functions** - a C++
   Engine singleton or a GDScript autoload its plugin adds, never a `class_name` of `static func`s
-  and `static var`s; none is added to such a class, one found is reported - see `CODE_STYLE.md`
+  and `static var`s; none is added to such a class, one found is reported - see `CODE_STYLE.md`.
+  A server is what holds state that changes while the game runs: handles (RIDs), registrations,
+  signals, a lifecycle. A class whose `static var` is a table filled once and then only read, with
+  static functions that read it, is data, not a server: the rule does not apply to it, and it is
+  never reported, planned or filed as a breach. Before citing the rule, check: does the class hold
+  state that changes at runtime, hand out handles or take registrations? No - it is no server
 * REQUIRED, ABSOLUTE: **nothing is loaded in a constructor** - of a server, a backend, a plugin or
   any class the library makes as it starts - **and no lazy cache stands in for it** (a resource
   loaded the first time it is asked for). Whoever makes or owns an object hands it what it needs

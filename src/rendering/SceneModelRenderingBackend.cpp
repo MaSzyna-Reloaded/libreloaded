@@ -323,6 +323,11 @@ namespace godot {
         emit_signal(instance_built_signal, p_instance);
     }
 
+    void SceneModelRenderingBackend::instance_set_skins(
+            const RID & /* p_instance */, const PackedStringArray & /* p_skins */) {
+        // a scene is drawn whole, in its own materials
+    }
+
     void SceneModelRenderingBackend::instance_set_options(
             const RID & /* p_instance */, const String & /* p_data_path */, const PackedStringArray & /* p_skins */,
             const Array & /* p_exclude_node_names */, const bool /* p_force_alpha */,

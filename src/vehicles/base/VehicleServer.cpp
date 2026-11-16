@@ -49,6 +49,8 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("implementation_unregister", "name"), &VehicleServer::implementation_unregister);
         ClassDB::bind_method(D_METHOD("implementation_get", "name"), &VehicleServer::implementation_get);
         ClassDB::bind_method(D_METHOD("implementation_get_list"), &VehicleServer::implementation_get_list);
+        ClassDB::bind_method(D_METHOD("component_list", "implementation"), &VehicleServer::component_list);
+        ClassDB::bind_method(D_METHOD("component_create", "implementation", "name"), &VehicleServer::component_create);
         ClassDB::bind_method(D_METHOD("stepping_advance", "delta"), &VehicleServer::stepping_advance);
         ClassDB::bind_method(D_METHOD("stepping_set_enabled", "enabled"), &VehicleServer::stepping_set_enabled);
         ClassDB::bind_method(D_METHOD("stepping_is_enabled"), &VehicleServer::stepping_is_enabled);
@@ -61,6 +63,7 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("controller_free", "controller"), &VehicleServer::controller_free);
         ClassDB::bind_method(
                 D_METHOD("vehicle_bind_controller", "vehicle", "controller"), &VehicleServer::vehicle_bind_controller);
+        ClassDB::bind_method(D_METHOD("vehicle_restart", "vehicle"), &VehicleServer::vehicle_restart);
         ClassDB::bind_method(
                 D_METHOD("vehicle_set_initial_velocity", "vehicle", "velocity"),
                 &VehicleServer::vehicle_set_initial_velocity);
@@ -177,6 +180,21 @@ namespace godot {
             result.push_back(entry.key);
         }
         return result;
+    }
+
+    TypedArray<VehicleComponentInfo> VehicleServer::component_list(const StringName &p_implementation) const {
+        const ObjectID *id = implementations.getptr(p_implementation);
+        const VehicleImplementationServer *implementation =
+                id != nullptr ? Object::cast_to<VehicleImplementationServer>(ObjectDB::get_instance(*id)) : nullptr;
+        return implementation != nullptr ? implementation->component_list() : TypedArray<VehicleComponentInfo>();
+    }
+
+    Ref<VehicleComponent>
+    VehicleServer::component_create(const StringName &p_implementation, const StringName &p_name) const {
+        const ObjectID *id = implementations.getptr(p_implementation);
+        const VehicleImplementationServer *implementation =
+                id != nullptr ? Object::cast_to<VehicleImplementationServer>(ObjectDB::get_instance(*id)) : nullptr;
+        return implementation != nullptr ? implementation->component_create(p_name) : Ref<VehicleComponent>();
     }
 
     void VehicleServer::stepping_set_enabled(const bool p_enabled) {
@@ -297,6 +315,15 @@ namespace godot {
             vehicle_bind_controller(slot->vehicle, RID());
         }
         controllers.erase(p_controller);
+    }
+
+    void VehicleServer::vehicle_restart(const RID &p_vehicle) {
+        const Vehicle *vehicle = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(vehicle);
+        // a copy: binding clears the vehicle's own before it binds the controller given
+        const RID controller = vehicle->controller;
+        ERR_FAIL_COND_MSG(!controller.is_valid(), "The vehicle has no controller");
+        vehicle_bind_controller(p_vehicle, controller);
     }
 
     void VehicleServer::vehicle_bind_controller(const RID &p_vehicle, const RID &p_controller) {

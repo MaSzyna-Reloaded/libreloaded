@@ -1,7 +1,8 @@
 extends GutTest
 
 ## VehicleCatalogServer: the providers' vehicles by kind, a vehicle built, freed and read by its own
-## provider, and the liveries - the provider's and the player's, which the catalogue keeps
+## provider, and the liveries - the provider's and the player's, which the catalogue keeps - and
+## the formations a vehicle runs in
 
 const PROVIDER:StringName = &"test_catalog"
 const OTHER_PROVIDER:StringName = &"test_catalog_other"
@@ -9,6 +10,8 @@ const LIVERIES_DIRECTORY:String = "user://test_vehicle_catalog_liveries"
 const VEHICLE:String = "test/wagon"
 const PROVIDER_LIVERY:String = "red"
 const PLAYER_LIVERY:String = "mine"
+## The vehicle the test provider's vehicle runs coupled with
+const FORMED_VEHICLE:String = "test/wagon_b"
 ## The side view the test provider shows of its vehicle, and its width between the couplers [px]
 const SIDE_VIEW:Texture2D = preload("res://icon.svg")
 const COUPLING_WIDTH:float = 120.0
@@ -36,6 +39,20 @@ class TestProvider extends VehicleCatalogProvider:
         livery.name = PROVIDER_LIVERY
         var liveries:Array[VehicleLivery] = [livery]
         return liveries
+
+    func formation_list(vehicle:VehicleInfo) -> Array[VehicleFormation]:
+        var formations:Array[VehicleFormation] = []
+        if not vehicle.vehicle == vehicle_name:
+            return formations
+        var formation:VehicleFormation = VehicleFormation.new()
+        for formed:String in [vehicle_name, FORMED_VEHICLE]:
+            var data:VehicleData = VehicleData.new()
+            data.vehicle_provider = name
+            data.vehicle = formed
+            data.livery = PROVIDER_LIVERY
+            formation.vehicles.append(data)
+        formations.append(formation)
+        return formations
 
     func vehicle_create(vehicle:VehicleData, _scene_node_id:int) -> RID:
         var vehicle_rid:RID = rid_from_int64(made.size() + 1)
@@ -174,3 +191,16 @@ func test_a_vehicles_side_view_is_its_providers() -> void:
     assert_eq(VehicleCatalogServer.vehicle_get_side_view_coupling_width(data), COUPLING_WIDTH)
     data.vehicle_provider = &"no_such_provider"
     assert_null(await VehicleCatalogServer.vehicle_get_side_view(data), "none of a provider not there")
+
+
+func test_a_vehicles_formations_are_its_providers() -> void:
+    var vehicle:VehicleInfo = _vehicle_info()
+
+    var formations:Array[VehicleFormation] = VehicleCatalogServer.formation_list(vehicle)
+
+    assert_eq(formations.size(), 1)
+    assert_eq(formations[0].vehicles.map(func(data:VehicleData) -> String: return data.vehicle),
+            [VEHICLE, FORMED_VEHICLE])
+    assert_eq(formations[0].vehicles[1].livery, PROVIDER_LIVERY)
+    vehicle.vehicle_provider = &"no_such_provider"
+    assert_eq(VehicleCatalogServer.formation_list(vehicle).size(), 0, "none of a provider not there")

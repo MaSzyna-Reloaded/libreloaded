@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VehicleComponentInfo" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A component a vehicle's implementation can make.
+	</brief_description>
+	<description>
+		What [method VehicleServer.component_list] lists of an implementation: the name it makes the component by ([method VehicleServer.component_create]), its title for a list, and its kind.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="component_type" type="int" setter="set_component_type" getter="get_component_type" default="0">
+			The component's kind - a [enum VehicleComponentType.Type], or a kind of vehicle's own numbered on from it ([enum RailVehicleComponentType.Type]) - as the component answers it.
+		</member>
+		<member name="name" type="StringName" setter="set_name" getter="get_name" default="&amp;&quot;&quot;">
+			The name the implementation makes the component by.
+		</member>
+		<member name="title" type="String" setter="set_title" getter="get_title" default="&quot;&quot;">
+			The component's title, for a list to show.
+		</member>
+	</members>
+</class>

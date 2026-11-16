@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CabinLogic" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The logic of a vehicle's cabs.
+	</brief_description>
+	<description>
+		Attached to the vehicle in [CabinSystem] ([method CabinSystem.vehicle_attach_cab_logic]). It registers the control handlers of one cabin in [CabinSystem]; [CabinSystem] registers it for the cabin the vehicle's driver sits in and moves it along when the driver changes cabins.
+		It needs no 3D cab: whoever drives - the player by keys and mouse, the AI - reports manipulations with [method CabinSystem.act]. The player's hand on a control - a key, a click on its widget - is one of [method press], [method release], [method increase], [method decrease], which decide what the control does with it as the cab has it. A plugin's cab logic derives from it and overrides the virtual methods.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_decrease" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				What [method decrease] does.
+			</description>
+		</method>
+		<method name="_get_action" qualifiers="virtual const">
+			<return type="StringName" />
+			<param index="0" name="control_id" type="StringName" />
+			<param index="1" name="gesture" type="int" />
+			<description>
+				What [method get_action] answers; [param gesture] is a [enum Gesture].
+			</description>
+		</method>
+		<method name="_increase" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				What [method increase] does.
+			</description>
+		</method>
+		<method name="_input" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="event" type="InputEvent" />
+			<description>
+				What [method input] does.
+			</description>
+		</method>
+		<method name="_press" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				What [method press] does.
+			</description>
+		</method>
+		<method name="_register" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="cabin" type="RID" />
+			<description>
+				What [method register] does.
+			</description>
+		</method>
+		<method name="_release" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				What [method release] does.
+			</description>
+		</method>
+		<method name="_unregister" qualifiers="virtual">
+			<return type="void" />
+			<description>
+				What [method unregister] does.
+			</description>
+		</method>
+		<method name="decrease">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				The driver's hand moves the control one position (or, held, a knob) down.
+			</description>
+		</method>
+		<method name="get_action" qualifiers="const">
+			<return type="StringName" />
+			<param index="0" name="control_id" type="StringName" />
+			<param index="1" name="gesture" type="int" enum="CabinLogic.Gesture" />
+			<description>
+				The input action whose key makes [param gesture] on the control in this cab; empty when no key does.
+			</description>
+		</method>
+		<method name="increase">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				The driver's hand moves the control one position (or, held, a knob) up.
+			</description>
+		</method>
+		<method name="input">
+			<return type="void" />
+			<param index="0" name="event" type="InputEvent" />
+			<description>
+				The player's keys of the cab's controls.
+			</description>
+		</method>
+		<method name="press">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				The driver's hand pushes the control: a button is pressed, a two-position switch flipped.
+			</description>
+		</method>
+		<method name="register">
+			<return type="void" />
+			<param index="0" name="vehicle_rid" type="RID" />
+			<param index="1" name="cabin" type="RID" />
+			<description>
+				Registers the handlers of the vehicle's [param cabin] (a [VehicleServer] cabin).
+			</description>
+		</method>
+		<method name="release">
+			<return type="void" />
+			<param index="0" name="control_id" type="StringName" />
+			<description>
+				The driver's hand lets the control go: a push button springs back, a held lever stops.
+			</description>
+		</method>
+		<method name="unregister">
+			<return type="void" />
+			<description>
+				Unregisters the handlers registered by [method register].
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="PRESS" value="0" enum="Gesture">
+			A press of the control ([method press]).
+		</constant>
+		<constant name="INCREASE" value="1" enum="Gesture">
+			A move one position up ([method increase]).
+		</constant>
+		<constant name="DECREASE" value="2" enum="Gesture">
+			A move one position down ([method decrease]).
+		</constant>
+	</constants>
+</class>
