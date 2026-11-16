@@ -80,6 +80,9 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("occluder_free", "occluder"), &CabinHUDMouseSystem::occluder_free);
         ClassDB::bind_method(D_METHOD("mouse_input", "event"), &CabinHUDMouseSystem::mouse_input);
         ClassDB::bind_method(D_METHOD("control_get_hovered"), &CabinHUDMouseSystem::control_get_hovered);
+        ClassDB::bind_method(
+                D_METHOD("control_get_mesh_instance_id", "control"),
+                &CabinHUDMouseSystem::control_get_mesh_instance_id);
 
         BIND_CONSTANT(DRAG_STEP_PIXELS);
 
@@ -255,6 +258,13 @@ namespace godot {
 
     RID CabinHUDMouseSystem::control_get_hovered() const {
         return hovered;
+    }
+
+    int64_t CabinHUDMouseSystem::control_get_mesh_instance_id(const RID &p_control) const {
+        const Control *control = controls.getptr(p_control);
+        return control != nullptr && !control->pickable.parts.is_empty()
+                       ? static_cast<int64_t>(control->pickable.parts[0].mesh)
+                       : 0;
     }
 
     bool CabinHUDMouseSystem::mouse_input(const Ref<InputEvent> &p_event) {

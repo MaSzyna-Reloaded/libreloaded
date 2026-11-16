@@ -171,5 +171,7 @@ namespace godot {
             bool mouse_input(const Ref<InputEvent> &p_event);
 
             RID control_get_hovered() const;
+            /// The instance id of the mesh p_control was made for (control_create()), 0 for no such control
+            int64_t control_get_mesh_instance_id(const RID &p_control) const;
     };
 } // namespace godot

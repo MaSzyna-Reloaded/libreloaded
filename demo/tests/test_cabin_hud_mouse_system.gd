@@ -79,6 +79,12 @@ func test_a_cursor_outside_the_view_lights_nothing_up() -> void:
     assert_null(_mesh.material_overlay)
 
 
+## The mesh a control was made for: what the control under the cursor is, for a tool following it
+func test_a_control_tells_the_mesh_it_was_made_for() -> void:
+    assert_eq(CabinHUDMouseSystem.control_get_mesh_instance_id(_control), _mesh.get_instance_id())
+    assert_eq(CabinHUDMouseSystem.control_get_mesh_instance_id(RID()), 0, "none for no control")
+
+
 func test_hover_outlines_and_captions_the_control() -> void:
     _move_to(_over_control())
     assert_eq(CabinHUDMouseSystem.control_get_hovered(), _control)
