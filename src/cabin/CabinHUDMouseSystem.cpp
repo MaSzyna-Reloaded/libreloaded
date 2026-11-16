@@ -411,6 +411,11 @@ namespace godot {
             view->get_viewport()->gui_get_hovered_control() != nullptr) {
             return RID();
         }
+        // a cursor outside the view - beside it, over the panels of a SubViewport's window - picks
+        // nothing: the ray through it would still run into the cab
+        if (!view->get_viewport()->get_visible_rect().has_point(p_position)) {
+            return RID();
+        }
         RID exact = _pick_exact(view, p_position, p_r_point);
         if (exact.is_valid()) {
             return exact;
