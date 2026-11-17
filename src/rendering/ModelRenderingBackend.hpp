@@ -59,7 +59,8 @@ namespace godot {
             virtual void instance_set_options(
                     const RID &p_instance, const String &p_data_path, const PackedStringArray &p_skins,
                     const Array &p_exclude_node_names, bool p_force_alpha,
-                    const TypedArray<NodePath> &p_force_alpha_part_paths, int p_max_texture_size) = 0;
+                    const TypedArray<NodePath> &p_force_alpha_part_paths, int p_max_texture_size,
+                    bool p_low_poly_interior) = 0;
             virtual void instance_set_scenario(const RID &p_instance, const RID &p_scenario) = 0;
             virtual void instance_set_transform(const RID &p_instance, const Transform3D &p_transform) = 0;
             virtual void instance_set_visible(const RID &p_instance, bool p_visible) = 0;

@@ -804,6 +804,38 @@ variant a vehicle's glass is drawn with comes out of it - so the first vehicle d
 camera compiles it in the game. Replacing it with files is in `TODO.md`; nothing more is added to
 it.
 
+### An instance uniform costs every mesh drawn with its shader
+
+**An `instance uniform` belongs only in a shader drawn by few meshes, counted - never in a shader
+the world draws.** Godot reserves a block of its global shader buffer (16 slots of 16 bytes) for
+every geometry instance whose material declares an instance uniform, whether anything sets it or
+not. The buffer (`rendering/limits/global_shader_variables/buffer_size`, 65536 slots) holds about
+4000 such blocks; past them every new mesh logs "Too many instances using shader instance
+variables", each later update of it logs `instance_buffer_pos.has(p_instance)` again, and the
+mesh reads no value at all.
+
+```glsl
+// not this - in the shader of every model of the world: each of its meshes takes a block
+instance uniform float depth_offset = 0.0;
+
+// this - a plain uniform, set on the materials of the meshes that need it
+uniform float depth_offset = 0.0;
+```
+
+* **A value some meshes of a material need is an option of the material**: a model backend gives
+  those meshes a material of their own with the uniform set
+  (`ModelRenderingServer.instance_set_options()`), the rest share theirs. An instance uniform only where the meshes drawn with the shader are few by
+  construction.
+* **A larger buffer is no fix.** Godot searches it from its start for every block it reserves,
+  and every mesh still costs its 256 bytes.
+* REQUIRED: **review it after every plan and before every commit.** Search the plan or the staged
+  diff for `instance uniform`, `set_instance_shader_parameter()`,
+  `instance_geometry_set_shader_parameter()` and `instance_set_shader_parameter()`; for each, name
+  the shaders that declare the uniform and how many meshes of a full world are drawn with them. A
+  shader of the world's models, the terrain, a track or anything else the world draws fails the
+  review. How:
+  `.claude/skills/precommit-code-review`.
+
 ### Input is the project's actions, matched exactly
 
 **Every key the game reacts to is an input action of the project, and every test of it is an

@@ -21,10 +21,6 @@
 namespace godot {
     const char *VehicleRenderingServer::vehicle_model_built_signal = "vehicle_model_built";
     const char *VehicleRenderingServer::builds_finished_signal = "builds_finished";
-    /* How much farther from the camera a vehicle's low-poly interior is drawn [m], in the instance
-     * shader parameter its materials take */
-    static constexpr const char *LOW_POLY_DEPTH_BEHIND_PARAMETER = "reloaded_depth_behind";
-    static constexpr float LOW_POLY_DEPTH_BEHIND = 0.02F;
 
     /* A vehicle far away is drawn from instances, a near one as nodes - shown and owned in the
      * editor when it is editable */
@@ -560,7 +556,8 @@ namespace godot {
         // models built again while the vehicle is drawn in detail go under the holder it has
         Node3D *holder = Object::cast_to<Node3D>(ObjectDB::get_instance(p_visual.holder));
         const auto create = [&](const String &p_filename, const PackedStringArray &p_skins,
-                                const ModelRenderingServer::Instancer p_instancer) {
+                                const ModelRenderingServer::Instancer p_instancer,
+                                const bool p_low_poly_interior = false) {
             // held while built, as a streamed scenery placement holds its model
             const RID *resource = p_visual.model_resources.getptr(p_filename);
             const Ref<Resource> loaded = resource != nullptr ? _get_model(p_visual, *resource) : Ref<Resource>();
@@ -577,7 +574,8 @@ namespace godot {
             // a vehicle's translucent submodels - its windows - are drawn blended near the camera,
             // opaque by the optimized instancer far away; a cutout leaves holes in the glass
             constexpr bool FORCE_ALPHA = true;
-            models->instance_set_options(instance, data_path, p_skins, Array(), FORCE_ALPHA, {}, 0);
+            models->instance_set_options(
+                    instance, data_path, p_skins, Array(), FORCE_ALPHA, {}, 0, p_low_poly_interior);
             if (p_instancer != ModelRenderingServer::INSTANCER_OPTIMIZED) {
                 models->instance_attach_object_instance_id(instance, holder->get_instance_id());
             }
@@ -592,13 +590,11 @@ namespace godot {
         p_visual.model = create(appearance->get_model_filename(), appearance->get_skins(), detail);
         p_visual.model_missing = !p_visual.model.is_valid();
         model_vehicles[p_visual.model] = p_vehicle;
-        p_visual.low_poly = create(appearance->get_low_poly_model_filename(), appearance->get_skins(), detail);
-        // the low-poly interior lies within the body, some of it in the body's own plane: drawn a
-        // little farther from the camera, the body is seen where they meet, not each in turn
-        if (p_visual.low_poly.is_valid()) {
-            models->instance_set_shader_parameter(
-                    p_visual.low_poly, LOW_POLY_DEPTH_BEHIND_PARAMETER, LOW_POLY_DEPTH_BEHIND);
-        }
+        // the low-poly interior lies within the body, some of it in the body's own plane: its
+        // backend draws it so that the body is seen where they meet, not each in turn
+        constexpr bool LOW_POLY_INTERIOR = true;
+        p_visual.low_poly =
+                create(appearance->get_low_poly_model_filename(), appearance->get_skins(), detail, LOW_POLY_INTERIOR);
         // the passengers carry no skin of their own
         p_visual.passengers =
                 create(appearance->get_passengers_model_filename(), PackedStringArray(),

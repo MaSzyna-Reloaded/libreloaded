@@ -41,8 +41,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD(
                         "instance_set_options", "instance", "data_path", "skins", "exclude_node_names", "force_alpha",
-                        "force_alpha_part_paths", "max_texture_size"),
-                &ModelRenderingServer::instance_set_options);
+                        "force_alpha_part_paths", "max_texture_size", "low_poly_interior"),
+                &ModelRenderingServer::instance_set_options, DEFVAL(false));
         ClassDB::bind_method(
                 D_METHOD("instance_set_scenario", "instance", "scenario"),
                 &ModelRenderingServer::instance_set_scenario);
@@ -307,12 +307,13 @@ namespace godot {
     void ModelRenderingServer::instance_set_options(
             const RID &p_instance, const String &p_data_path, const PackedStringArray &p_skins,
             const Array &p_exclude_node_names, const bool p_force_alpha,
-            const TypedArray<NodePath> &p_force_alpha_part_paths, const int p_max_texture_size) {
+            const TypedArray<NodePath> &p_force_alpha_part_paths, const int p_max_texture_size,
+            const bool p_low_poly_interior) {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_options(
                 p_instance, p_data_path, p_skins, p_exclude_node_names, p_force_alpha, p_force_alpha_part_paths,
-                p_max_texture_size);
+                p_max_texture_size, p_low_poly_interior);
     }
 
     void ModelRenderingServer::instance_set_scenario(const RID &p_instance, const RID &p_scenario) {

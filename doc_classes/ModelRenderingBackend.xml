@@ -167,8 +167,9 @@
 			<param index="4" name="force_alpha" type="bool" />
 			<param index="5" name="force_alpha_part_paths" type="NodePath[]" />
 			<param index="6" name="max_texture_size" type="int" />
+			<param index="7" name="low_poly_interior" type="bool" default="false" />
 			<description>
-				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the backend's own limit (see [code]ResourceInstance[/code]). Rebuilds an already built instance.
+				Material lookup path and skins, parts excluded from rendering, forced alpha blending and the largest texture size its materials load, [code]0[/code] for the backend's own limit (see [code]ResourceInstance[/code]). [param low_poly_interior] marks a vehicle's low-poly interior, which lies within its body, some of it in the body's own plane: the backend draws it so that the body is seen where they meet. Rebuilds an already built instance.
 			</description>
 		</method>
 		<method name="instance_set_part_emission_energy">
