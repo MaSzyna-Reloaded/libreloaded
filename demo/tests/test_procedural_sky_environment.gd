@@ -252,17 +252,24 @@ func test_the_shadow_settings_have_their_defaults_as_the_game_runs() -> void:
 
 
 ## The shadow atlas holds the shadow texture quality's map for the sun and for its cab light: Godot splits it
-## evenly between them - up to the largest atlas Godot takes
+## evenly between them - up to the largest atlas Godot takes. The cab light is there in the cab view
+## only: the exterior view hides the cab
 func test_the_shadow_atlas_holds_the_texture_quality_s_map_for_each_light() -> void:
     var improved_before:Variant = ProjectSettings.get_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING)
     var quality_before:Variant = ProjectSettings.get_setting(SkyEnvironment.SHADOW_TEXTURE_QUALITY_SETTING)
     ProjectSettings.set_setting(SkyEnvironment.SHADOW_TEXTURE_QUALITY_SETTING, SkyEnvironment.ShadowTextureQuality.MEDIUM)
     var resolution:int = SkyEnvironment.SHADOW_TEXTURE_QUALITY_SIZES[SkyEnvironment.ShadowTextureQuality.MEDIUM]
+    _environment_node.cabin_view = true
 
     ProjectSettings.set_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING, true)
     await wait_idle_frames(APPLY_FRAMES)
     assert_eq(_sky.get_shadow_atlas_size(), resolution * 2, "the sun and its cab light")
 
+    _environment_node.cabin_view = false
+    await wait_idle_frames(APPLY_FRAMES)
+    assert_eq(_sky.get_shadow_atlas_size(), resolution, "the sun alone in the exterior view")
+
+    _environment_node.cabin_view = true
     ProjectSettings.set_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING, false)
     await wait_idle_frames(APPLY_FRAMES)
     assert_eq(_sky.get_shadow_atlas_size(), resolution, "the sun alone")
