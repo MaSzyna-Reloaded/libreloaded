@@ -39,6 +39,12 @@
 				The [enum ContentKind] values the provider supplies. Asked for once, at [method SceneryStreamingServer.provider_register].
 			</description>
 		</method>
+		<method name="_get_range" qualifiers="virtual const">
+			<return type="float" />
+			<description>
+				How far from the camera the provider's cells are wanted [lb]m[rb], measured to a cell's nearest edge; [code]0[/code] for the draw distance ([method SceneryStreamingServer.streaming_get_draw_distance]). Override it for content drawn farther than the draw distance, as a terrain is. Asked for once, at [method SceneryStreamingServer.provider_register].
+			</description>
+		</method>
 		<method name="chunk_get_overhang" qualifiers="const">
 			<return type="float" />
 			<param index="0" name="cell" type="Vector2i" />
@@ -66,6 +72,12 @@
 				The kinds the provider supplies - [method _get_content_kinds], or a C++ provider's own.
 			</description>
 		</method>
+		<method name="get_range" qualifiers="const">
+			<return type="float" />
+			<description>
+				The provider's range - [method _get_range], or a C++ provider's own.
+			</description>
+		</method>
 	</methods>
 	<constants>
 		<constant name="CONTENT_TERRAIN" value="0" enum="ContentKind">
@@ -83,7 +95,10 @@
 		<constant name="CONTENT_MESHES" value="4" enum="ContentKind">
 			A world's sector geometry - buildings, platforms, bridges - of the type its provider and its consumer agree on.
 		</constant>
-		<constant name="CONTENT_KIND_MAX" value="5" enum="ContentKind">
+		<constant name="CONTENT_HEIGHTMAP" value="5" enum="ContentKind">
+			The regions of a heightmap terrain - heights and paint by region - of the type its provider and its consumer agree on. Taken by a consumer of its own, apart from [constant CONTENT_TERRAIN]'s geometry.
+		</constant>
+		<constant name="CONTENT_KIND_MAX" value="6" enum="ContentKind">
 			The number of kinds.
 		</constant>
 	</constants>
