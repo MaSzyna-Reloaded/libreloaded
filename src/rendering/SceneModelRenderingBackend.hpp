@@ -35,6 +35,8 @@ namespace godot {
             struct InstanceData {
                     Ref<PackedScene> model;
                     Instancer instancer = ModelRenderingServer::INSTANCER_OPTIMIZED;
+                    /// A dynamic instance moves: it takes the GI without being baked into it
+                    InstanceKind instance_kind = ModelRenderingServer::INSTANCE_KIND_STATIC;
                     RID scenario;
                     Transform3D transform;
                     Transform3D node_transform;
