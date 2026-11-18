@@ -790,17 +790,24 @@ namespace godot {
         }
         const uint64_t revision = target_revision;
         int wanted_unbuilt = 0;
+        // what is seen from the anchor - the player's vehicle - is kept as what the camera sees:
+        // a chunk's distance is the nearer of the two
+        const bool anchoring = has_anchor_chunk;
+        const Vector3 anchored_at = anchor_position;
+        const auto distance_to = [&](const Vector2i &p_key) {
+            const float from_camera = _get_chunk_distance(p_key, p_position);
+            return anchoring ? MIN(from_camera, _get_chunk_distance(p_key, anchored_at)) : from_camera;
+        };
         for (KeyValue<Vector2i, Chunk> &item: chunks) {
             Chunk &chunk = item.value;
             if (chunk.dirty) {
                 _sort_chunk(chunk);
             }
-            const float distance = _get_chunk_distance(item.key, p_position);
-            const bool anchored = has_anchor_chunk && item.key == anchor_chunk;
+            const float distance = distance_to(item.key);
             for (Entry &entry: chunk.entries) {
-                // in range, built ahead of it, kept a while after it - or in the anchor's chunk
-                const bool wanted = anchored || (entry.built ? distance <= entry.range_end + HYSTERESIS_M
-                                                             : distance <= entry.range_end + PREFETCH_M);
+                // in range, built ahead of it, kept a while after it
+                const bool wanted = entry.built ? distance <= entry.range_end + HYSTERESIS_M
+                                                : distance <= entry.range_end + PREFETCH_M;
                 entry.ahead = distance > entry.range_end;
                 entry.wanted_revision = wanted ? revision : 0;
                 if (wanted && !entry.built && !entry.queued) {
@@ -832,7 +839,7 @@ namespace godot {
         }
         // a provider's cell is wanted within its range - the draw distance, the farthest any piece
         // is drawn (stream_register()), unless it declares another - of its content, which may reach
-        // out of it by its overhang; the anchor's wherever it is
+        // out of it by its overhang
         for (KeyValue<RID, Provider> &item: providers) {
             Provider &provider = item.value;
             if (!provider.scenario.is_valid()) {
@@ -840,11 +847,9 @@ namespace godot {
             }
             for (KeyValue<Vector2i, ProviderCell> &cell_item: provider.cells) {
                 ProviderCell &cell = cell_item.value;
-                const float distance = _get_chunk_distance(cell_item.key, p_position);
+                const float distance = distance_to(cell_item.key);
                 const float reach = (provider.range > 0.0F ? provider.range : draw_distance) + cell.overhang;
-                const bool anchored = has_anchor_chunk && cell_item.key == anchor_chunk;
-                const bool wanted =
-                        anchored || (cell.adopted ? distance <= reach + HYSTERESIS_M : distance <= reach + PREFETCH_M);
+                const bool wanted = cell.adopted ? distance <= reach + HYSTERESIS_M : distance <= reach + PREFETCH_M;
                 cell.ahead = distance > reach;
                 cell.wanted_revision = wanted ? revision : 0;
                 if (wanted && !cell.adopted && !cell.queued) {
