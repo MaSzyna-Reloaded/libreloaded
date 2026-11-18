@@ -37,4 +37,8 @@ func _on_refresh_timer_timeout() -> void:
         %EngineRPM.value = _diesel_engine.get_rpm()
         %OilPressure.value = _diesel_engine.get_oil_pump_pressure()
     if _electric_engine:
-        %EngineCurrent.value = _electric_engine.get_motor_current()
+        # An ammeter shows a magnitude, as the original's own ShowCurrentP() always does
+        # (floor(fabs(Im)), Mover.cpp) - motor_current is signed (negative under electrodynamic
+        # braking), which a ProgressBar-backed gauge with no min_value below 0 only clamps to
+        # empty, while its label still printed the raw negative number.
+        %EngineCurrent.value = absf(_electric_engine.get_motor_current())
