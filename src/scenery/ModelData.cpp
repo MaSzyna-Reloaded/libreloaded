@@ -15,6 +15,7 @@ namespace godot {
         BIND_PROPERTY(ModelData, Variant::PACKED_STRING_ARRAY, skins);
         BIND_PROPERTY(ModelData, Variant::VECTOR3, position);
         BIND_PROPERTY(ModelData, Variant::VECTOR3, rotation);
+        BIND_PROPERTY(ModelData, Variant::VECTOR3, scale);
         BIND_PROPERTY(ModelData, Variant::FLOAT, range_min);
         BIND_PROPERTY(ModelData, Variant::FLOAT, range_max);
         BIND_PROPERTY_W_HINT(
