@@ -23,8 +23,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD(
                         "instance_set_options", "instance", "data_path", "skins", "exclude_node_names", "force_alpha",
-                        "force_alpha_part_paths", "max_texture_size"),
-                &ModelRenderingBackend::instance_set_options);
+                        "force_alpha_part_paths", "max_texture_size", "low_poly_interior"),
+                &ModelRenderingBackend::instance_set_options, DEFVAL(false));
         ClassDB::bind_method(
                 D_METHOD("instance_set_scenario", "instance", "scenario"),
                 &ModelRenderingBackend::instance_set_scenario);

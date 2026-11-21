@@ -81,8 +81,8 @@ const SHADOW_CABIN_SPLITS: Array[float] = [0.114, 0.162, 0.64]
 const SHADOW_CABIN_MAX_DISTANCE: float = 22.0
 const SHADOW_CABIN_BLUR: float = 0.46
 const SHADOW_CABIN_NORMAL_BIAS: float = 5.0
-## The cab gets a sun of its own that lights only EnvironmentNode.CABIN_RENDER_LAYER, with
-## the cabin/shadows settings, while the world's sun keeps the scenery ones in the cab view too
+## In the cab view the cab gets a sun of its own that lights only EnvironmentNode.CABIN_RENDER_LAYER,
+## with the cabin/shadows settings, while the world's sun keeps the scenery ones
 const CABIN_SHADOWS_IMPROVED_SETTING: StringName = &"reloaded/cabin/improve_shadows_quality"
 const CABIN_SHADOWS_IMPROVED: bool = true
 ## Shadow maps drawn with front faces culled (opengl33renderer.cpp:1758)
@@ -396,7 +396,7 @@ const FOG_NIGHT_DISTANCE_FACTOR_DEFAULT: float = 0.4255
 var environment_node: EnvironmentNode
 var _environment: Environment
 var _camera_attributes: CameraAttributesPractical
-## The cab light of each world light, when CABIN_SHADOWS_IMPROVED_SETTING is on
+## The cab light of each world light, in the cab view when CABIN_SHADOWS_IMPROVED_SETTING is on
 var _cabin_lights: Dictionary[DirectionalLight3D, DirectionalLight3D] = {}
 var _dirty_visuals: bool = true
 var _dirty_lights: bool = true
@@ -683,12 +683,16 @@ func _free_cabin_light(world_light: DirectionalLight3D) -> void:
 
 
 ## A world light takes the scenery settings, its cab light the cabin ones; the cab light is there
-## while CABIN_SHADOWS_IMPROVED_SETTING is on, and comes and goes with it
+## in the cab view while CABIN_SHADOWS_IMPROVED_SETTING is on, and comes and goes with both. The
+## exterior view hides the cab (Player): a cab light there would light nothing and still double
+## the shadow atlas (get_shadow_atlas_size())
 func _apply_sun_settings(world_light: DirectionalLight3D) -> void:
-    var improved: bool = bool(ProjectSettings.get_setting(CABIN_SHADOWS_IMPROVED_SETTING))
-    if improved and not _cabin_lights.has(world_light):
+    var with_cabin_light: bool = (
+        bool(ProjectSettings.get_setting(CABIN_SHADOWS_IMPROVED_SETTING)) and environment_node.cabin_view
+    )
+    if with_cabin_light and not _cabin_lights.has(world_light):
         _create_cabin_light(world_light)
-    elif not improved and _cabin_lights.has(world_light):
+    elif not with_cabin_light and _cabin_lights.has(world_light):
         _free_cabin_light(world_light)
     RenderingServer.directional_shadow_atlas_set_size(
         get_shadow_atlas_size(), bool(ProjectSettings.get_setting(DIRECTIONAL_SHADOW_16_BITS_SETTING))
@@ -713,11 +717,8 @@ func get_shadow_atlas_size() -> int:
 func _apply_directional_light_settings(light: DirectionalLight3D, view: ShadowView) -> void:
     var cabin: bool = view == ShadowView.CABIN
     light.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(REVERSE_CULL_FACE_SETTING))
-    # the cab light casts shadows only while there is a cab to look at; it keeps lighting the cab
-    # seen from outside
     light.shadow_enabled = (
         bool(ProjectSettings.get_setting(SHADOW_CABIN_ENABLED_SETTING))
-        and environment_node.cabin_view
         if cabin
         else bool(ProjectSettings.get_setting(SHADOW_SCENERY_ENABLED_SETTING))
     )

@@ -140,11 +140,27 @@ namespace godot {
         // a drained queue runs nothing more: the next scenery gets a queue of its own
         preload_queue.instantiate();
         // the thread is joined, so the next plan may start a new one
+        // what was queued, loaded or not, is the next plan's to queue again
         MutexLock lock(mutex);
         exiting = false;
         planning = false;
         loading_builds.clear();
         loading_provides.clear();
+        planned_builds.clear();
+        pending_builds.clear();
+        pending_prefetches.clear();
+        planned_provides.clear();
+        pending_provides.clear();
+        for (KeyValue<Vector2i, Chunk> &item: chunks) {
+            for (Entry &entry: item.value.entries) {
+                entry.queued = false;
+            }
+        }
+        for (KeyValue<RID, Provider> &item: providers) {
+            for (KeyValue<Vector2i, ProviderCell> &cell: item.value.cells) {
+                cell.value.queued = false;
+            }
+        }
     }
 
     Vector2i SceneryStreamingServer::_get_chunk_key(const Vector3 &p_origin) {
@@ -213,12 +229,17 @@ namespace godot {
             MutexLock lock(mutex);
             ERR_FAIL_INDEX(p_owner, owners.size());
             clear = owners[p_owner].clear;
+            // what is being prepared of the old data is not built (_apply_builds())
+            owners.write[p_owner].generation++;
             for (KeyValue<Vector2i, Chunk> &item: chunks) {
                 for (Entry &entry: item.value.entries) {
                     // a freed piece stays in its chunk until the chunk is sorted again
-                    if (entry.owner == p_owner && entry.built && entry_locations.has(entry.stream_rid)) {
+                    if (entry.owner != p_owner || !entry_locations.has(entry.stream_rid)) {
+                        continue;
+                    }
+                    entry.queued = false;
+                    if (entry.built) {
                         entry.built = false;
-                        entry.queued_revision = 0;
                         item.value.built_count--;
                         cleared.push_back(entry.user_rid);
                     }
@@ -233,13 +254,15 @@ namespace godot {
         }
     }
 
-    /// The cells, their overhang and the kinds are asked for once: a provider's map does not change
+    /// The cells, their overhang, the kinds and the range are asked for once: a provider's map does
+    /// not change
     RID
     SceneryStreamingServer::provider_register(const Ref<SceneryStreamingProvider> &p_provider, const RID &p_scenario) {
         ERR_FAIL_COND_V(p_provider.is_null(), RID());
         Provider provider;
         provider.provider = p_provider;
         provider.scenario = p_scenario;
+        provider.range = MAX(0.0F, p_provider->get_range());
         for (const int32_t kind: p_provider->get_content_kinds()) {
             ERR_CONTINUE(kind < 0 || kind >= CONTENT_KIND_COUNT);
             provider.kinds.push_back(static_cast<ContentKind>(kind));
@@ -300,7 +323,7 @@ namespace godot {
         _release_content(released);
     }
 
-    /// A load of the cell still in flight is of the revision the change replaces, so it is dropped
+    /// A load of the cell still in flight is of the content the change replaces, so it is dropped
     void SceneryStreamingServer::provider_refresh_cell(const RID &p_provider, const Vector2i &p_cell) {
         std::array<Vector<RID>, CONTENT_KIND_COUNT> released;
         {
@@ -316,7 +339,9 @@ namespace godot {
                 cell->adopted = false;
                 provider->adopted_cells.erase(p_cell);
             }
-            cell->queued_revision = 0;
+            // a load of the old content still in flight is not supplied (_apply_plan())
+            cell->queued = false;
+            cell->generation++;
             content_dirty = true;
         }
         _release_content(released);
@@ -471,24 +496,22 @@ namespace godot {
 
     /// A new camera revision invalidates work which has not reached its owner yet. Already-built
     /// pieces stay alive until the new plan decides whether they are still wanted.
-    void SceneryStreamingServer::_drop_stale_work() {
+    void SceneryStreamingServer::_drop_unloaded_work() {
+        for (const PendingBuild &pending: loading_builds) {
+            Entry *entry = _get_entry(pending.stream_rid);
+            if (entry != nullptr) {
+                entry->queued = false;
+            }
+        }
         loading_builds.clear();
+        for (const PendingProvide &pending: loading_provides) {
+            Provider *provider = providers.getptr(pending.provider_rid);
+            ProviderCell *cell = provider != nullptr ? provider->cells.getptr(pending.cell) : nullptr;
+            if (cell != nullptr && cell->generation == pending.generation) {
+                cell->queued = false;
+            }
+        }
         loading_provides.clear();
-        Vector<PendingBuild> builds;
-        for (const PendingBuild &pending: pending_builds) {
-            if (pending.revision == target_revision && entry_locations.has(pending.stream_rid)) {
-                builds.push_back(pending);
-            }
-        }
-        pending_builds = builds;
-        builds.clear();
-        for (const PendingBuild &pending: pending_prefetches) {
-            if (pending.revision == target_revision && entry_locations.has(pending.stream_rid)) {
-                builds.push_back(pending);
-            }
-        }
-        pending_prefetches = builds;
-        planned_builds.clear();
 
         Vector<PendingClear> clears;
         for (const PendingClear &pending: pending_clears) {
@@ -498,15 +521,6 @@ namespace godot {
         }
         pending_clears = clears;
         planned_clears.clear();
-
-        Vector<PendingProvide> provides;
-        for (const PendingProvide &pending: pending_provides) {
-            if (pending.revision == target_revision && providers.has(pending.provider_rid)) {
-                provides.push_back(pending);
-            }
-        }
-        pending_provides = provides;
-        planned_provides.clear();
 
         Vector<PendingWithdraw> withdraws;
         for (const PendingWithdraw &pending: pending_withdraws) {
@@ -524,24 +538,23 @@ namespace godot {
     void SceneryStreamingServer::streaming_set_camera(const uint64_t p_camera_id) {
         bool was_streaming;
         bool is_streaming;
-        bool changed;
         {
             MutexLock lock(mutex);
+            // the same camera again (a view shown anew) changes nothing: what it is building goes on
+            if (camera_id == ObjectID(p_camera_id)) {
+                return;
+            }
             was_streaming = camera_id.is_valid();
-            const ObjectID previous_camera_id = camera_id;
             camera_id = ObjectID(p_camera_id);
-            changed = camera_id != previous_camera_id;
             is_streaming = camera_id.is_valid();
             filling = is_streaming;
             target_revision++;
             scanned_revision = 0;
             pending_build_count = 0;
             force_plan = is_streaming;
-            _drop_stale_work();
+            _drop_unloaded_work();
         }
-        if (changed) {
-            emit_signal(streaming_camera_changed_signal);
-        }
+        emit_signal(streaming_camera_changed_signal);
         if (is_streaming == was_streaming) {
             return;
         }
@@ -731,9 +744,7 @@ namespace godot {
         statistics["scanned_revision"] = scanned_revision;
         statistics["pending_nearby"] = _get_pending_nearby_locked(1);
         statistics["nearby_ready"] = _is_area_ready_locked(1);
-        statistics["budget_msec"] = filling && pending_build_count + pending_clears.size() > CATCHUP_BACKLOG
-                                            ? CATCHUP_BUDGET_MSEC
-                                            : BUDGET_MSEC;
+        statistics["budget_msec"] = budget_msec;
         statistics["filling"] = filling;
         // main thread time in the last full second, by owner and for the providers' cells [ms]
         Dictionary owner_msec;
@@ -773,26 +784,33 @@ namespace godot {
         // would otherwise report no builds between every two passes (streaming_builds_finished)
         content_dirty = false;
         force_plan = false;
-        _drop_stale_work();
+        _drop_unloaded_work();
         if (!camera_id.is_valid()) {
             return;
         }
         const uint64_t revision = target_revision;
         int wanted_unbuilt = 0;
+        // what is seen from the anchor - the player's vehicle - is kept as what the camera sees:
+        // a chunk's distance is the nearer of the two
+        const bool anchoring = has_anchor_chunk;
+        const Vector3 anchored_at = anchor_position;
+        const auto distance_to = [&](const Vector2i &p_key) {
+            const float from_camera = _get_chunk_distance(p_key, p_position);
+            return anchoring ? MIN(from_camera, _get_chunk_distance(p_key, anchored_at)) : from_camera;
+        };
         for (KeyValue<Vector2i, Chunk> &item: chunks) {
             Chunk &chunk = item.value;
             if (chunk.dirty) {
                 _sort_chunk(chunk);
             }
-            const float distance = _get_chunk_distance(item.key, p_position);
-            const bool anchored = has_anchor_chunk && item.key == anchor_chunk;
+            const float distance = distance_to(item.key);
             for (Entry &entry: chunk.entries) {
-                // in range, built ahead of it, kept a while after it - or in the anchor's chunk
-                const bool wanted = anchored || (entry.built ? distance <= entry.range_end + HYSTERESIS_M
-                                                             : distance <= entry.range_end + PREFETCH_M);
+                // in range, built ahead of it, kept a while after it
+                const bool wanted = entry.built ? distance <= entry.range_end + HYSTERESIS_M
+                                                : distance <= entry.range_end + PREFETCH_M;
                 entry.ahead = distance > entry.range_end;
                 entry.wanted_revision = wanted ? revision : 0;
-                if (wanted && !entry.built && entry.queued_revision != revision) {
+                if (wanted && !entry.built && !entry.queued) {
                     PendingBuild build;
                     build.owner = entry.owner;
                     build.ahead = entry.ahead;
@@ -802,9 +820,9 @@ namespace godot {
                     build.user_rid = entry.user_rid;
                     build.chunk = item.key;
                     build.distance = distance;
-                    build.revision = revision;
+                    build.generation = owners[entry.owner].generation;
                     (build.preload.is_valid() ? loading_builds : planned_builds).push_back(build);
-                    entry.queued_revision = revision;
+                    entry.queued = true;
                 } else if (!wanted && entry.built) {
                     PendingClear clear;
                     clear.owner = entry.owner;
@@ -819,9 +837,9 @@ namespace godot {
                 }
             }
         }
-        // a provider's cell is wanted within the draw distance - the farthest any piece is drawn
-        // (stream_register()) - of its content, which may reach out of it by its overhang; the
-        // anchor's wherever it is
+        // a provider's cell is wanted within its range - the draw distance, the farthest any piece
+        // is drawn (stream_register()), unless it declares another - of its content, which may reach
+        // out of it by its overhang
         for (KeyValue<RID, Provider> &item: providers) {
             Provider &provider = item.value;
             if (!provider.scenario.is_valid()) {
@@ -829,23 +847,21 @@ namespace godot {
             }
             for (KeyValue<Vector2i, ProviderCell> &cell_item: provider.cells) {
                 ProviderCell &cell = cell_item.value;
-                const float distance = _get_chunk_distance(cell_item.key, p_position);
-                const float reach = draw_distance + cell.overhang;
-                const bool anchored = has_anchor_chunk && cell_item.key == anchor_chunk;
-                const bool wanted =
-                        anchored || (cell.adopted ? distance <= reach + HYSTERESIS_M : distance <= reach + PREFETCH_M);
+                const float distance = distance_to(cell_item.key);
+                const float reach = (provider.range > 0.0F ? provider.range : draw_distance) + cell.overhang;
+                const bool wanted = cell.adopted ? distance <= reach + HYSTERESIS_M : distance <= reach + PREFETCH_M;
                 cell.ahead = distance > reach;
                 cell.wanted_revision = wanted ? revision : 0;
-                if (wanted && !cell.adopted && cell.queued_revision != revision) {
+                if (wanted && !cell.adopted && !cell.queued) {
                     PendingProvide provide;
                     provide.provider_rid = item.key;
                     provide.provider = provider.provider;
                     provide.kinds = provider.kinds;
                     provide.cell = cell_item.key;
                     provide.distance = distance;
-                    provide.revision = revision;
+                    provide.generation = cell.generation;
                     loading_provides.push_back(provide);
-                    cell.queued_revision = revision;
+                    cell.queued = true;
                 }
                 if (wanted && !cell.adopted && !cell.ahead) {
                     wanted_unbuilt++;
@@ -1024,10 +1040,22 @@ namespace godot {
             catching_up = filling && pending_build_count + pending_clears.size() > CATCHUP_BACKLOG;
         }
 
+        // the budget grows while the camera stands and is back at BUDGET_MSEC as soon as it moves:
+        // a frame on time beats the world appearing a little sooner only while the camera goes
+        // through it
+        const Camera3D *camera = Object::cast_to<Camera3D>(ObjectDB::get_instance(camera_id));
+        const Vector3 camera_position_now = camera != nullptr ? camera->get_global_position() : budget_camera_position;
+        if (catching_up) {
+            budget_msec = CATCHUP_BUDGET_MSEC;
+        } else if (camera_position_now.distance_to(budget_camera_position) >= STANDING_CAMERA_M) {
+            budget_msec = BUDGET_MSEC;
+        } else {
+            budget_msec = MIN(budget_msec + STANDING_BUDGET_STEP_MSEC, CATCHUP_BUDGET_MSEC);
+        }
+        budget_camera_position = camera_position_now;
         Time *time = Time::get_singleton();
         const uint64_t now = time->get_ticks_usec();
-        const uint64_t deadline =
-                now + (static_cast<uint64_t>(Units::USEC_PER_MSEC) * (catching_up ? CATCHUP_BUDGET_MSEC : BUDGET_MSEC));
+        const uint64_t deadline = now + (static_cast<uint64_t>(Units::USEC_PER_MSEC) * budget_msec);
         if (now - build_rate_usec >= static_cast<uint64_t>(Units::USEC_PER_SECOND)) {
             build_rate = applied_builds;
             applied_builds = 0;
@@ -1121,10 +1149,12 @@ namespace godot {
                 MutexLock lock(mutex);
                 Provider *provider = providers.getptr(pending.provider_rid);
                 ProviderCell *cell = provider != nullptr ? provider->cells.getptr(pending.cell) : nullptr;
-                apply = pending.revision == target_revision && cell != nullptr && !cell->adopted &&
-                        cell->wanted_revision == target_revision;
-                if (cell != nullptr && cell->queued_revision == pending.revision) {
-                    cell->queued_revision = 0;
+                // a cell's content loaded for any plan is supplied while the current one wants it,
+                // unless the cell has changed since (provider_refresh_cell())
+                const bool current = cell != nullptr && cell->generation == pending.generation;
+                apply = current && !cell->adopted && cell->wanted_revision == target_revision;
+                if (current) {
+                    cell->queued = false;
                 }
                 if (apply) {
                     kind_consumers = consumers;
@@ -1195,10 +1225,12 @@ namespace godot {
             {
                 MutexLock lock(mutex);
                 Entry *entry = _get_entry(pending.stream_rid);
-                apply = pending.revision == target_revision && entry != nullptr && !entry->built &&
-                        entry->wanted_revision == target_revision;
-                if (entry != nullptr && entry->queued_revision == pending.revision) {
-                    entry->queued_revision = 0;
+                // a piece prepared for any plan is built while the current one wants it, unless its
+                // owner's data has changed since (owner_rebuild())
+                const bool current = entry != nullptr && owners[pending.owner].generation == pending.generation;
+                apply = current && !entry->built && entry->wanted_revision == target_revision;
+                if (current) {
+                    entry->queued = false;
                 }
             }
             if (apply && pending.build.is_valid()) {
@@ -1211,11 +1243,10 @@ namespace godot {
                 owner_times.write[pending.owner].add(time->get_ticks_usec() - started);
                 MutexLock lock(mutex);
                 Entry *entry = _get_entry(pending.stream_rid);
-                if (pending.revision == target_revision && entry != nullptr && !entry->built &&
-                    entry->wanted_revision == target_revision) {
+                if (entry != nullptr && !entry->built && entry->wanted_revision == target_revision) {
                     entry->built = true;
                     chunks[entry_locations[pending.stream_rid].chunk].built_count++;
-                    if (!pending.ahead) {
+                    if (!entry->ahead) {
                         pending_build_count--;
                     }
                 }
@@ -1228,51 +1259,49 @@ namespace godot {
         return true;
     }
 
-    void SceneryStreamingServer::_load(
-            const uint64_t p_revision, const Vector<PendingProvide> &p_provides, const Vector<PendingBuild> &p_builds) {
-        // the cells' content first: a provider's terrain is what the area stands on
-        for (int64_t i = p_provides.size() - 1; i >= 0; i--) {
-            PendingProvide provide = p_provides[i];
-            {
-                MutexLock lock(mutex);
-                if (p_revision != target_revision) {
-                    return;
-                }
-                if (!providers.has(provide.provider_rid)) {
-                    continue;
-                }
-            }
-            for (const ContentKind kind: provide.kinds) {
-                if (verbose) {
-                    UtilityFunctions::print("[SceneryStreaming] loading cell ", provide.cell, " kind ", kind);
-                }
-                provide.items[kind] = provide.provider->chunk_load(provide.cell, kind);
-            }
-            MutexLock lock(mutex);
-            if (p_revision != target_revision) {
-                return;
-            }
-            planned_provides.push_back(provide);
-        }
-
-        // a batch at a time on the preloads' own threads (reading and decoding is what makes a
-        // piece buildable), each batch published whole
+    void SceneryStreamingServer::_load() {
         const int64_t batch_size = preload_queue->get_worker_count();
-        int64_t next = p_builds.size() - 1;
         std::vector<PendingBuild> batch;
         std::vector<int> tasks;
-        while (next >= 0) {
+        while (true) {
+            PendingProvide provide;
+            bool providing = false;
             batch.clear();
             {
                 MutexLock lock(mutex);
-                if (p_revision != target_revision) {
+                if (exiting) {
                     return;
                 }
-                for (; next >= 0 && static_cast<int64_t>(batch.size()) < batch_size; next--) {
-                    if (entry_locations.has(p_builds[next].stream_rid)) {
-                        batch.push_back(p_builds[next]);
+                // the cells' content first: a provider's terrain is what the area stands on
+                if (!loading_provides.is_empty()) {
+                    provide = loading_provides[loading_provides.size() - 1];
+                    loading_provides.resize(loading_provides.size() - 1);
+                    providing = providers.has(provide.provider_rid);
+                } else {
+                    // a batch at a time on the preloads' own threads (reading and decoding is what
+                    // makes a piece buildable), nearest first
+                    while (!loading_builds.is_empty() && static_cast<int64_t>(batch.size()) < batch_size) {
+                        const PendingBuild build = loading_builds[loading_builds.size() - 1];
+                        loading_builds.resize(loading_builds.size() - 1);
+                        if (entry_locations.has(build.stream_rid)) {
+                            batch.push_back(build);
+                        }
+                    }
+                    if (batch.empty() && loading_builds.is_empty()) {
+                        return;
                     }
                 }
+            }
+            if (providing) {
+                for (const ContentKind kind: provide.kinds) {
+                    if (verbose) {
+                        UtilityFunctions::print("[SceneryStreaming] loading cell ", provide.cell, " kind ", kind);
+                    }
+                    provide.items[kind] = provide.provider->chunk_load(provide.cell, kind);
+                }
+                MutexLock lock(mutex);
+                planned_provides.push_back(provide);
+                continue;
             }
             tasks.assign(batch.size(), -1);
             for (size_t index = 0; index < batch.size(); index++) {
@@ -1286,11 +1315,8 @@ namespace godot {
             for (size_t index = 0; index < batch.size(); index++) {
                 batch[index].preloaded = preload_queue->wait(tasks[index]);
             }
-            MutexLock lock(mutex);
-            if (p_revision != target_revision) {
-                return;
-            }
             // whether it is still wanted is the main thread's to tell, as it applies the build
+            MutexLock lock(mutex);
             for (const PendingBuild &build: batch) {
                 planned_builds.push_back(build);
             }
@@ -1302,34 +1328,26 @@ namespace godot {
     void SceneryStreamingServer::_worker_loop() {
         while (true) {
             semaphore->wait();
-            while (true) {
-                uint64_t revision;
-                Vector<PendingProvide> provides;
-                Vector<PendingBuild> builds;
-                bool release;
-                {
-                    MutexLock lock(mutex);
-                    if (exiting) {
-                        return;
-                    }
-                    release = release_requested;
-                    release_requested = false;
-                    revision = target_revision;
-                    provides = loading_provides;
-                    builds = loading_builds;
-                    loading_provides.clear();
-                    loading_builds.clear();
-                    if (provides.is_empty() && builds.is_empty()) {
-                        planning = false;
-                    }
+            bool release;
+            {
+                MutexLock lock(mutex);
+                if (exiting) {
+                    return;
                 }
-                if (release) {
-                    ProcessMemory::release_unused();
-                }
-                if (provides.is_empty() && builds.is_empty()) {
-                    break;
-                }
-                _load(revision, provides, builds);
+                release = release_requested;
+                release_requested = false;
+            }
+            if (release) {
+                ProcessMemory::release_unused();
+            }
+            _load();
+            MutexLock lock(mutex);
+            if (exiting) {
+                return;
+            }
+            // a plan queuing more meanwhile posts the semaphore again
+            if (loading_provides.is_empty() && loading_builds.is_empty()) {
+                planning = false;
             }
         }
     }

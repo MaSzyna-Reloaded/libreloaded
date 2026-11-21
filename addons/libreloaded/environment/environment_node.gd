@@ -196,8 +196,8 @@ var _dirty_visuals: bool = true
 var _dirty_weather_preset: bool = false
 var _dirty_view: bool = false
 
-## Cabin view (the player in a cab) - whoever draws the environment lets the cab light cast its
-## shadows then (SkyEnvironment)
+## Cabin view (the player in a cab) - whoever draws the environment gives the cab a light of its
+## own then (SkyEnvironment)
 var cabin_view: bool = false:
     set(value):
         if not value == cabin_view:

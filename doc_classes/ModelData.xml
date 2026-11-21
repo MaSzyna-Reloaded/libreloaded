@@ -45,6 +45,9 @@
 		<member name="rotation" type="Vector3" setter="set_rotation" getter="get_rotation" default="Vector3(0, 0, 0)">
 			Euler angles (radians), same order as [member Node3D.rotation].
 		</member>
+		<member name="scale" type="Vector3" setter="set_scale" getter="get_scale" default="Vector3(1, 1, 1)">
+			Its size, one per axis, before [member rotation] turns it.
+		</member>
 		<member name="signal_head_kind" type="SignalHeadKind" setter="set_signal_head_kind" getter="get_signal_head_kind">
 			Set when the model is a signal head.
 		</member>

@@ -25,11 +25,24 @@ func after_each() -> void:
     _instance = RID()
 
 
-func _create(instancer:ModelRenderingServer.Instancer) -> RID:
+func _create(instancer:ModelRenderingServer.Instancer,
+        kind:ModelRenderingServer.InstanceKind = ModelRenderingServer.INSTANCE_KIND_DYNAMIC) -> RID:
     var model:Resource = ModelRenderingServer.model_load(BACKEND, MODEL)
-    _instance = ModelRenderingServer.instance_create(BACKEND, model, instancer,
-            ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    _instance = ModelRenderingServer.instance_create(BACKEND, model, instancer, kind)
     return _instance
+
+
+## The GI modes of the meshes an instance of [param kind] is built of, as nodes
+func _built_gi_modes(kind:ModelRenderingServer.InstanceKind) -> Array[GeometryInstance3D.GIMode]:
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var instance:RID = _create(ModelRenderingServer.INSTANCER_NODES, kind)
+    ModelRenderingServer.instance_attach_object_instance_id(instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(instance)
+    var modes:Array[GeometryInstance3D.GIMode] = []
+    for mesh:Node in attached.find_children("*", "MeshInstance3D", true, false):
+        modes.append((mesh as MeshInstance3D).gi_mode)
+    return modes
 
 
 ## The segment from in front of the hull along -Z, through its middle
@@ -75,6 +88,21 @@ func test_built_as_nodes_it_is_the_scene_under_the_attached_node() -> void:
     var wheel:Node3D = attached.find_child("Wheel", true, false) as Node3D
     assert_not_null(wheel, "the scene's nodes under the attached node")
     assert_false(wheel.visible, "a hidden part's node hidden")
+
+
+## A dynamic instance moves: baked into SDFGI's distance field where a cascade found it, it would
+## shade itself black after it has moved on - it takes the GI without making it; the scenery's
+## stays baked
+func test_a_dynamic_instance_is_not_baked_into_the_gi() -> void:
+    var dynamic:Array[GeometryInstance3D.GIMode] = _built_gi_modes(ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    assert_gt(dynamic.size(), 0, "the scene has meshes")
+    for mode:GeometryInstance3D.GIMode in dynamic:
+        assert_eq(mode, GeometryInstance3D.GI_MODE_DYNAMIC, "a dynamic instance's mesh")
+
+    ModelRenderingServer.instance_free(_instance)
+    var static_modes:Array[GeometryInstance3D.GIMode] = _built_gi_modes(ModelRenderingServer.INSTANCE_KIND_STATIC)
+    for mode:GeometryInstance3D.GIMode in static_modes:
+        assert_eq(mode, GeometryInstance3D.GI_MODE_STATIC, "a static instance's mesh")
 
 
 ## instance_find_nearest_hit(): of the built, visible instances on a segment, the nearest - what

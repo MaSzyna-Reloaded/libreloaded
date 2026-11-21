@@ -35,6 +35,8 @@ namespace godot {
             struct InstanceData {
                     Ref<PackedScene> model;
                     Instancer instancer = ModelRenderingServer::INSTANCER_OPTIMIZED;
+                    /// A dynamic instance moves: it takes the GI without being baked into it
+                    InstanceKind instance_kind = ModelRenderingServer::INSTANCE_KIND_STATIC;
                     RID scenario;
                     Transform3D transform;
                     Transform3D node_transform;
@@ -101,7 +103,8 @@ namespace godot {
             void instance_set_options(
                     const RID &p_instance, const String &p_data_path, const PackedStringArray &p_skins,
                     const Array &p_exclude_node_names, bool p_force_alpha,
-                    const TypedArray<NodePath> &p_force_alpha_part_paths, int p_max_texture_size) override;
+                    const TypedArray<NodePath> &p_force_alpha_part_paths, int p_max_texture_size,
+                    bool p_low_poly_interior) override;
             void instance_set_scenario(const RID &p_instance, const RID &p_scenario) override;
             void instance_set_transform(const RID &p_instance, const Transform3D &p_transform) override;
             void instance_set_visible(const RID &p_instance, bool p_visible) override;
