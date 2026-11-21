@@ -584,6 +584,9 @@ anything. Open work belongs in `TODO.md`.
 * Code whose output is cached on disk bumps its cache tag (`structure-vN`, `CACHE_VERSION`,
   `FIZ_PARSER_FORMAT_VERSION`) in the same commit, and every `ResourceCache` is wired into "Clear
   cache". *(09-20 low-poly interior; 09-20 E186 main tank)*
+* A cache entry used in the session is never trimmed away (`ResourceCacheServer`): streamed and
+  lazily loaded pieces read its files long after the cache handed it out, and files written beside
+  an entry (`get_file_path()`) count as its use. *(11-21 the caches' maximum size)*
 * Never delete a code span with a regex whose optional prefix can match across lines, and verify
   scripted edits structurally. `undefined symbol` means a deleted definition. *(09-22 regex that
   deleted 588 lines)*

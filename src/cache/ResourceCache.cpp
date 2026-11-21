@@ -1,4 +1,5 @@
 #include "ResourceCache.hpp"
+#include "ResourceCacheServer.hpp"
 #include "utils/ReloadedProjectSetting.hpp"
 
 #include "game_data/GameDataServer.hpp"
@@ -77,11 +78,20 @@ namespace godot {
     }
 
     String ResourceCache::_get_cache_path(const String &p_path) const {
-        return String(RESOURCE_CACHE_DIR_PREFIX).path_join(cache_dir).path_join(p_path);
+        ResourceCacheServer *server = ResourceCacheServer::get_instance();
+        ERR_FAIL_NULL_V(server, String());
+        return server->get_root().path_join(cache_dir).path_join(p_path);
     }
 
     String ResourceCache::_get_hash_path(const String &p_path) const {
-        return _get_cache_path(p_path) + ".hash";
+        return _get_cache_path(p_path) + String(ResourceCacheServer::HASH_SUFFIX);
+    }
+
+    /* Before the entry is looked at: an entry used is never trimmed away under its reader */
+    void ResourceCache::_mark_used(const String &p_key) const {
+        ResourceCacheServer *server = ResourceCacheServer::get_instance();
+        ERR_FAIL_NULL(server);
+        server->entry_mark_used(cache_dir.path_join(p_key));
     }
 
     // read on every use: the caches are made before a hook or the editor could change the setting
@@ -90,8 +100,12 @@ namespace godot {
     }
 
     bool ResourceCache::has(const String &p_path, const String &p_hash) const {
+        if (!_enabled()) {
+            return false;
+        }
+        _mark_used(ResourceCacheServer::entry_get_key(p_path));
         const String cache_path = _get_cache_path(p_path);
-        if (!_enabled() || !FileAccess::file_exists(cache_path)) {
+        if (!FileAccess::file_exists(cache_path)) {
             return false;
         }
 
@@ -109,8 +123,12 @@ namespace godot {
     }
 
     Ref<Resource> ResourceCache::get(const String &p_path, const String &p_hash) const {
+        if (!_enabled()) {
+            return nullptr;
+        }
+        _mark_used(ResourceCacheServer::entry_get_key(p_path));
         const String cache_path = _get_cache_path(p_path);
-        if (!_enabled() || !FileAccess::file_exists(cache_path)) {
+        if (!FileAccess::file_exists(cache_path)) {
             return nullptr;
         }
 
@@ -157,6 +175,10 @@ namespace godot {
         } else if (FileAccess::file_exists(hash_path)) {
             DirAccess::remove_absolute(hash_path);
         }
+
+        ResourceCacheServer *server = ResourceCacheServer::get_instance();
+        ERR_FAIL_NULL(server);
+        server->entry_written(cache_dir.path_join(p_path));
     }
 
     void ResourceCache::remove(const String &p_path) const {
@@ -170,36 +192,22 @@ namespace godot {
         }
     }
 
+    // the files written there are read later, while the entry is in use
     String ResourceCache::get_file_path(const String &p_path) const {
+        _mark_used(p_path);
         return _get_cache_path(p_path);
     }
 
-    void ResourceCache::_clear_cache_dir(const String &p_path) {
-        if (DirAccess::dir_exists_absolute(p_path)) {
-            const Ref<DirAccess> dir = DirAccess::open(p_path);
-            if (dir.is_valid()) {
-                UtilityFunctions::print_verbose("[ResourceCache] Clearing cache for " + p_path + "...");
-                dir->list_dir_begin();
-                String file_name = dir->get_next();
-                while (file_name != "") {
-                    if (!dir->current_is_dir()) {
-                        dir->remove(file_name);
-                    } else {
-                        _clear_cache_dir(p_path.path_join(file_name));
-                    }
-                    file_name = dir->get_next();
-                }
-                DirAccess::remove_absolute(p_path);
-            }
-        }
-    }
-
     void ResourceCache::clear() {
-        _clear_cache_dir(String(RESOURCE_CACHE_DIR_PREFIX).path_join(cache_dir));
+        ResourceCacheServer *server = ResourceCacheServer::get_instance();
+        ERR_FAIL_NULL(server);
+        server->cache_clear(cache_dir);
     }
 
     void ResourceCache::clear_all() {
-        _clear_cache_dir(RESOURCE_CACHE_DIR_PREFIX);
+        ResourceCacheServer *server = ResourceCacheServer::get_instance();
+        ERR_FAIL_NULL(server);
+        server->cache_clear(String());
     }
 
     String ResourceCache::get_cache_dir() const {

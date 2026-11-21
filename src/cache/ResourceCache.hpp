@@ -9,11 +9,6 @@
 #include <godot_cpp/templates/mutex.hpp>
 #include <godot_cpp/variant/string.hpp>
 
-#ifndef RESOURCE_CACHE_DIR_PREFIX
-#define RESOURCE_CACHE_DIR_PREFIX "user://cache/"
-#endif
-
-
 namespace godot {
 
     class ResourceCache : public RefCounted {
@@ -24,6 +19,8 @@ namespace godot {
             /// resource_save()'s and scene_pack()'s; one for the whole extension
             static Mutex defaults_mutex;
             String _get_hash_path(const String &p_path) const;
+            /* The entry of p_key, relative to cache_dir, is in use (ResourceCacheServer) */
+            void _mark_used(const String &p_key) const;
             /* The project setting that switches every cache off (the tests: nothing read from a
              * previous run, nothing written) */
             static bool _enabled();
@@ -36,7 +33,6 @@ namespace godot {
         protected:
             static void _bind_methods();
             String _get_cache_path(const String &p_path) const;
-            static void _clear_cache_dir(const String &p_path);
 
         public:
             static Ref<ResourceCache> create(const String &p_cache_dir);
@@ -55,10 +51,12 @@ namespace godot {
             Ref<Resource> get(const String &p_path, const String &p_hash = "") const;
             void set(const String &p_path, const Ref<Resource> &p_resource, const String &p_hash = "") const;
             void remove(const String &p_path) const;
-            /* Where an entry is kept, for files a cache entry writes beside it (a scenery's chunks) */
+            /* Where an entry is kept, for files a cache entry writes beside it (a scenery's chunks):
+             * the directory of p_path - the entry's path without its extension - is part of it */
             String get_file_path(const String &p_path) const;
             void clear();
-            /* Every cache's files, whether or not a cache for them was made yet in this session */
+            /* Every cache's files, whether or not a cache for them was made yet in this session
+             * (ResourceCacheServer.cache_clear()) */
             static void clear_all();
             String get_cache_dir() const;
     };
