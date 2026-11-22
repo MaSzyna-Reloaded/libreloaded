@@ -23,6 +23,13 @@ const BLOOM_INTENSITY_DEFAULT: float = 0.3
 ## without one; at 1 the table as it is, or no correction at all
 const GAMMA_DEFAULT: float = 1.0
 const GAMMA_CURVE_STEPS: int = 256
+## The player's film grain (render/film_grain_enabled, render/film_grain_intensity): drawn over the
+## tonemapped 3D view by a full-screen pass on a canvas layer below the interface's (layer 0), off
+## unless the player turns it on
+const FILM_GRAIN_SHADER: Shader = preload("film_grain.gdshader")
+const FILM_GRAIN_LAYER: int = -1
+const FILM_GRAIN_ENABLED_DEFAULT: bool = false
+const FILM_GRAIN_INTENSITY_DEFAULT: float = 0.12
 
 const SHADOW_SCENERY_ENABLED_SETTING: StringName = &"reloaded/scenery/shadows/enabled"
 const SHADOW_CABIN_ENABLED_SETTING: StringName = &"reloaded/cabin/shadows/enabled"
@@ -396,6 +403,8 @@ const FOG_NIGHT_DISTANCE_FACTOR_DEFAULT: float = 0.4255
 var environment_node: EnvironmentNode
 var _environment: Environment
 var _camera_attributes: CameraAttributesPractical
+## The full-screen pass of the film grain, shown while the player has it on
+var _film_grain: ColorRect
 ## The cab light of each world light, in the cab view when CABIN_SHADOWS_IMPROVED_SETTING is on
 var _cabin_lights: Dictionary[DirectionalLight3D, DirectionalLight3D] = {}
 var _dirty_visuals: bool = true
@@ -439,6 +448,16 @@ func _ready() -> void:
     world_environment.camera_attributes = _camera_attributes
     create_nodes(world_environment, _environment)
     add_child(world_environment, false, INTERNAL_MODE_BACK)
+    var film_grain_layer: CanvasLayer = CanvasLayer.new()
+    film_grain_layer.layer = FILM_GRAIN_LAYER
+    _film_grain = ColorRect.new()
+    _film_grain.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _film_grain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var film_grain_material: ShaderMaterial = ShaderMaterial.new()
+    film_grain_material.shader = FILM_GRAIN_SHADER
+    _film_grain.material = film_grain_material
+    film_grain_layer.add_child(_film_grain)
+    add_child(film_grain_layer, false, INTERNAL_MODE_BACK)
 
 
 func _enter_tree() -> void:
@@ -544,6 +563,10 @@ func _apply_environment_configuration() -> void:
         UserSettings.get_setting("render", "glow_intensity", GLOW_INTENSITY_DEFAULT))
     _environment.glow_bloom = float(
         UserSettings.get_setting("render", "bloom_intensity", BLOOM_INTENSITY_DEFAULT))
+    _film_grain.visible = bool(
+        UserSettings.get_setting("render", "film_grain_enabled", FILM_GRAIN_ENABLED_DEFAULT))
+    (_film_grain.material as ShaderMaterial).set_shader_parameter(&"amount", float(
+        UserSettings.get_setting("render", "film_grain_intensity", FILM_GRAIN_INTENSITY_DEFAULT)))
     _environment.adjustment_enabled = adjustment_enabled
     var gamma: float = float(UserSettings.get_setting("render", "gamma", GAMMA_DEFAULT))
     if not is_equal_approx(gamma, _gamma) or not color_correction == _color_correction_table:

@@ -4,7 +4,7 @@
 		Settings added to the game's own, from a file.
 	</brief_description>
 	<description>
-		The sections of a JSON file of the game's settings' format ([code]{"sections": [...]}[/code]).
+		The sections and the presets of a JSON file of the game's settings' format ([code]{"sections": [...], "presets": [...]}[/code]).
 	</description>
 	<tutorials>
 	</tutorials>

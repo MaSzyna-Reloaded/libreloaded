@@ -71,6 +71,48 @@
 				Sets [param key] of [param section] in memory and saves it at once, and only this key - the rest of the configuration may hold changes not saved yet.
 			</description>
 		</method>
+		<method name="preset_create">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="title" type="String" />
+			<param index="2" name="values" type="Dictionary" />
+			<description>
+				A preset of [param values] by section and key - the [code]"project_settings"[/code] section's keys are project settings' full names - titled [param title], in place of one named [param name].
+			</description>
+		</method>
+		<method name="preset_delete">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<description>
+				The preset named [param name] goes.
+			</description>
+		</method>
+		<method name="preset_get" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="name" type="String" />
+			<description>
+				The preset's [code]"title"[/code] and its [code]"values"[/code] by section and key.
+			</description>
+		</method>
+		<method name="preset_get_current" qualifiers="const">
+			<return type="String" />
+			<description>
+				The first preset every value of which the settings have now - an empty name when they match no preset. A setting the player never set has its declared [code]"default"[/code], a project setting its project's value, or its [code]"default"[/code] where the project has none.
+			</description>
+		</method>
+		<method name="preset_list" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				The presets' names, in their order: the game's settings' [code]"presets"[/code] - each a [code]"name"[/code], a [code]"title"[/code] and its [code]"values"[/code] - with every [UserSettingsProvider]'s values merged into the preset of the same name, and those created since ([method preset_create]).
+			</description>
+		</method>
+		<method name="preset_set">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Every value of the preset set as [method set_setting] sets one - in memory and in effect at once, each as the type its setting declares - each change announced by [signal setting_changed], the configuration's change once by [signal config_changed].
+			</description>
+		</method>
 		<method name="provider_add">
 			<return type="void" />
 			<param index="0" name="provider" type="UserSettingsProvider" />

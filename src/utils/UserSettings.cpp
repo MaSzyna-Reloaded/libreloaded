@@ -54,6 +54,10 @@ namespace godot {
         }
 
         load_config();
+        _add_presets(_read_declarations_file().get("presets", Array()));
+        for (const Ref<UserSettingsProvider> &provider: providers) {
+            _add_presets(provider->get_presets());
+        }
     }
 
     UserSettings::~UserSettings() {
@@ -87,6 +91,12 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_data_dir"), &UserSettings::get_data_dir);
         ClassDB::bind_method(D_METHOD("get_declarations"), &UserSettings::get_declarations);
         ClassDB::bind_method(D_METHOD("provider_add", "provider"), &UserSettings::provider_add);
+        ClassDB::bind_method(D_METHOD("preset_list"), &UserSettings::preset_list);
+        ClassDB::bind_method(D_METHOD("preset_get", "name"), &UserSettings::preset_get);
+        ClassDB::bind_method(D_METHOD("preset_create", "name", "title", "values"), &UserSettings::preset_create);
+        ClassDB::bind_method(D_METHOD("preset_delete", "name"), &UserSettings::preset_delete);
+        ClassDB::bind_method(D_METHOD("preset_set", "name"), &UserSettings::preset_set);
+        ClassDB::bind_method(D_METHOD("preset_get_current"), &UserSettings::preset_get_current);
 
         ADD_SIGNAL(MethodInfo(config_changed_signal));
         ADD_SIGNAL(MethodInfo(
@@ -179,12 +189,15 @@ namespace godot {
         }
     }
 
-    Dictionary UserSettings::get_declarations() const {
+    Dictionary UserSettings::_read_declarations_file() const {
         const String declarations = ProjectSettings::get_singleton()->get_setting(DECLARATIONS_SETTING);
         const Variant parsed =
                 declarations.is_empty() ? Variant() : JSON::parse_string(FileAccess::get_file_as_string(declarations));
-        Array sections =
-                parsed.get_type() == Variant::DICTIONARY ? Array(Dictionary(parsed).get("sections", Array())) : Array();
+        return parsed.get_type() == Variant::DICTIONARY ? Dictionary(parsed) : Dictionary();
+    }
+
+    Dictionary UserSettings::get_declarations() const {
+        Array sections = _read_declarations_file().get("sections", Array());
         for (const Ref<UserSettingsProvider> &provider: providers) {
             for (const Variant &added: provider->get_sections()) {
                 const Dictionary added_section = added;
@@ -214,23 +227,172 @@ namespace godot {
         ERR_FAIL_COND_MSG(config.is_null(), "UserSettings config is null.");
         providers.push_back(p_provider);
         _apply_project_values(p_provider->get_sections());
+        _add_presets(p_provider->get_presets());
         emit_signal(config_changed_signal);
     }
 
-    void UserSettings::set_setting(const String &p_section, const String &p_key, const Variant &p_value) {
-        ERR_FAIL_COND_MSG(config.is_null(), "UserSettings config is null.");
+    void UserSettings::_add_presets(const Array &p_presets) {
+        for (const Variant &added: p_presets) {
+            const Dictionary added_preset = added;
+            const String name = added_preset.get("name", "");
+            ERR_CONTINUE_MSG(name.is_empty(), "A preset of the user settings has no name.");
+            Dictionary preset = presets.get(name, Dictionary());
+            if (added_preset.has("title")) {
+                preset["title"] = added_preset["title"];
+            }
+            Dictionary values = preset.get("values", Dictionary());
+            const Dictionary added_values = added_preset.get("values", Dictionary());
+            for (const Variant &section: added_values.keys()) {
+                Dictionary section_values = values.get(section, Dictionary());
+                section_values.merge(added_values[section], true);
+                values[section] = section_values;
+            }
+            preset["values"] = values;
+            presets[name] = preset;
+        }
+    }
 
+    Dictionary UserSettings::_get_declared_settings() const {
+        Dictionary declared;
+        for (const Variant &section: Array(get_declarations().get("sections", Array()))) {
+            for (const Variant &setting: Array(Dictionary(section).get("settings", Array()))) {
+                const Dictionary entry = setting;
+                const String section_name = entry.get("store", "") == Variant("project")
+                                                    ? String(PROJECT_SETTINGS_SECTION)
+                                                    : String(entry.get("section", ""));
+                Dictionary keys = declared.get(section_name, Dictionary());
+                keys[entry.get("key", "")] = entry;
+                declared[section_name] = keys;
+            }
+        }
+        return declared;
+    }
+
+    Variant UserSettings::_as_declared(const Variant &p_value, const Dictionary &p_setting) {
+        const String type = p_setting.get("type", "");
+        if (type == "bool") {
+            return UtilityFunctions::type_convert(p_value, Variant::BOOL);
+        }
+        if (type == "int") {
+            return UtilityFunctions::type_convert(p_value, Variant::INT);
+        }
+        if (type == "float") {
+            return UtilityFunctions::type_convert(p_value, Variant::FLOAT);
+        }
+        return p_value;
+    }
+
+    PackedStringArray UserSettings::preset_list() const {
+        PackedStringArray names;
+        for (const Variant &name: presets.keys()) {
+            names.append(name);
+        }
+        return names;
+    }
+
+    Dictionary UserSettings::preset_get(const String &p_name) const {
+        ERR_FAIL_COND_V_MSG(!presets.has(p_name), Dictionary(), "No preset of the user settings " + p_name + ".");
+        return Dictionary(presets[p_name]).duplicate(true);
+    }
+
+    void UserSettings::preset_create(const String &p_name, const String &p_title, const Dictionary &p_values) {
+        Dictionary preset;
+        preset["title"] = p_title;
+        preset["values"] = p_values.duplicate(true);
+        presets[p_name] = preset;
+    }
+
+    void UserSettings::preset_delete(const String &p_name) {
+        ERR_FAIL_COND_MSG(!presets.has(p_name), "No preset of the user settings " + p_name + ".");
+        presets.erase(p_name);
+    }
+
+    void UserSettings::preset_set(const String &p_name) {
+        ERR_FAIL_COND_MSG(config.is_null(), "UserSettings config is null.");
+        ERR_FAIL_COND_MSG(!presets.has(p_name), "No preset of the user settings " + p_name + ".");
+        const Dictionary declared = _get_declared_settings();
+        const Dictionary values = Dictionary(presets[p_name]).get("values", Dictionary());
+        PackedStringArray changed_sections;
+        PackedStringArray changed_keys;
+        for (const Variant &section: values.keys()) {
+            const Dictionary section_values = values[section];
+            const Dictionary section_declared = declared.get(section, Dictionary());
+            for (const Variant &key: section_values.keys()) {
+                const Variant value = _as_declared(section_values[key], section_declared.get(key, Dictionary()));
+                if (_write_setting(section, key, value)) {
+                    changed_sections.append(section);
+                    changed_keys.append(key);
+                }
+            }
+        }
+        for (int64_t index = 0; index < changed_keys.size(); index++) {
+            emit_signal(setting_changed_signal, changed_sections[index], changed_keys[index]);
+        }
+        if (!changed_keys.is_empty()) {
+            emit_signal(config_changed_signal);
+        }
+    }
+
+    String UserSettings::preset_get_current() const {
+        ERR_FAIL_COND_V_MSG(config.is_null(), String(), "UserSettings config is null.");
+        ProjectSettings *project_settings = ProjectSettings::get_singleton();
+        const Dictionary declared = _get_declared_settings();
+        const auto has_now = [&](const String &p_section, const String &p_key, const Variant &p_value) {
+            const Dictionary setting = Dictionary(declared.get(p_section, Dictionary())).get(p_key, Dictionary());
+            Variant current = setting.get("default", Variant());
+            if (p_section == PROJECT_SETTINGS_SECTION) {
+                if (project_settings->has_setting(p_key)) {
+                    current = project_settings->get_setting(p_key);
+                }
+            } else if (config->has_section_key(p_section, p_key)) {
+                current = config->get_value(p_section, p_key);
+            }
+            if (current.get_type() == Variant::NIL) {
+                return false;
+            }
+            current = _as_declared(current, setting);
+            const Variant expected = _as_declared(p_value, setting);
+            if (current.get_type() == Variant::FLOAT && expected.get_type() == Variant::FLOAT) {
+                return UtilityFunctions::is_equal_approx(current, expected);
+            }
+            return current == expected;
+        };
+        for (const Variant &name: presets.keys()) {
+            const Dictionary values = Dictionary(presets[name]).get("values", Dictionary());
+            bool matches = true;
+            for (const Variant &section: values.keys()) {
+                const Dictionary section_values = values[section];
+                for (const Variant &key: section_values.keys()) {
+                    matches = matches && has_now(section, key, section_values[key]);
+                }
+            }
+            if (matches) {
+                return name;
+            }
+        }
+        return String();
+    }
+
+    bool UserSettings::_write_setting(const String &p_section, const String &p_key, const Variant &p_value) {
         // an empty Variant is no default to ConfigFile: a key not saved yet is looked up only if it is there
         const Variant old_value =
                 config->has_section_key(p_section, p_key) ? config->get_value(p_section, p_key) : Variant();
         if (old_value == p_value) {
-            return;
+            return false;
         }
         config->set_value(p_section, p_key, p_value);
 
         // what is created from now on takes it; what read it at its init keeps the old value
         if (p_section == PROJECT_SETTINGS_SECTION) {
             _set_project_setting(p_key, p_value);
+        }
+        return true;
+    }
+
+    void UserSettings::set_setting(const String &p_section, const String &p_key, const Variant &p_value) {
+        ERR_FAIL_COND_MSG(config.is_null(), "UserSettings config is null.");
+        if (!_write_setting(p_section, p_key, p_value)) {
+            return;
         }
         const bool is_data_dir = p_section == DATA_DIR_SECTION && p_key == DATA_DIR_KEY;
         if (is_data_dir) {

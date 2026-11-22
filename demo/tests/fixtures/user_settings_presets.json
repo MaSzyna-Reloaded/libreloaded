@@ -1,0 +1,42 @@
+{
+    "sections": [
+        {
+            "title": "Tests presets",
+            "settings": [
+                {
+                    "title": "Quality",
+                    "store": "user",
+                    "section": "tests_presets",
+                    "key": "quality",
+                    "type": "int",
+                    "default": 1
+                },
+                {
+                    "title": "Shadows",
+                    "store": "user",
+                    "section": "tests_presets",
+                    "key": "shadows",
+                    "type": "bool",
+                    "default": true
+                },
+                {
+                    "title": "Distance",
+                    "store": "project",
+                    "key": "reloaded/tests/presets_distance",
+                    "type": "float",
+                    "default": 100.0
+                }
+            ]
+        }
+    ],
+    "presets": [
+        {
+            "name": "tests_from_file",
+            "title": "From file",
+            "values": {
+                "tests_presets": {"quality": 2, "shadows": true},
+                "project_settings": {"reloaded/tests/presets_distance": 300.0}
+            }
+        }
+    ]
+}

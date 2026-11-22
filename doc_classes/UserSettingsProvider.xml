@@ -4,15 +4,27 @@
 		Settings added to the game's own.
 	</brief_description>
 	<description>
-		The sections of settings a game built on this one, or a plugin, adds to the game's ([UserSettings]): in the game's settings' format - each a [code]"title"[/code] and its [code]"settings"[/code], each of a [code]"title"[/code], a [code]"store"[/code], a [code]"key"[/code] and so on - merged into the game's by their titles. A plugin gives one as the library starts, anything else adds one with [method UserSettings.provider_add].
+		The sections of settings a game built on this one, or a plugin, adds to the game's ([UserSettings]): in the game's settings' format - each a [code]"title"[/code] and its [code]"settings"[/code], each of a [code]"title"[/code], a [code]"store"[/code], a [code]"key"[/code] and so on - merged into the game's by their titles - and the values of its own settings in the game's presets ([method UserSettings.preset_list]): each preset a [code]"name"[/code] and its [code]"values"[/code] by section and key, merged into the game's preset of that name. A plugin gives one as the library starts, anything else adds one with [method UserSettings.provider_add].
 	</description>
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="_get_presets" qualifiers="virtual const">
+			<return type="Array" />
+			<description>
+				The presets' values it adds, in a script.
+			</description>
+		</method>
 		<method name="_get_sections" qualifiers="virtual const">
 			<return type="Array" />
 			<description>
 				The sections it adds, in a script.
+			</description>
+		</method>
+		<method name="get_presets" qualifiers="const">
+			<return type="Array" />
+			<description>
+				The presets' values it adds.
 			</description>
 		</method>
 		<method name="get_sections" qualifiers="const">
