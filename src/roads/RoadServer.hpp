@@ -47,9 +47,11 @@ namespace godot {
 
             struct Road {
                     Ref<Curve3D> curve;
-                    /* The curve's baked points and the distance along it to each [m] */
-                    PackedVector3Array points;
-                    PackedFloat64Array distances;
+                    /* The curve's baked points and the distance along it to each [m], in arrays of
+                     * the library's own: the step asks a road's length and samples it many times a
+                     * frame, which an engine array answers only through the extension interface */
+                    LocalVector<Vector3> points;
+                    LocalVector<double> distances;
                     double width = 0.0;
                     /* Its own speed limit [km/h], negative for none - while it has no track */
                     double velocity = -1.0;

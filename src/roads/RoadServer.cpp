@@ -98,14 +98,17 @@ namespace godot {
         Road *road = roads.getptr(p_road);
         ERR_FAIL_NULL(road);
         road->curve = p_curve;
-        road->points = p_curve.is_valid() ? p_curve->get_baked_points() : PackedVector3Array();
-        road->distances.resize(road->points.size());
+        const PackedVector3Array baked = p_curve.is_valid() ? p_curve->get_baked_points() : PackedVector3Array();
+        const int64_t count = baked.size();
+        road->points.resize(count);
+        road->distances.resize(count);
         double distance = 0.0;
-        for (int64_t index = 0; index < road->points.size(); ++index) {
+        for (int64_t index = 0; index < count; ++index) {
+            road->points[index] = baked[index];
             if (index > 0) {
                 distance += road->points[index - 1].distance_to(road->points[index]);
             }
-            road->distances.set(index, distance);
+            road->distances[index] = distance;
         }
     }
 

@@ -41,6 +41,23 @@ namespace godot {
             static constexpr double MIN_PASSABLE_LENGTH = 0.02;
             /* The most roads a vehicle looks ahead over, whatever their lengths */
             static constexpr uint32_t MAX_ROUTE_ROADS = 256;
+            /* How often [s] a vehicle looks at what is ahead of it - the roads' limits, the vehicles,
+             * a dead end - keeping the tightest of them, braked for every step from where it is
+             * then; the velocity it wants and its own maximum are taken every step */
+            static constexpr double LOOK_AHEAD_INTERVAL = 0.25;
+            /* The vehicles look ahead in this many groups, each in steps of its own, so the looking
+             * is spread over the frames */
+            static constexpr uint32_t LOOK_AHEAD_GROUPS = 8;
+
+            /* What is ahead lets a vehicle go at: down to a velocity [m/s] at a distance [m] ahead of
+             * where it looked */
+            struct AheadLimit {
+                    double velocity = Math::INF;
+                    double distance = 0.0;
+                    /* A road's limit: once the vehicle is on that road it goes at that velocity,
+                     * never braked below it */
+                    bool kept_once_reached = false;
+            };
 
             struct Placement {
                     /* Held so the step does not look it up per vehicle ahead */
@@ -54,25 +71,34 @@ namespace godot {
                     Vector<RoadServer::Link> route;
                     /* The track it is reported on (RoadServer.road_get_track()) */
                     RID track;
+                    /* The tightest of what is ahead as last looked at, how far it went since [m] and
+                     * in how long [s] it looks again - at once when it is zero or less */
+                    AheadLimit ahead_limit;
+                    double travelled_since_look = 0.0;
+                    double look_ahead_in = 0.0;
             };
 
             RIDMap<Placement> vehicles;
+            /* The group of the next vehicle put on a road (LOOK_AHEAD_GROUPS) */
+            uint32_t next_look_ahead_group = 0;
 
             /* The road the step-th link of the vehicle's way leads onto from p_road, travelled toward
              * p_toward: the one it chose, else one chosen now at random; false at a dead end */
             static bool _route_link(
                     Placement &p_placement, uint32_t p_step, const RID &p_road, RoadServer::RoadEnd p_toward,
                     RoadServer::Link &p_r_link);
-            /* The velocity [m/s] the vehicle may have in a step of p_delta [s]: what it wants, its
-             * own maximum, the limits of the roads ahead, the vehicle ahead in its lane and a dead
-             * end, each braked to within its acceleration limit */
-            double _allowed_velocity(const RID &p_vehicle, Placement &p_placement, double p_delta);
-            /* What the vehicles on p_road let it go at, the road entered p_distance [m] ahead
-             * (negative: the one it is on, entered that far behind it), travelled toward p_toward;
-             * p_step_distance [m] is how far the step takes it */
-            double _vehicles_allowed_velocity(
+            /* The velocity [m/s] p_limit lets a vehicle braking at p_deceleration [m/s2] go at,
+             * p_went [m] past where it looked ahead */
+            static double _limit_velocity(const AheadLimit &p_limit, double p_went, double p_deceleration);
+            /* The tightest of what is ahead of the vehicle - the limits of the roads ahead, the
+             * vehicle ahead in its lane, a dead end - each braked for within its acceleration limit */
+            AheadLimit _look_ahead(const RID &p_vehicle, Placement &p_placement);
+            /* The tightest of what the vehicles on p_road ask of it, the road entered p_distance [m]
+             * ahead (negative: the one it is on, entered that far behind it), travelled toward
+             * p_toward; one coming the other way comes nearer until it looks again */
+            AheadLimit _vehicles_ahead_limit(
                     const RID &p_vehicle, const Placement &p_placement, const RID &p_road, RoadServer::RoadEnd p_toward,
-                    double p_distance, double p_step_distance, double p_delta) const;
+                    double p_distance) const;
             /* Along its way by p_distance [m]; false when a listener of what it entered freed it */
             bool _move(const RID &p_vehicle, Placement &p_placement, double p_distance);
             /* It is on p_road now, travelling toward p_toward, and reported there; false when a
