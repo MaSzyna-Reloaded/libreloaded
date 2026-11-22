@@ -251,6 +251,22 @@ func test_the_shadow_settings_have_their_defaults_as_the_game_runs() -> void:
             SkyEnvironment.SHADOW_CABIN_SPLITS[0], "the cab light's first split")
 
 
+## The omni and spot lights' shadows (a street lamp's) are as sharp as the sun's: their atlas is the
+## shadow texture quality's map, and the light nearest the camera has a quadrant of its own
+func test_the_positional_shadow_atlas_follows_the_shadow_texture_quality() -> void:
+    var quality_before:Variant = ProjectSettings.get_setting(SkyEnvironment.SHADOW_TEXTURE_QUALITY_SETTING)
+    var viewport:Viewport = _sky.get_viewport()
+
+    for quality:int in [SkyEnvironment.ShadowTextureQuality.LOW, SkyEnvironment.ShadowTextureQuality.HIGH]:
+        ProjectSettings.set_setting(SkyEnvironment.SHADOW_TEXTURE_QUALITY_SETTING, quality)
+        await wait_idle_frames(APPLY_FRAMES)
+        assert_eq(viewport.positional_shadow_atlas_size, SkyEnvironment.SHADOW_TEXTURE_QUALITY_SIZES[quality])
+    assert_eq(viewport.get_positional_shadow_atlas_quadrant_subdiv(0), Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_1,
+            "the nearest light has a quadrant of its own")
+
+    ProjectSettings.set_setting(SkyEnvironment.SHADOW_TEXTURE_QUALITY_SETTING, quality_before)
+
+
 ## The shadow atlas holds the shadow texture quality's map for the sun and for its cab light: Godot splits it
 ## evenly between them - up to the largest atlas Godot takes. The cab light is there in the cab view
 ## only: the exterior view hides the cab

@@ -67,6 +67,16 @@ const SHADOW_TEXTURE_QUALITY_SIZES: PackedInt32Array = [2048, 4096, 8192, 16384]
 ## The largest atlas Godot takes (rendering/lights_and_shadows/directional_shadow/size): MAXIMUM's
 ## map does not fit twice, so beside a cab light the sun keeps half of it
 const SHADOW_ATLAS_MAX_SIZE: int = 16384
+## How the atlas of the omni and spot lights' shadows (a street lamp's) is shared out, quadrant by
+## quadrant: the light nearest the camera gets a quadrant of its own - half the atlas across - and
+## the rest four, sixteen and sixty-four maps a quadrant. Godot's own first quadrant holds four, so
+## a lamp lighting the cab through its window drew its shadow from a quarter of that
+const POSITIONAL_SHADOW_QUADRANTS: Array[Viewport.PositionalShadowAtlasQuadrantSubdiv] = [
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_1,
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_4,
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_16,
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_64,
+]
 
 # The default values of the shadow settings, which ReloadedProjectSettings registers - the only
 # place they are written down
@@ -486,6 +496,7 @@ func _process(delta: float) -> void:
     if _dirty_lights:
         _dirty_lights = false
         apply_light_configuration()
+        _apply_positional_shadow_settings()
     if _dirty_time:
         _dirty_time = false
         apply_time_configuration()
@@ -726,6 +737,23 @@ func _apply_sun_settings(world_light: DirectionalLight3D) -> void:
     _apply_directional_light_settings(world_light, ShadowView.SCENERY)
     if _cabin_lights.has(world_light):
         _apply_directional_light_settings(_cabin_lights[world_light], ShadowView.CABIN)
+
+
+## The omni and spot lights' shadows are as sharp as the sun's: their atlas is the shadow texture
+## quality's map, shared out by POSITIONAL_SHADOW_QUADRANTS. The viewport the world is drawn in
+## holds it
+func _apply_positional_shadow_settings() -> void:
+    var viewport: Viewport = get_viewport()
+    if viewport == null:
+        return
+    viewport.positional_shadow_atlas_size = get_positional_shadow_atlas_size()
+    for quadrant: int in POSITIONAL_SHADOW_QUADRANTS.size():
+        viewport.set_positional_shadow_atlas_quadrant_subdiv(quadrant, POSITIONAL_SHADOW_QUADRANTS[quadrant])
+
+
+## The size of the omni and spot lights' shadow atlas: the shadow texture quality's map
+func get_positional_shadow_atlas_size() -> int:
+    return SHADOW_TEXTURE_QUALITY_SIZES[int(ProjectSettings.get_setting(SHADOW_TEXTURE_QUALITY_SETTING))]
 
 
 ## The size the directional shadow atlas is set to: the shadow map of the shadow texture quality for the
