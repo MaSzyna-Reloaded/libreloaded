@@ -682,16 +682,15 @@ func _on_project_settings_changed() -> void:
 
 
 ## Copies what the sky backend drives on a world light every frame (Skydome writes colour, energy
-## and, from the clouds, the shadow opacity and the angular size that softens the shadow -
-## Skydome.gd:775 - all with no signal) onto its cab light. The direction comes
-## with the node tree: the cab light is a child with an identity transform. At most two entries.
+## and, from the clouds, the shadow opacity - Skydome.gd:775 - all with no signal) onto its cab
+## light. The direction comes with the node tree: the cab light is a child with an identity
+## transform. At most two entries.
 func sync_cabin_lights() -> void:
     for world_light: DirectionalLight3D in _cabin_lights:
         var cabin_light: DirectionalLight3D = _cabin_lights[world_light]
         cabin_light.light_color = world_light.light_color
         cabin_light.light_energy = world_light.light_energy
         cabin_light.shadow_opacity = world_light.shadow_opacity
-        cabin_light.light_angular_distance = world_light.light_angular_distance
 
 
 ## Gives a world light a cab light of its own: it lights only the cab layer and the world light no
@@ -704,6 +703,11 @@ func _create_cabin_light(world_light: DirectionalLight3D) -> void:
     # the world light already draws the sun in the sky and scatters in the fog
     cabin_light.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
     cabin_light.light_volumetric_fog_energy = 0.0
+    # The world light's angular size stays out: on the cab's dense cascades a shadow softened by
+    # it cost the GPU 15.6 ms more at the sun's 0.53 degrees and 40 ms more at the clouds' 15
+    # (1920x1080, FINDINGS.md 2026-11-23). The cab's shadow is softened by its own blur
+    # (SHADOW_CABIN_BLUR_SETTING)
+    cabin_light.light_angular_distance = 0.0
     world_light.add_child(cabin_light, false, Node.INTERNAL_MODE_BACK)
     world_light.light_cull_mask &= ~EnvironmentNode.CABIN_RENDER_LAYER
     _cabin_lights[world_light] = cabin_light

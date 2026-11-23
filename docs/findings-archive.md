@@ -4,6 +4,25 @@ The full entries behind the rules in `FINDINGS.md`: the symptom, what proved the
 and the rule. Headings keep their date and title, because comments in the code cite them
 (`see FINDINGS.md, 2026-09-23`). Open work belongs in `TODO.md`, not here.
 
+## 2026-11-23 - The cab view at half the frame rate
+
+* **Symptom:** libreloaded#113 - with `reloaded/cabin/improve_shadows_quality` on, the cab view
+  of TEM2-277 (`elektrocieplownia_dobre_2.scn`, Filmic, 1920x1080, RTX 5050 Laptop) took the GPU
+  32.6 ms a frame, 15.3 ms with the option off; the player's own frame showed 47 ms.
+* **What proved it:** a probe under a headless sway on the real GPU, in that cab, timing the
+  frame (`viewport_get_measured_render_time_gpu()`) and its passes (`--gpu-profile` captured
+  timestamps) with one thing changed at a time. The cab light's shadow maps cost ~2.5 ms; the
+  rest was the sampling of its shadow in the opaque and transparent passes (3.8 -> 18.6 ms). The
+  cab light's `light_angular_distance` at 0: 17.0 ms; at the clouds' 15 degrees: 57 ms; the same
+  0.53 degrees on cascades 4x coarser (88 m instead of 22 m): 20.1 ms; two splits instead of
+  four 29.6 ms. The cost of the softened shadow grows with the angle and with the density of the
+  cascades it is sampled from, and the cab light's are dense (the first over 2.5 m).
+* **Fix:** the cab light keeps `light_angular_distance` at 0 and takes from the world light only
+  its colour, energy and shadow opacity (`SkyEnvironment.sync_cabin_lights()`); its shadow is
+  softened by its own blur. 17.4 ms after, 19.1 ms under 15 degrees of clouds.
+* **Rule:** a shadow softened by the light's angular size costs by the texels it spans - never
+  on a light with dense cascades; measure such a light by pass before tuning its cascades.
+
 ## 2026-11-11 - A renamed vehicle lost its name at the first copy
 
 * **Symptom:** MaSzyna-Reloaded/reports#30 - a vehicle changed in the scenery selector's starter

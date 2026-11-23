@@ -30,6 +30,9 @@ const DAY_AUTO_EXPOSURE_MAX_SENSITIVITY:float = 1600.0
 const NIGHT_AUTO_EXPOSURE_SCALE:float = 0.1
 const NIGHT_AUTO_EXPOSURE_MIN_SENSITIVITY:float = 200.0
 const NIGHT_AUTO_EXPOSURE_MAX_SENSITIVITY:float = 3200.0
+## A sun softened by clouds as a sky backend does it [deg], and the shadow opacity they leave
+const CLOUDED_SUN_ANGULAR_DISTANCE:float = 5.0
+const CLOUDED_SHADOW_OPACITY:float = 0.6
 ## A summer noon and midnight at the EnvironmentNode's place [h]
 const NOON:float = 12.0
 const MIDNIGHT:float = 0.0
@@ -297,3 +300,26 @@ func test_the_shadow_atlas_holds_the_texture_quality_s_map_for_each_light() -> v
 
     ProjectSettings.set_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING, improved_before)
     ProjectSettings.set_setting(SkyEnvironment.SHADOW_TEXTURE_QUALITY_SETTING, quality_before)
+
+
+## The cab light takes the shadow opacity the clouds leave on the sun, but not the sun's angular
+## size: a shadow softened by it on the cab's dense cascades cost the GPU 15 to 40 ms more
+func test_the_cab_light_takes_the_shadow_opacity_but_not_the_sun_s_size() -> void:
+    var improved_before:Variant = ProjectSettings.get_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING)
+    ProjectSettings.set_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING, true)
+    _environment_node.cabin_view = true
+    await wait_idle_frames(APPLY_FRAMES)
+    # the sky's WorldEnvironment is its internal child, the sun that one's child, the cab light the sun's
+    var sun:DirectionalLight3D = _sky.get_child(0, true).get_node_or_null(
+            NodePath(ProceduralSkyEnvironment.SUN_NAME)) as DirectionalLight3D
+    var cabin_light:DirectionalLight3D = sun.get_node_or_null(
+            NodePath(SkyEnvironment.CABIN_LIGHT_NAME)) as DirectionalLight3D
+    assert_not_null(cabin_light, "the sun has its cab light in the cab view")
+    if cabin_light:
+        sun.light_angular_distance = CLOUDED_SUN_ANGULAR_DISTANCE
+        sun.shadow_opacity = CLOUDED_SHADOW_OPACITY
+        await wait_idle_frames(APPLY_FRAMES)
+        assert_almost_eq(cabin_light.shadow_opacity, CLOUDED_SHADOW_OPACITY, 0.001, "the clouds' opacity")
+        assert_eq(cabin_light.light_angular_distance, 0.0, "not the sun's angular size")
+
+    ProjectSettings.set_setting(SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING, improved_before)
