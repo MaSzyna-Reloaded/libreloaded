@@ -86,10 +86,17 @@ namespace godot {
                       rest.inverse() * Basis(Vector3(0.0, 1.0, 0.0), static_cast<real_t>(body_yaw - bogie_yaw)) * rest);
             }
         }
+        // the wheels turn about the axis across the travel in the model's own frame: up x the vehicle's
+        // front (-Z) as the model sees it (VehicleAppearance.model_transform) - X of a model whose front
+        // faces +Z
+        const Basis model_basis =
+                p_visual.appearance.is_valid() ? p_visual.appearance->get_model_transform().basis : Basis();
+        const Vector3 axle_axis =
+                Vector3(0.0, 1.0, 0.0).cross(model_basis.xform_inv(Vector3(0.0, 0.0, -1.0))).normalized();
         const double angles[] = {
                 wheels->get_angle_front_deg(), wheels->get_angle_powered_deg(), wheels->get_angle_rear_deg()};
         for (int group = 0; group < static_cast<int>(std::size(p_visual.wheels)); ++group) {
-            const Basis pose(Vector3(1.0, 0.0, 0.0), static_cast<real_t>(Math::deg_to_rad(angles[group])));
+            const Basis pose(axle_axis, static_cast<real_t>(Math::deg_to_rad(angles[group])));
             for (const Part &wheel: p_visual.wheels[group]) {
                 _pose(p_visual, wheel, pose);
             }
