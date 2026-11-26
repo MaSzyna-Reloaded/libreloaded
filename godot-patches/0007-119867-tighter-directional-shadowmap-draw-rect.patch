@@ -1,0 +1,582 @@
+diff --git a/drivers/gles3/rasterizer_scene_gles3.cpp b/drivers/gles3/rasterizer_scene_gles3.cpp
+index bf41012..3146ce2 100644
+--- a/drivers/gles3/rasterizer_scene_gles3.cpp
++++ b/drivers/gles3/rasterizer_scene_gles3.cpp
+@@ -2246,7 +2246,6 @@ void RasterizerSceneGLES3::_render_shadow_pass(RID p_light, RID p_shadow_atlas,
+ 		Rect2 atlas_rect_norm = atlas_rect;
+ 		atlas_rect_norm.position /= directional_shadow_size;
+ 		atlas_rect_norm.size /= directional_shadow_size;
+-		light_storage->light_instance_set_directional_shadow_atlas_rect(p_light, p_pass, atlas_rect_norm);
+ 
+ 		zfar = RSG::light_storage->light_get_param(base, RSE::LIGHT_PARAM_RANGE);
+ 		shadow_fb = light_storage->direction_shadow_get_fb();
+@@ -2255,6 +2254,24 @@ void RasterizerSceneGLES3::_render_shadow_pass(RID p_light, RID p_shadow_atlas,
+ 		float bias_scale = light_storage->light_instance_get_shadow_bias_scale(p_light, p_pass);
+ 		shadow_bias = light_storage->light_get_param(base, RSE::LIGHT_PARAM_SHADOW_BIAS) / 100.0 * bias_scale;
+ 
++		Rect2 norm_draw_rect = light_storage->light_instance_get_directional_shadow_draw_norm_rect(p_light, p_pass);
++		Rect2 draw_rect_norm;
++		draw_rect_norm.position = atlas_rect_norm.position + atlas_rect_norm.size * norm_draw_rect.position;
++		draw_rect_norm.size = atlas_rect_norm.size * norm_draw_rect.size;
++		light_storage->light_instance_set_directional_shadow_atlas_rect(p_light, p_pass, draw_rect_norm);
++
++		Rect2 draw_rect = draw_rect_norm;
++		draw_rect.position *= directional_shadow_size;
++		draw_rect.size *= directional_shadow_size;
++
++		// This MUST be rounding and not, say, floor or ceil.
++		// Using anything other than round will lead to flickering in directional shadows when the tightened draw area is resized by camera rotations.
++		atlas_rect = Rect2i(
++				Vector2i(
++						(int32_t)Math::round(draw_rect.position.x), (int32_t)Math::round(draw_rect.position.y)),
++				Vector2i(
++						(int32_t)Math::round(draw_rect.size.x), (int32_t)Math::round(draw_rect.size.y)));
++
+ 	} else {
+ 		// Set from shadow atlas.
+ 
+diff --git a/drivers/gles3/storage/light_storage.cpp b/drivers/gles3/storage/light_storage.cpp
+index 94c31ae..a976de3 100644
+--- a/drivers/gles3/storage/light_storage.cpp
++++ b/drivers/gles3/storage/light_storage.cpp
+@@ -475,7 +475,7 @@ void LightStorage::light_instance_set_aabb(RID p_light_instance, const AABB &p_a
+ 	light_instance->aabb = p_aabb;
+ }
+ 
+-void LightStorage::light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale, float p_range_begin, const Vector2 &p_uv_scale) {
++void LightStorage::light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale, float p_range_begin, const Vector2 &p_uv_scale, const Rect2 &p_norm_draw_rect) {
+ 	LightInstance *light_instance = light_instance_owner.get_or_null(p_light_instance);
+ 	ERR_FAIL_NULL(light_instance);
+ 
+@@ -489,6 +489,7 @@ void LightStorage::light_instance_set_shadow_transform(RID p_light_instance, con
+ 	light_instance->shadow_transform[p_pass].range_begin = p_range_begin;
+ 	light_instance->shadow_transform[p_pass].shadow_texel_size = p_shadow_texel_size;
+ 	light_instance->shadow_transform[p_pass].uv_scale = p_uv_scale;
++	light_instance->shadow_transform[p_pass].norm_draw_rect = p_norm_draw_rect;
+ }
+ 
+ void LightStorage::light_instance_mark_visible(RID p_light_instance) {
+diff --git a/drivers/gles3/storage/light_storage.h b/drivers/gles3/storage/light_storage.h
+index 10d31a7..0ba5327 100644
+--- a/drivers/gles3/storage/light_storage.h
++++ b/drivers/gles3/storage/light_storage.h
+@@ -85,6 +85,7 @@ struct LightInstance {
+ 		float shadow_texel_size;
+ 		float range_begin;
+ 		Rect2 atlas_rect;
++		Rect2 norm_draw_rect;
+ 		Vector2 uv_scale;
+ 	};
+ 
+@@ -453,7 +454,7 @@ public:
+ 
+ 	virtual void light_instance_set_transform(RID p_light_instance, const Transform3D &p_transform) override;
+ 	virtual void light_instance_set_aabb(RID p_light_instance, const AABB &p_aabb) override;
+-	virtual void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2()) override;
++	virtual void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2(), const Rect2 &p_norm_draw_rect = Rect2(Vector2(0, 0), Vector2(1, 1))) override;
+ 	virtual void light_instance_mark_visible(RID p_light_instance) override;
+ 
+ 	virtual bool light_instance_is_shadow_visible_at_position(RID p_light_instance, const Vector3 &p_position) const override {
+@@ -587,6 +588,11 @@ public:
+ 		return li->shadow_transform[p_index].atlas_rect;
+ 	}
+ 
++	_FORCE_INLINE_ Rect2 light_instance_get_directional_shadow_draw_norm_rect(RID p_light_instance, int p_index) {
++		LightInstance *li = light_instance_owner.get_or_null(p_light_instance);
++		return li->shadow_transform[p_index].norm_draw_rect;
++	}
++
+ 	_FORCE_INLINE_ float light_instance_get_directional_shadow_split(RID p_light_instance, int p_index) {
+ 		LightInstance *li = light_instance_owner.get_or_null(p_light_instance);
+ 		return li->shadow_transform[p_index].split;
+diff --git a/servers/rendering/dummy/storage/light_storage.h b/servers/rendering/dummy/storage/light_storage.h
+index 1f72281..143a964 100644
+--- a/servers/rendering/dummy/storage/light_storage.h
++++ b/servers/rendering/dummy/storage/light_storage.h
+@@ -122,7 +122,7 @@ public:
+ 	void light_instance_free(RID p_light) override {}
+ 	void light_instance_set_transform(RID p_light_instance, const Transform3D &p_transform) override {}
+ 	void light_instance_set_aabb(RID p_light_instance, const AABB &p_aabb) override {}
+-	void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2()) override {}
++	void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2(), const Rect2 &p_norm_draw_rect = Rect2(Vector2(0, 0), Vector2(1, 1))) override {}
+ 	void light_instance_mark_visible(RID p_light_instance) override {}
+ 	virtual bool light_instance_is_shadow_visible_at_position(RID p_light_instance, const Vector3 &p_position) const override { return false; }
+ 
+diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+index 370d3b6..1359ab1 100644
+--- a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
++++ b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+@@ -2669,7 +2669,6 @@ void RenderForwardClustered::_render_shadow_pass(RID p_light, RID p_shadow_atlas
+ 		Rect2 atlas_rect_norm = atlas_rect;
+ 		atlas_rect_norm.position /= directional_shadow_size;
+ 		atlas_rect_norm.size /= directional_shadow_size;
+-		light_storage->light_instance_set_directional_shadow_atlas_rect(p_light, p_pass, atlas_rect_norm);
+ 
+ 		zfar = RSG::light_storage->light_get_param(base, RSE::LIGHT_PARAM_RANGE);
+ 
+@@ -2677,6 +2676,24 @@ void RenderForwardClustered::_render_shadow_pass(RID p_light, RID p_shadow_atlas
+ 		render_texture = RID();
+ 		flip_y = true;
+ 
++		Rect2 norm_draw_rect = light_storage->light_instance_get_directional_shadow_draw_norm_rect(p_light, p_pass);
++		Rect2 draw_rect_norm;
++		draw_rect_norm.position = atlas_rect_norm.position + atlas_rect_norm.size * norm_draw_rect.position;
++		draw_rect_norm.size = atlas_rect_norm.size * norm_draw_rect.size;
++		light_storage->light_instance_set_directional_shadow_atlas_rect(p_light, p_pass, draw_rect_norm);
++
++		Rect2 draw_rect = draw_rect_norm;
++		draw_rect.position *= directional_shadow_size;
++		draw_rect.size *= directional_shadow_size;
++
++		// This MUST be rounding and not, say, floor or ceil.
++		// Using anything other than round will lead to flickering in directional shadows when the tightened draw area is resized by camera rotations.
++		atlas_rect = Rect2i(
++				Vector2i(
++						(int32_t)Math::round(draw_rect.position.x), (int32_t)Math::round(draw_rect.position.y)),
++				Vector2i(
++						(int32_t)Math::round(draw_rect.size.x), (int32_t)Math::round(draw_rect.size.y)));
++
+ 	} else {
+ 		//set from shadow atlas
+ 
+diff --git a/servers/rendering/renderer_rd/forward_mobile/render_forward_mobile.cpp b/servers/rendering/renderer_rd/forward_mobile/render_forward_mobile.cpp
+index b30e19c..4c84cbc 100644
+--- a/servers/rendering/renderer_rd/forward_mobile/render_forward_mobile.cpp
++++ b/servers/rendering/renderer_rd/forward_mobile/render_forward_mobile.cpp
+@@ -920,14 +920,6 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
+ 		light_storage->update_reflection_probe_buffer(p_render_data, *p_render_data->reflection_probes, p_render_data->scene_data->cam_transform.affine_inverse(), p_render_data->environment);
+ 	}
+ 
+-	// Update light and decal buffer first so we know what lights and decals are safe to pair with.
+-	uint32_t directional_light_count = 0;
+-	uint32_t positional_light_count = 0;
+-	light_storage->update_light_buffers(p_render_data, *p_render_data->lights, p_render_data->scene_data->cam_transform, p_render_data->shadow_atlas, using_shadows, directional_light_count, positional_light_count, p_render_data->directional_light_soft_shadows);
+-	texture_storage->update_decal_buffer(*p_render_data->decals, p_render_data->scene_data->cam_transform);
+-
+-	p_render_data->directional_light_count = directional_light_count;
+-
+ 	// Lightmaps need to be set up before _fill_render_list as it depends on them.
+ 	_setup_lightmaps(p_render_data, *p_render_data->lightmaps, p_render_data->scene_data->cam_transform);
+ 
+@@ -1155,6 +1147,15 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
+ 
+ 	_pre_opaque_render(p_render_data);
+ 
++	// Update light and decal buffer first so we know what lights and decals are safe to pair with.
++	// Counterintuitive as it may be, light buffers for opaque draw must be updated after _pre_opaque_render (which renders shadowmaps).
++	uint32_t directional_light_count = 0;
++	uint32_t positional_light_count = 0;
++	light_storage->update_light_buffers(p_render_data, *p_render_data->lights, p_render_data->scene_data->cam_transform, p_render_data->shadow_atlas, using_shadows, directional_light_count, positional_light_count, p_render_data->directional_light_soft_shadows);
++	texture_storage->update_decal_buffer(*p_render_data->decals, p_render_data->scene_data->cam_transform);
++
++	p_render_data->directional_light_count = directional_light_count;
++
+ 	SceneShaderForwardMobile::ShaderSpecialization base_specialization = scene_shader.default_specialization;
+ 
+ 	{
+@@ -1464,7 +1465,6 @@ void RenderForwardMobile::_render_shadow_pass(RID p_light, RID p_shadow_atlas, i
+ 		Rect2 atlas_rect_norm = atlas_rect;
+ 		atlas_rect_norm.position /= directional_shadow_size;
+ 		atlas_rect_norm.size /= directional_shadow_size;
+-		light_storage->light_instance_set_directional_shadow_atlas_rect(p_light, p_pass, atlas_rect_norm);
+ 
+ 		zfar = RSG::light_storage->light_get_param(base, RSE::LIGHT_PARAM_RANGE);
+ 
+@@ -1472,6 +1472,24 @@ void RenderForwardMobile::_render_shadow_pass(RID p_light, RID p_shadow_atlas, i
+ 		render_texture = RID();
+ 		flip_y = true;
+ 
++		Rect2 norm_draw_rect = light_storage->light_instance_get_directional_shadow_draw_norm_rect(p_light, p_pass);
++		Rect2 draw_rect_norm;
++		draw_rect_norm.position = atlas_rect_norm.position + atlas_rect_norm.size * norm_draw_rect.position;
++		draw_rect_norm.size = atlas_rect_norm.size * norm_draw_rect.size;
++		light_storage->light_instance_set_directional_shadow_atlas_rect(p_light, p_pass, draw_rect_norm);
++
++		Rect2 draw_rect = draw_rect_norm;
++		draw_rect.position *= directional_shadow_size;
++		draw_rect.size *= directional_shadow_size;
++
++		// This MUST be rounding and not, say, floor or ceil.
++		// Using anything other than round will lead to flickering in directional shadows when the tightened draw area is resized by camera rotations.
++		atlas_rect = Rect2i(
++				Vector2i(
++						(int32_t)Math::round(draw_rect.position.x), (int32_t)Math::round(draw_rect.position.y)),
++				Vector2i(
++						(int32_t)Math::round(draw_rect.size.x), (int32_t)Math::round(draw_rect.size.y)));
++
+ 	} else {
+ 		//set from shadow atlas
+ 
+diff --git a/servers/rendering/renderer_rd/storage_rd/light_storage.cpp b/servers/rendering/renderer_rd/storage_rd/light_storage.cpp
+index 48ec434..6c73ec4 100644
+--- a/servers/rendering/renderer_rd/storage_rd/light_storage.cpp
++++ b/servers/rendering/renderer_rd/storage_rd/light_storage.cpp
+@@ -607,7 +607,7 @@ void LightStorage::light_instance_set_aabb(RID p_light_instance, const AABB &p_a
+ 	light_instance->aabb = p_aabb;
+ }
+ 
+-void LightStorage::light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale, float p_range_begin, const Vector2 &p_uv_scale) {
++void LightStorage::light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale, float p_range_begin, const Vector2 &p_uv_scale, const Rect2 &p_norm_draw_rect) {
+ 	LightInstance *light_instance = light_instance_owner.get_or_null(p_light_instance);
+ 	ERR_FAIL_NULL(light_instance);
+ 
+@@ -620,6 +620,7 @@ void LightStorage::light_instance_set_shadow_transform(RID p_light_instance, con
+ 	light_instance->shadow_transform[p_pass].bias_scale = p_bias_scale;
+ 	light_instance->shadow_transform[p_pass].range_begin = p_range_begin;
+ 	light_instance->shadow_transform[p_pass].shadow_texel_size = p_shadow_texel_size;
++	light_instance->shadow_transform[p_pass].norm_draw_rect = p_norm_draw_rect;
+ 	light_instance->shadow_transform[p_pass].uv_scale = p_uv_scale;
+ }
+ 
+diff --git a/servers/rendering/renderer_rd/storage_rd/light_storage.h b/servers/rendering/renderer_rd/storage_rd/light_storage.h
+index 71043e4..4010877 100644
+--- a/servers/rendering/renderer_rd/storage_rd/light_storage.h
++++ b/servers/rendering/renderer_rd/storage_rd/light_storage.h
+@@ -100,6 +100,7 @@ private:
+ 			float shadow_texel_size = 0.0;
+ 			float range_begin = 0.0;
+ 			Rect2 atlas_rect;
++			Rect2 norm_draw_rect;
+ 			Vector2 uv_scale;
+ 		};
+ 
+@@ -630,7 +631,7 @@ public:
+ 	virtual void light_instance_free(RID p_light) override;
+ 	virtual void light_instance_set_transform(RID p_light_instance, const Transform3D &p_transform) override;
+ 	virtual void light_instance_set_aabb(RID p_light_instance, const AABB &p_aabb) override;
+-	virtual void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2()) override;
++	virtual void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2(), const Rect2 &p_norm_draw_rect = Rect2(Vector2(0, 0), Vector2(1, 1))) override;
+ 	virtual void light_instance_mark_visible(RID p_light_instance) override;
+ 
+ 	virtual bool light_instance_is_shadow_visible_at_position(RID p_light_instance, const Vector3 &p_position) const override {
+@@ -785,6 +786,11 @@ public:
+ 		return li->shadow_transform[p_index].shadow_texel_size;
+ 	}
+ 
++	_FORCE_INLINE_ Rect2 light_instance_get_directional_shadow_draw_norm_rect(RID p_light_instance, int p_index) {
++		LightInstance *li = light_instance_owner.get_or_null(p_light_instance);
++		return li->shadow_transform[p_index].norm_draw_rect;
++	}
++
+ 	_FORCE_INLINE_ void light_instance_set_render_pass(RID p_light_instance, uint64_t p_pass) {
+ 		LightInstance *li = light_instance_owner.get_or_null(p_light_instance);
+ 		li->last_pass = p_pass;
+diff --git a/servers/rendering/renderer_scene_cull.cpp b/servers/rendering/renderer_scene_cull.cpp
+index 26a7879..224d285 100644
+--- a/servers/rendering/renderer_scene_cull.cpp
++++ b/servers/rendering/renderer_scene_cull.cpp
+@@ -2149,9 +2149,6 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 
+ 	InstanceLightData *light = static_cast<InstanceLightData *>(p_instance->base_data);
+ 
+-	Transform3D light_transform = p_instance->transform;
+-	light_transform.orthonormalize(); //scale does not count on lights
+-
+ 	real_t max_distance = p_cam_projection.get_z_far();
+ 	real_t shadow_max = RSG::light_storage->light_get_param(p_instance->base, RSE::LIGHT_PARAM_SHADOW_MAX_DISTANCE);
+ 	if (shadow_max > 0 && !p_cam_orthogonal) { //its impractical (and leads to unwanted behaviors) to set max distance in orthogonal camera
+@@ -2195,6 +2192,12 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 	cull.shadows[p_shadow_index].light_instance = light->instance;
+ 	cull.shadows[p_shadow_index].caster_mask = RSG::light_storage->light_get_shadow_caster_mask(p_instance->base);
+ 
++	// Discard scale
++	const Transform3D light_transform = p_instance->transform.orthonormalized();
++	const Vector3 light_basis_x = light_transform.basis.get_column(Vector3::AXIS_X); // Already normalized
++	const Vector3 light_basis_y = light_transform.basis.get_column(Vector3::AXIS_Y);
++	const Vector3 light_basis_z = light_transform.basis.get_column(Vector3::AXIS_Z);
++
+ 	for (int i = 0; i < splits; i++) {
+ 		RENDER_TIMESTAMP("Cull DirectionalLight3D, Split " + itos(i));
+ 
+@@ -2212,153 +2215,146 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 			camera_matrix.set_perspective(fov, aspect, distances[(i == 0 || !overlap) ? i : i - 1], distances[i + 1], true);
+ 		}
+ 
+-		//obtain the frustum endpoints
+-
+-		Vector3 endpoints[8]; // frustum plane endpoints
+-		bool res = camera_matrix.get_endpoints(p_cam_transform, endpoints);
+-		ERR_CONTINUE(!res);
+-
+-		// obtain the light frustum ranges (given endpoints)
+-
+-		Transform3D transform = light_transform; //discard scale and stabilize light
+-
+-		Vector3 x_vec = transform.basis.get_column(Vector3::AXIS_X).normalized();
+-		Vector3 y_vec = transform.basis.get_column(Vector3::AXIS_Y).normalized();
+-		Vector3 z_vec = transform.basis.get_column(Vector3::AXIS_Z).normalized();
+-		//z_vec points against the camera, like in default opengl
+-
+-		real_t x_min = 0.f, x_max = 0.f;
+-		real_t y_min = 0.f, y_max = 0.f;
+-		real_t z_min = 0.f, z_max = 0.f;
+-
+-		// FIXME: z_max_cam is defined, computed, but not used below when setting up
+-		// ortho_camera. Commented out for now to fix warnings but should be investigated.
+-		real_t x_min_cam = 0.f, x_max_cam = 0.f;
+-		real_t y_min_cam = 0.f, y_max_cam = 0.f;
+-		real_t z_min_cam = 0.f;
+-		//real_t z_max_cam = 0.f;
+-
+-		//real_t bias_scale = 1.0;
+-		//real_t aspect_bias_scale = 1.0;
+-
+-		//used for culling
+-
+-		for (int j = 0; j < 8; j++) {
+-			real_t d_x = x_vec.dot(endpoints[j]);
+-			real_t d_y = y_vec.dot(endpoints[j]);
+-			real_t d_z = z_vec.dot(endpoints[j]);
+-
+-			if (j == 0 || d_x < x_min) {
+-				x_min = d_x;
+-			}
+-			if (j == 0 || d_x > x_max) {
+-				x_max = d_x;
+-			}
+-
+-			if (j == 0 || d_y < y_min) {
+-				y_min = d_y;
+-			}
+-			if (j == 0 || d_y > y_max) {
+-				y_max = d_y;
+-			}
+-
+-			if (j == 0 || d_z < z_min) {
+-				z_min = d_z;
+-			}
+-			if (j == 0 || d_z > z_max) {
+-				z_max = d_z;
+-			}
+-		}
+-
+-		real_t radius = 0;
+-		real_t soft_shadow_expand = 0;
+-		Vector3 center;
+-
++		Vector3 frustum_corners_local[8]; // Local space: camera offset is set to zero, but the world basis is used.
++		Vector3 frustum_centroid_local(0, 0, 0);
++		real_t frustum_circumscribing_radius = 0;
+ 		{
+-			//camera viewport stuff
++			// Operate in the camera's view space where possible for maximum numerical stability, as it is 100% independent from rotation/position/scale.
++			Vector3 frustum_corners_cam_view[8];
++			bool res = camera_matrix.get_endpoints(Transform3D(), frustum_corners_cam_view); // Retrieve endpoints in identity transform.
++			ERR_CONTINUE(!res);
+ 
++			// Again, everything in cam view space for maximum numerical stability (yes it matters, see #72015 discussion)
++			Vector3 frustum_centroid_cam_view(0, 0, 0);
+ 			for (int j = 0; j < 8; j++) {
+-				center += endpoints[j];
++				frustum_centroid_cam_view += frustum_corners_cam_view[j] / 8.0; // Dividing then adding hopefully has better numerical precision
+ 			}
+-			center /= 8.0;
+-
+-			//center=x_vec*(x_max-x_min)*0.5 + y_vec*(y_max-y_min)*0.5 + z_vec*(z_max-z_min)*0.5;
+ 
+ 			for (int j = 0; j < 8; j++) {
+-				real_t d = center.distance_to(endpoints[j]);
+-				if (d > radius) {
+-					radius = d;
+-				}
++				frustum_circumscribing_radius = MAX(frustum_circumscribing_radius, frustum_centroid_cam_view.distance_to(frustum_corners_cam_view[j]));
+ 			}
+ 
+-			radius *= texture_size / (texture_size - 2.0); //add a texel by each side
++			// Turn things in local space now since we're done with view space stuff here.
++			frustum_centroid_local = p_cam_transform.basis.xform(frustum_centroid_cam_view);
++			for (int j = 0; j < 8; j++) {
++				frustum_corners_local[j] = p_cam_transform.basis.xform(frustum_corners_cam_view[j]);
++			}
++		}
++		Vector3 frustum_centroid_world = p_cam_transform.origin + frustum_centroid_local;
+ 
+-			z_min_cam = z_vec.dot(center) - radius;
++		constexpr bool USE_TIGHTER_DRAW_RECT = true;
+ 
+-			{
+-				float soft_shadow_angle = RSG::light_storage->light_get_param(p_instance->base, RSE::LIGHT_PARAM_SIZE);
++		// Compute bounding box of frustum as seen from within the shadowmap
++		Vector3 light_view_frustum_rect_min = light_transform.basis.xform_inv(frustum_corners_local[0]);
++		Vector3 light_view_frustum_rect_max = light_transform.basis.xform_inv(frustum_corners_local[0]);
++		for (int j = 1; j < 8; j++) {
++			Vector3 cam_space_corner = light_transform.basis.xform_inv(frustum_corners_local[j]);
++			light_view_frustum_rect_min = light_view_frustum_rect_min.min(cam_space_corner);
++			light_view_frustum_rect_max = light_view_frustum_rect_max.max(cam_space_corner);
++		}
++		light_view_frustum_rect_min += light_transform.basis.xform_inv(p_cam_transform.origin);
++		light_view_frustum_rect_max += light_transform.basis.xform_inv(p_cam_transform.origin);
+ 
+-				if (soft_shadow_angle > 0.0) {
+-					float z_range = (z_vec.dot(center) + radius + pancake_size) - z_min_cam;
+-					soft_shadow_expand = Math::tan(Math::deg_to_rad(soft_shadow_angle)) * z_range;
++		//z_vec points against the camera, like in default opengl
++		real_t z_min_cam = light_basis_z.dot(frustum_centroid_world) - frustum_circumscribing_radius;
+ 
+-					x_max += soft_shadow_expand;
+-					y_max += soft_shadow_expand;
++		// Expansion for soft shadow is needed regardless of tighter or normal rect, so make it a standalone block.
++		{
++			real_t soft_shadow_expand = 0;
++			float soft_shadow_angle = RSG::light_storage->light_get_param(p_instance->base, RSE::LIGHT_PARAM_SIZE);
+ 
+-					x_min -= soft_shadow_expand;
+-					y_min -= soft_shadow_expand;
+-				}
++			if (soft_shadow_angle > 0.0) {
++				float z_range = (light_basis_z.dot(frustum_centroid_world) + frustum_circumscribing_radius + pancake_size) - z_min_cam;
++				soft_shadow_expand = Math::tan(Math::deg_to_rad(soft_shadow_angle)) * z_range;
+ 			}
+ 
+-			// This trick here is what stabilizes the shadow (make potential jaggies to not move)
+-			// at the cost of some wasted resolution. Still, the quality increase is very well worth it.
+-			const real_t unit = (radius + soft_shadow_expand) * 4.0 / texture_size;
+-			x_max_cam = Math::snapped(x_vec.dot(center) + radius + soft_shadow_expand, unit);
+-			x_min_cam = Math::snapped(x_vec.dot(center) - radius - soft_shadow_expand, unit);
+-			y_max_cam = Math::snapped(y_vec.dot(center) + radius + soft_shadow_expand, unit);
+-			y_min_cam = Math::snapped(y_vec.dot(center) - radius - soft_shadow_expand, unit);
++			// Gotta leave extra margin around the frustum for distance-based shadow blurring.
++			light_view_frustum_rect_max.x += soft_shadow_expand;
++			light_view_frustum_rect_max.y += soft_shadow_expand;
++			light_view_frustum_rect_min.x -= soft_shadow_expand;
++			light_view_frustum_rect_min.y -= soft_shadow_expand;
++
++			// ...But as the frustum has now basically been made larger, the draw bounds must be made larger too to fit it.
++			frustum_circumscribing_radius += soft_shadow_expand;
+ 		}
+ 
+ 		//now that we know all ranges, we can proceed to make the light frustum planes, for culling octree
+-
+ 		Vector<Plane> light_frustum_planes;
+ 		light_frustum_planes.resize(6);
+ 
+ 		//right/left
+-		light_frustum_planes.write[0] = Plane(x_vec, x_max);
+-		light_frustum_planes.write[1] = Plane(-x_vec, -x_min);
++		light_frustum_planes.write[0] = Plane(light_basis_x, light_view_frustum_rect_max.x);
++		light_frustum_planes.write[1] = Plane(-light_basis_x, -light_view_frustum_rect_min.x);
+ 		//top/bottom
+-		light_frustum_planes.write[2] = Plane(y_vec, y_max);
+-		light_frustum_planes.write[3] = Plane(-y_vec, -y_min);
++		light_frustum_planes.write[2] = Plane(light_basis_y, light_view_frustum_rect_max.y);
++		light_frustum_planes.write[3] = Plane(-light_basis_y, -light_view_frustum_rect_min.y);
+ 		//near/far
+-		light_frustum_planes.write[4] = Plane(z_vec, z_max + 1e6);
+-		light_frustum_planes.write[5] = Plane(-z_vec, -z_min); // z_min is ok, since casters further than far-light plane are not needed
++		light_frustum_planes.write[4] = Plane(light_basis_z, light_view_frustum_rect_max.z + 1e6);
++		light_frustum_planes.write[5] = Plane(-light_basis_z, -light_view_frustum_rect_min.z); // z_min is ok, since casters further than far-light plane are not needed
+ 
+-		// a pre pass will need to be needed to determine the actual z-near to be used
+-
+-		z_max = z_vec.dot(center) + radius + pancake_size;
++		// Add two texels (one on each side) as margin to compensate for under-rounding of pixel positions
++		frustum_circumscribing_radius *= texture_size / (texture_size - 2.0);
++		real_t unit = frustum_circumscribing_radius * 4.0 / texture_size;
+ 
++		Vector3 texel_snapped_frustum_centroid;
+ 		{
+-			Projection ortho_camera;
+-			real_t half_x = (x_max_cam - x_min_cam) * 0.5;
+-			real_t half_y = (y_max_cam - y_min_cam) * 0.5;
++			// Position of camera frustum centroid in the view space of the light.
++			Vector3 light_view_frustum_centroid = light_transform.basis.xform_inv(frustum_centroid_world);
++			texel_snapped_frustum_centroid = Vector3(
++					Math::snapped(light_view_frustum_centroid.x, unit),
++					Math::snapped(light_view_frustum_centroid.y, unit),
++					light_view_frustum_centroid.z // Don't mind z.
++			);
++		}
+ 
+-			ortho_camera.set_orthogonal(-half_x, half_x, -half_y, half_y, 0, (z_max - z_min_cam));
++		// a pre pass will need to be needed to determine the actual z-near to be used
+ 
+-			Vector2 uv_scale(1.0 / (x_max_cam - x_min_cam), 1.0 / (y_max_cam - y_min_cam));
++		// Snap z to very coarse steps to prevent flickering caused by z changing despite x and y being correctly pinned to a grid point.
++		light_view_frustum_rect_max.z = Math::snapped(light_basis_z.dot(frustum_centroid_world) + frustum_circumscribing_radius * 2, frustum_circumscribing_radius) + pancake_size;
+ 
++		{
++			Projection ortho_camera;
+ 			Transform3D ortho_transform;
+-			ortho_transform.basis = transform.basis;
+-			ortho_transform.origin = x_vec * (x_min_cam + half_x) + y_vec * (y_min_cam + half_y) + z_vec * z_max;
++			ortho_transform.basis = light_transform.basis;
++			Vector2 light_view_fullrect_size = Vector2(frustum_circumscribing_radius, frustum_circumscribing_radius) * 2;
++
++			Vector2 view_space_draw_size = light_view_fullrect_size;
++
++			if (USE_TIGHTER_DRAW_RECT) {
++				Vector2 texel_snapped_frustum_size = Vector2(
++						Math::snapped(light_view_frustum_rect_max.x - light_view_frustum_rect_min.x + unit, unit),
++						Math::snapped(light_view_frustum_rect_max.y - light_view_frustum_rect_min.y + unit, unit));
++				view_space_draw_size = texel_snapped_frustum_size;
++				Vector2 draw_half = texel_snapped_frustum_size * 0.5;
++				ortho_camera.set_orthogonal(-draw_half.x, draw_half.x, -draw_half.y, draw_half.y, 0, (light_view_frustum_rect_max.z - z_min_cam));
++				ortho_transform.origin =
++						light_basis_x * Math::snapped((light_view_frustum_rect_min.x + light_view_frustum_rect_max.x) / 2, unit) +
++						light_basis_y * Math::snapped((light_view_frustum_rect_min.y + light_view_frustum_rect_max.y) / 2, unit) +
++						light_basis_z * light_view_frustum_rect_max.z;
++			} else {
++				Vector2 bound_half = light_view_fullrect_size * 0.5;
++				ortho_camera.set_orthogonal(-bound_half.x, bound_half.x, -bound_half.y, bound_half.y, 0, (light_view_frustum_rect_max.z - z_min_cam));
++				ortho_transform.origin = light_basis_x * texel_snapped_frustum_centroid.x + light_basis_y * texel_snapped_frustum_centroid.y + light_basis_z * light_view_frustum_rect_max.z;
++			}
++
++			Vector2 light_view_fullrect_min = Vector2(texel_snapped_frustum_centroid.x, texel_snapped_frustum_centroid.y) - light_view_fullrect_size / 2;
++			Vector2 light_view_fullrect_max = Vector2(texel_snapped_frustum_centroid.x, texel_snapped_frustum_centroid.y) + light_view_fullrect_size / 2;
++			Vector2 uv_scale = Vector2(1.0 / (light_view_fullrect_max.x - light_view_fullrect_min.x), 1.0 / (light_view_fullrect_max.y - light_view_fullrect_min.y));
+ 
+ 			cull.shadows[p_shadow_index].cascades[i].frustum = Frustum(light_frustum_planes);
+ 			cull.shadows[p_shadow_index].cascades[i].projection = ortho_camera;
+ 			cull.shadows[p_shadow_index].cascades[i].transform = ortho_transform;
+-			cull.shadows[p_shadow_index].cascades[i].zfar = z_max - z_min_cam;
++			cull.shadows[p_shadow_index].cascades[i].zfar = light_view_frustum_rect_max.z - z_min_cam;
+ 			cull.shadows[p_shadow_index].cascades[i].split = distances[i + 1];
+-			cull.shadows[p_shadow_index].cascades[i].shadow_texel_size = radius * 2.0 / texture_size;
+-			cull.shadows[p_shadow_index].cascades[i].bias_scale = (z_max - z_min_cam);
+-			cull.shadows[p_shadow_index].cascades[i].range_begin = z_max - z_vec.dot(p_cam_transform.origin);
++			cull.shadows[p_shadow_index].cascades[i].shadow_texel_size = frustum_circumscribing_radius * 2.0 / texture_size;
++			cull.shadows[p_shadow_index].cascades[i].bias_scale = (light_view_frustum_rect_max.z - z_min_cam);
++			cull.shadows[p_shadow_index].cascades[i].range_begin = light_view_frustum_rect_max.z - light_basis_z.dot(p_cam_transform.origin);
++			if (USE_TIGHTER_DRAW_RECT) {
++				Vector2 draw_ratio = view_space_draw_size / light_view_fullrect_size;
++				cull.shadows[p_shadow_index].cascades[i].normalized_render_bounds = Rect2((Vector2(1, 1) - draw_ratio) / 2, draw_ratio);
++			} else {
++				cull.shadows[p_shadow_index].cascades[i].normalized_render_bounds = Rect2(Vector2(0, 0), Vector2(1, 1));
++			}
+ 			cull.shadows[p_shadow_index].cascades[i].uv_scale = uv_scale;
+ 		}
+ 	}
+@@ -3481,7 +3477,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
+ 			for (uint32_t j = 0; j < cull.shadows[i].cascade_count; j++) {
+ 				const Cull::Shadow::Cascade &c = cull.shadows[i].cascades[j];
+ 				//			print_line("shadow " + itos(i) + " cascade " + itos(j) + " elements: " + itos(c.cull_result.size()));
+-				RSG::light_storage->light_instance_set_shadow_transform(cull.shadows[i].light_instance, c.projection, c.transform, c.zfar, c.split, j, c.shadow_texel_size, c.bias_scale, c.range_begin, c.uv_scale);
++				RSG::light_storage->light_instance_set_shadow_transform(cull.shadows[i].light_instance, c.projection, c.transform, c.zfar, c.split, j, c.shadow_texel_size, c.bias_scale, c.range_begin, c.uv_scale, c.normalized_render_bounds);
+ 				if (max_shadows_used == MAX_UPDATE_SHADOWS) {
+ 					continue;
+ 				}
+diff --git a/servers/rendering/renderer_scene_cull.h b/servers/rendering/renderer_scene_cull.h
+index 6d92798..6933d50 100644
+--- a/servers/rendering/renderer_scene_cull.h
++++ b/servers/rendering/renderer_scene_cull.h
+@@ -1101,6 +1101,7 @@ public:
+ 				real_t bias_scale;
+ 				real_t range_begin;
+ 				Vector2 uv_scale;
++				Rect2 normalized_render_bounds;
+ 
+ 			} cascades[RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES]; //max 4 cascades
+ 			uint32_t cascade_count;
+diff --git a/servers/rendering/storage/light_storage.h b/servers/rendering/storage/light_storage.h
+index fe2f4db..e3bee9e 100644
+--- a/servers/rendering/storage/light_storage.h
++++ b/servers/rendering/storage/light_storage.h
+@@ -104,7 +104,7 @@ public:
+ 	virtual void light_instance_free(RID p_light_instance) = 0;
+ 	virtual void light_instance_set_transform(RID p_light_instance, const Transform3D &p_transform) = 0;
+ 	virtual void light_instance_set_aabb(RID p_light_instance, const AABB &p_aabb) = 0;
+-	virtual void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2()) = 0;
++	virtual void light_instance_set_shadow_transform(RID p_light_instance, const Projection &p_projection, const Transform3D &p_transform, float p_far, float p_split, int p_pass, float p_shadow_texel_size, float p_bias_scale = 1.0, float p_range_begin = 0, const Vector2 &p_uv_scale = Vector2(), const Rect2 &p_norm_draw_rect = Rect2(Vector2(0, 0), Vector2(1, 1))) = 0;
+ 	virtual void light_instance_mark_visible(RID p_light_instance) = 0;
+ 	virtual bool light_instances_can_render_shadow_cube() const {
+ 		return true;

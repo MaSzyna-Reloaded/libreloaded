@@ -60,3 +60,38 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
   (`start_clearance`): the hit's softness grows to some 4 cells with the roughness, farther than
   the ray's start is pushed off its own surface, and water of a roughness of 0.15 and more traced
   its reflection into itself - dark within the cascades, the same square
+* `0007-119867-tighter-directional-shadowmap-draw-rect.patch` - godotengine/godot#119867 (on
+  godotengine/godot#119705, numerical stability of directional shadows far from the world origin):
+  a directional light's shadow pass only draws the texel-snapped bounding rectangle of the camera
+  frustum it actually covers within the stabilized, sphere-sized shadow map, instead of the whole
+  square - this is GPU time, not resolution: the sampled texel density, `shadow_texel_size` and
+  the cascades' world-space footprint are unchanged, so it does not sharpen shadows at any
+  distance, only the overdraw cost of casters that fall in the (already wasted) square but outside
+  the frustum's rectangle. Hand-adapted to 4.7.2: master already calls
+  `light_culler->prepare_directional_light_cascade()` from within the per-cascade loop, an API
+  4.7.2 does not have (only the per-light `prepare_directional_light()` at the top of the function,
+  kept as is) - both PRs' diffs carry that call, dropped here along with the `receiver_frustum_planes`
+  it alone fed
+* `0008-local-directional-shadow-split-stability.patch` - on `0007-...`, for every split: drops
+  its tighter draw rect (`USE_TIGHTER_DRAW_RECT`, `normalized_render_bounds` now always the full
+  rect) and the far plane's snap to steps of `frustum_circumscribing_radius`
+  (godotengine/godot#119705). Both are safe at the cascade distances Godot itself ships with, but
+  a split given a short enough distance to sharpen a scene's own close-up content (the cab, here)
+  exposed both as real, measured flicker - not from camera motion, a motionless camera flickered
+  too (see `FINDINGS.md`, "a directional shadow split's sampled rect is Godot's own stabilized
+  bounding sphere", 2026-11-26, for what was tried first and ruled out before this). The square
+  the tighter draw rect would have saved GPU time on is small enough at a short split distance
+  that the trade is not worth it; the far plane snap bought nothing a texel-grid-snapped x/y did
+  not already give
+
+  The flicker the player kept seeing after both turned out to not be on the first split at all - a
+  capture of it (2026-11-26) pointed at the cab's own side wall, a couple of metres and more from
+  the camera: with a cab-tight first split (a couple of metres), everything of the cab beyond it -
+  the far wall, the ceiling - falls in the *second* split, which at the defaults still reaches from
+  there to 125 m and was still in density mode. A density split that wide, this close, resizes by a
+  visible amount every frame, on a flat wall large enough to show it plainly. The second split now
+  keeps the sphere as well - `cascade_prefers_density` is `i > 1`, not `i > 0` - leaving density
+  mode to the splits actually far enough that a resize is never seen (125 m and out, at the
+  defaults). Still not confirmed fixed in the game; a cab-tight second split distance
+  (`reloaded/scenery/shadows/split_2`, a project setting, no engine patch needed) is also expected
+  to matter here, the same way the first split's did for the cab itself

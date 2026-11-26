@@ -1,0 +1,78 @@
+diff --git a/servers/rendering/renderer_scene_cull.cpp b/servers/rendering/renderer_scene_cull.cpp
+index 224d285..d88a40d 100644
+--- a/servers/rendering/renderer_scene_cull.cpp
++++ b/servers/rendering/renderer_scene_cull.cpp
+@@ -2242,8 +2242,6 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 		}
+ 		Vector3 frustum_centroid_world = p_cam_transform.origin + frustum_centroid_local;
+ 
+-		constexpr bool USE_TIGHTER_DRAW_RECT = true;
+-
+ 		// Compute bounding box of frustum as seen from within the shadowmap
+ 		Vector3 light_view_frustum_rect_min = light_transform.basis.xform_inv(frustum_corners_local[0]);
+ 		Vector3 light_view_frustum_rect_max = light_transform.basis.xform_inv(frustum_corners_local[0]);
+@@ -2309,8 +2307,14 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 
+ 		// a pre pass will need to be needed to determine the actual z-near to be used
+ 
+-		// Snap z to very coarse steps to prevent flickering caused by z changing despite x and y being correctly pinned to a grid point.
+-		light_view_frustum_rect_max.z = Math::snapped(light_basis_z.dot(frustum_centroid_world) + frustum_circumscribing_radius * 2, frustum_circumscribing_radius) + pancake_size;
++		// godotengine/godot#119705 snapped this to steps of frustum_circumscribing_radius to
++		// prevent flickering on its own large cascades; at a short split distance that step is
++		// itself only a couple of metres, close enough that ordinary camera or train motion
++		// crosses it often enough to visibly jump the far plane - and everything scaled by it,
++		// bias_scale and every shadow bias. Left unsnapped, as the pre-#119705 code had it
++		// (FINDINGS.md, "a directional shadow split's sampled rect is Godot's own stabilized
++		// bounding sphere").
++		light_view_frustum_rect_max.z = light_basis_z.dot(frustum_centroid_world) + frustum_circumscribing_radius * 2 + pancake_size;
+ 
+ 		{
+ 			Projection ortho_camera;
+@@ -2318,24 +2322,15 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 			ortho_transform.basis = light_transform.basis;
+ 			Vector2 light_view_fullrect_size = Vector2(frustum_circumscribing_radius, frustum_circumscribing_radius) * 2;
+ 
+-			Vector2 view_space_draw_size = light_view_fullrect_size;
+-
+-			if (USE_TIGHTER_DRAW_RECT) {
+-				Vector2 texel_snapped_frustum_size = Vector2(
+-						Math::snapped(light_view_frustum_rect_max.x - light_view_frustum_rect_min.x + unit, unit),
+-						Math::snapped(light_view_frustum_rect_max.y - light_view_frustum_rect_min.y + unit, unit));
+-				view_space_draw_size = texel_snapped_frustum_size;
+-				Vector2 draw_half = texel_snapped_frustum_size * 0.5;
+-				ortho_camera.set_orthogonal(-draw_half.x, draw_half.x, -draw_half.y, draw_half.y, 0, (light_view_frustum_rect_max.z - z_min_cam));
+-				ortho_transform.origin =
+-						light_basis_x * Math::snapped((light_view_frustum_rect_min.x + light_view_frustum_rect_max.x) / 2, unit) +
+-						light_basis_y * Math::snapped((light_view_frustum_rect_min.y + light_view_frustum_rect_max.y) / 2, unit) +
+-						light_basis_z * light_view_frustum_rect_max.z;
+-			} else {
+-				Vector2 bound_half = light_view_fullrect_size * 0.5;
+-				ortho_camera.set_orthogonal(-bound_half.x, bound_half.x, -bound_half.y, bound_half.y, 0, (light_view_frustum_rect_max.z - z_min_cam));
+-				ortho_transform.origin = light_basis_x * texel_snapped_frustum_centroid.x + light_basis_y * texel_snapped_frustum_centroid.y + light_basis_z * light_view_frustum_rect_max.z;
+-			}
++			// Always the full sphere square, every split: USE_TIGHTER_DRAW_RECT's narrower
++			// rectangle is fit to the exact camera frustum every frame and moves with it, while
++			// the sphere square it is drawn within does not - a frame's narrower draw rect then
++			// leaves part of the still-sampled square stale until a later frame's rectangle
++			// happens to cover it again (FINDINGS.md, same entry). The square is small enough at
++			// a short split distance that the GPU time this would have saved is not worth that.
++			Vector2 bound_half = light_view_fullrect_size * 0.5;
++			ortho_camera.set_orthogonal(-bound_half.x, bound_half.x, -bound_half.y, bound_half.y, 0, (light_view_frustum_rect_max.z - z_min_cam));
++			ortho_transform.origin = light_basis_x * texel_snapped_frustum_centroid.x + light_basis_y * texel_snapped_frustum_centroid.y + light_basis_z * light_view_frustum_rect_max.z;
+ 
+ 			Vector2 light_view_fullrect_min = Vector2(texel_snapped_frustum_centroid.x, texel_snapped_frustum_centroid.y) - light_view_fullrect_size / 2;
+ 			Vector2 light_view_fullrect_max = Vector2(texel_snapped_frustum_centroid.x, texel_snapped_frustum_centroid.y) + light_view_fullrect_size / 2;
+@@ -2349,12 +2344,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 			cull.shadows[p_shadow_index].cascades[i].shadow_texel_size = frustum_circumscribing_radius * 2.0 / texture_size;
+ 			cull.shadows[p_shadow_index].cascades[i].bias_scale = (light_view_frustum_rect_max.z - z_min_cam);
+ 			cull.shadows[p_shadow_index].cascades[i].range_begin = light_view_frustum_rect_max.z - light_basis_z.dot(p_cam_transform.origin);
+-			if (USE_TIGHTER_DRAW_RECT) {
+-				Vector2 draw_ratio = view_space_draw_size / light_view_fullrect_size;
+-				cull.shadows[p_shadow_index].cascades[i].normalized_render_bounds = Rect2((Vector2(1, 1) - draw_ratio) / 2, draw_ratio);
+-			} else {
+-				cull.shadows[p_shadow_index].cascades[i].normalized_render_bounds = Rect2(Vector2(0, 0), Vector2(1, 1));
+-			}
++			cull.shadows[p_shadow_index].cascades[i].normalized_render_bounds = Rect2(Vector2(0, 0), Vector2(1, 1));
+ 			cull.shadows[p_shadow_index].cascades[i].uv_scale = uv_scale;
+ 		}
+ 	}

@@ -330,6 +330,11 @@ anything. Open work belongs in `TODO.md`.
   announced to nobody. *(10-05 cab change in RailVehicleServer)*
 
 ## Godot / GDExtension
+* A directional shadow split's sampled rect is Godot's own stabilized bounding sphere, at any
+  split distance - a tight box fit to the frustum's exact corners every frame has no stability
+  margin, so per-frame numerical noise alone (no camera motion needed) moves it by a texel. Prove
+  a shadow fix against a motionless camera first - it rules out every motion-based explanation at
+  once. *(11-26 tight directional shadow splits flickered however they were fixed)*
 * A `Resource` property bound without `PROPERTY_USAGE_STORAGE` (`PROPERTY_USAGE_EDITOR` alone)
   looks and saves fine, but `duplicate()` silently drops it - every copy starts over at its
   default. *(11-11 a renamed vehicle lost its name at the first copy)*

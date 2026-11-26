@@ -5043,3 +5043,44 @@ lighting or the trainset.
   vertices and MultiMesh transforms relative to it.
 * **Rule:** a mesh drawn far from the world's origin keeps its vertices relative to its instance's
   origin.
+
+## 2026-11-26 Tight directional shadow splits flickered however they were fixed
+
+* **Symptom:**
+  - After the cab's own separate shadow light was removed (its render layer and `_create_cabin_light()`
+    gone, the scenery sun alone lighting the cab), the cab's own first shadow split was tightened
+    from 20 m to 2 m to give it the density a single split spanning 0-20 m could not. The cab's
+    shadows were then sharp, but flickered when the camera turned; a patch taking the split's
+    sampled rect from the camera frustum's tight bounding box instead of Godot's turn-stabilized
+    bounding sphere (godotengine/godot-proposals#3908) made it worse, not better - a tighter draw
+    rect (godotengine/godot#119867) and an unsnapped far plane (on top of #119705) did not fix it
+    either. Widening the fix to the second split (which a 2 m first split leaves most of the cab
+    itself to) did not fix it. The same density patch, applied only to the far splits (125 m+, out
+    of the cab's reach), still flickered the scenery there: trees while the camera moved, and - the
+    fact that settled it - a trainset's last wagon's shadow while the camera stood completely still
+    (screenshots and screen recordings from the operator, 2026-11-26).
+* **What proved it:**
+  - A shadow split's sampled rect flickering with the camera not moving at all rules out every
+    camera-motion explanation (a turn, TAA's per-frame jitter, train vibration) at once: nothing
+    about the camera's input changed between two frames that read differently. What is left is the
+    rect's own per-frame recomputation from the frustum's corners - exact in principle, but the
+    density patch takes it as is, every frame, with no margin. Godot's own bounding sphere is sized
+    to the frustum's diagonal plus a fixed texel margin and snapped to a texel grid: a difference of
+    a few ULPs between two frames' corner sums stays inside that margin and the snap absorbs it. The
+    density patch's tight box has no such margin - the same few ULPs can land it on the other side
+    of its own texel grid, and the whole split's sampled rect and `shadow_texel_size` move by a
+    texel with it. A short split distance does not make this safer: it makes the box *smaller*
+    relative to the same absolute ULP-sized difference, so the same noise is a larger share of it.
+* **Fix:** the density patch is dropped outright, not scoped down further - every split (the
+  cab's 2 m first split included) takes Godot's own stabilized bounding sphere, same as Godot
+  ships with. The cab's sharpness comes from the short split distance alone, the sphere of a
+  0-2 m cascade already being small. `godot-patches/0007-...`'s tighter draw rect turned out to
+  flicker too, for its own, different reason (its rectangle moves every frame with the camera
+  frustum while the sphere square it draws within does not, leaving a frame's uncovered part of
+  the square stale), so it is dropped for every split as well
+  (`godot-patches/0008-local-directional-shadow-split-stability.patch`).
+* **Rule:** a tight split distance earns a cascade its sharpness from the short range itself, not
+  from trading the stabilized sphere for a tighter box - the box has no stability margin at any
+  distance, so any per-frame numerical difference, camera motion or none, shows as the shadow
+  visibly moving. Prove a fix against a motionless camera before a moving one: it is the one case
+  that rules out every motion-based explanation at once.
