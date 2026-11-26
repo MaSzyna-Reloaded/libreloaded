@@ -88,20 +88,19 @@ namespace godot {
     }
 
     /* Every model file the vehicle's build takes - the appearance's, and what a plugin's renderer
-     * adds - as [resource, data path, skins], what its materials are found by */
+     * adds - as [resource, data path, skins], what its materials are found by, and the appearance's
+     * with the backend that draws them after them */
     Array VehicleRenderingServer::_get_preload_requests(const RID &p_vehicle, const Visual &p_visual) const {
         Array requests;
         const String data_path = p_visual.appearance.is_valid() ? p_visual.appearance->get_data_path() : String();
         const PackedStringArray skins =
                 p_visual.appearance.is_valid() ? p_visual.appearance->get_skins() : PackedStringArray();
-        const auto request =
-                [&requests](const RID &p_resource, const String &p_data_path, const PackedStringArray &p_skins) {
-                    if (p_resource.is_valid()) {
-                        requests.push_back(Array::make(p_resource, p_data_path, p_skins));
-                    }
-                };
+        const StringName backend =
+                p_visual.appearance.is_valid() ? p_visual.appearance->get_rendering_backend() : StringName();
         for (const KeyValue<String, RID> &resource: p_visual.model_resources) {
-            request(resource.value, data_path, skins);
+            if (resource.value.is_valid()) {
+                requests.push_back(Array::make(resource.value, data_path, skins, backend));
+            }
         }
         _vehicle_add_preload_requests(p_vehicle, requests);
         return requests;
@@ -122,8 +121,11 @@ namespace godot {
             const Ref<Resource> model = lazy_loader->resource_load(request[0]);
             models[request[0]] = model;
             // a vehicle's models draw with the project's texture size limit (_create_models()), by the
-            // default backend: a VehicleAppearance names none
-            materials.push_back(model_rendering->material_preload(StringName(), model, request[1], request[2], 0));
+            // backend the appearance names; a plugin's renderer's own by the default one
+            const StringName backend = request.size() > PRELOAD_REQUEST_BACKEND
+                                               ? StringName(request[PRELOAD_REQUEST_BACKEND])
+                                               : StringName();
+            materials.push_back(model_rendering->material_preload(backend, model, request[1], request[2], 0));
         }
         return Array::make(models, materials);
     }
@@ -437,8 +439,9 @@ namespace godot {
                 }
                 // the key a scenery placement of the same file has
                 visual->model_resources[filename] = lazy_loader->resource_register(
-                        data_path.path_join(filename), callable_mp(models, &ModelRenderingServer::model_load)
-                                                               .bind(StringName(), data_path.path_join(filename)));
+                        data_path.path_join(filename),
+                        callable_mp(models, &ModelRenderingServer::model_load)
+                                .bind(p_appearance->get_rendering_backend(), data_path.path_join(filename)));
             }
         }
         _vehicle_appearance_changed(p_vehicle);
@@ -597,7 +600,8 @@ namespace godot {
                 return RID();
             }
             const RID instance = models->instance_create(
-                    StringName(), model, p_instancer, ModelRenderingServer::INSTANCE_KIND_DYNAMIC);
+                    appearance->get_rendering_backend(), model, p_instancer,
+                    ModelRenderingServer::INSTANCE_KIND_DYNAMIC);
             // a vehicle's translucent submodels - its windows - are drawn blended near the camera,
             // opaque by the optimized instancer far away; a cutout leaves holes in the glass
             constexpr bool FORCE_ALPHA = true;

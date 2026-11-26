@@ -1,6 +1,7 @@
 #pragma once
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 
 namespace godot {
@@ -20,6 +21,7 @@ namespace godot {
             PackedStringArray attachment_model_filenames;
             PackedStringArray skins;
             Transform3D model_transform;
+            StringName rendering_backend;
 
         protected:
             static void _bind_methods();
@@ -43,5 +45,9 @@ namespace godot {
             /* Where every model of the vehicle sits in the vehicle's own frame */
             void set_model_transform(const Transform3D &p_value);
             Transform3D get_model_transform() const;
+            /* The ModelRenderingServer backend the models are drawn by, by its name; none for the
+             * project's default backend */
+            void set_rendering_backend(const StringName &p_value);
+            StringName get_rendering_backend() const;
     };
 } // namespace godot

@@ -27,6 +27,9 @@
 		<member name="passengers_model_filename" type="String" setter="set_passengers_model_filename" getter="get_passengers_model_filename" default="&quot;&quot;">
 			The passengers.
 		</member>
+		<member name="rendering_backend" type="StringName" setter="set_rendering_backend" getter="get_rendering_backend" default="&amp;&quot;&quot;">
+			The [ModelRenderingServer] backend the vehicle's models are loaded and drawn by, by the name it is registered with ([method ModelRenderingServer.backend_register]); empty for the project's default backend. A model a plugin's renderer adds of its own (a cargo, a coupler's adapter) is drawn by the default backend.
+		</member>
 		<member name="skins" type="PackedStringArray" setter="set_skins" getter="get_skins" default="PackedStringArray()">
 			The skins of the models' replaceable materials, by number.
 		</member>

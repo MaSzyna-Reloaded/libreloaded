@@ -36,6 +36,11 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("get_model_transform"), &VehicleAppearance::get_model_transform);
         ADD_PROPERTY(
                 PropertyInfo(Variant::TRANSFORM3D, "model_transform"), "set_model_transform", "get_model_transform");
+        ClassDB::bind_method(D_METHOD("set_rendering_backend", "value"), &VehicleAppearance::set_rendering_backend);
+        ClassDB::bind_method(D_METHOD("get_rendering_backend"), &VehicleAppearance::get_rendering_backend);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::STRING_NAME, "rendering_backend"), "set_rendering_backend",
+                "get_rendering_backend");
     }
 
     void VehicleAppearance::set_data_path(const String &p_value) {
@@ -92,5 +97,13 @@ namespace godot {
 
     Transform3D VehicleAppearance::get_model_transform() const {
         return model_transform;
+    }
+
+    void VehicleAppearance::set_rendering_backend(const StringName &p_value) {
+        rendering_backend = p_value;
+    }
+
+    StringName VehicleAppearance::get_rendering_backend() const {
+        return rendering_backend;
     }
 } // namespace godot

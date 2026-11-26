@@ -55,6 +55,9 @@ namespace godot {
              * frame [ms]; a build that started is finished, so a frame builds at least one - the
              * streaming's own budget (SceneryStreamingServer::BUDGET_MSEC) */
             static constexpr uint64_t BUILD_BUDGET_MSEC = 4;
+            /* Where a preload request of the appearance's models names the backend that draws them;
+             * a plugin's renderer's own requests end before it, drawn by the default backend */
+            static constexpr int PRELOAD_REQUEST_BACKEND = 3;
 
         protected:
             /* A submodel of the exterior model that moves, and where it rests in the vehicle's own
