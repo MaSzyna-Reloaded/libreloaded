@@ -189,6 +189,7 @@ namespace godot {
                 rs->instance_set_transform(
                         render_instance, p_instance.transform * _get_mesh_transform(p_instance, mesh));
                 rs->instance_set_visible(render_instance, p_instance.visible && _is_mesh_visible(p_instance, mesh));
+                rs->instance_set_layer_mask(render_instance, p_instance.layer_mask);
                 for (int surface = 0; surface < mesh.mesh->get_surface_count(); ++surface) {
                     const Ref<Material> material = _get_surface_material(p_instance, mesh, surface);
                     if (material.is_valid()) {
@@ -233,6 +234,7 @@ namespace godot {
                 mesh_instance->set_surface_override_material(surface, _get_surface_material(p_instance, mesh, surface));
             }
             mesh_instance->set_material_overlay(p_instance.overlay);
+            mesh_instance->set_layer_mask(p_instance.layer_mask);
             for (const Variant &name: p_instance.shader_parameters.keys()) {
                 mesh_instance->set_instance_shader_parameter(name, p_instance.shader_parameters[name]);
             }
@@ -497,6 +499,13 @@ namespace godot {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
         instance->emission_energy = p_energy;
+        _apply(*instance);
+    }
+
+    void SceneModelRenderingBackend::instance_set_layer_mask(const RID &p_instance, const uint32_t p_mask) {
+        InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL(instance);
+        instance->layer_mask = p_mask;
         _apply(*instance);
     }
 

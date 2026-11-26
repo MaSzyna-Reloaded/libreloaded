@@ -84,6 +84,12 @@ namespace godot {
                 D_METHOD("instance_set_emission_energy", "instance", "energy"),
                 &ModelRenderingServer::instance_set_emission_energy);
         ClassDB::bind_method(
+                D_METHOD("instance_set_layer_mask", "instance", "mask"),
+                &ModelRenderingServer::instance_set_layer_mask);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_smoke_intensity", "instance", "intensity"),
+                &ModelRenderingServer::instance_set_smoke_intensity);
+        ClassDB::bind_method(
                 D_METHOD("instance_has_light", "instance", "light"), &ModelRenderingServer::instance_has_light);
         ClassDB::bind_method(
                 D_METHOD("instance_set_lights_state", "instance", "lights_state"),
@@ -413,6 +419,18 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_emission_energy(p_instance, p_energy);
+    }
+
+    void ModelRenderingServer::instance_set_layer_mask(const RID &p_instance, const uint32_t p_mask) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_layer_mask(p_instance, p_mask);
+    }
+
+    void ModelRenderingServer::instance_set_smoke_intensity(const RID &p_instance, const float p_intensity) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_smoke_intensity(p_instance, p_intensity);
     }
 
     bool ModelRenderingServer::instance_has_light(const RID &p_instance, const String &p_light) const {

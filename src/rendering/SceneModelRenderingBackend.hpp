@@ -23,6 +23,8 @@ namespace godot {
         public:
             /// The name it is registered with in ModelRenderingServer (ModelData.rendering_backend)
             static constexpr const char *NAME = "scene";
+            /// The layers an instance is drawn on until it is given others: Godot's, the first
+            static constexpr uint32_t DEFAULT_LAYER_MASK = 1;
 
         private:
             /* One mesh of a model: the nodes from the scene's root down to it (their paths from the
@@ -46,6 +48,7 @@ namespace godot {
                     HashMap<StringName, Ref<Material>> part_materials;
                     HashMap<StringName, float> part_emission;
                     float emission_energy = -1.0F;
+                    uint32_t layer_mask = DEFAULT_LAYER_MASK;
                     Ref<Material> overlay;
                     /* The materials its optimized render instances are drawn with, kept as long as
                      * they are: a render instance holds only a material's RID (_apply()) */
@@ -128,6 +131,7 @@ namespace godot {
             void
             instance_set_part_emission_energy(const RID &p_instance, const String &p_part, float p_energy) override;
             void instance_set_emission_energy(const RID &p_instance, float p_energy) override;
+            void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask) override;
             bool instance_has_light(const RID &p_instance, const String &p_light) const override;
             void instance_set_lights_state(const RID &p_instance, const Dictionary &p_lights_state) override;
             void instance_set_lights_dimmed(

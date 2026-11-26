@@ -125,6 +125,14 @@
 				Builds the instance again with another instancer, keeping the RID and everything set on it.
 			</description>
 		</method>
+		<method name="instance_set_layer_mask">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="mask" type="int" />
+			<description>
+				The render layers the instance is drawn on, as [member VisualInstance3D.layers] - kept across a rebuild. A backend of no layers does nothing; this one does nothing by default.
+			</description>
+		</method>
 		<method name="instance_set_lights_dimmed">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -212,6 +220,14 @@
 			<param index="1" name="scenario" type="RID" />
 			<description>
 				Scenario of an [constant ModelRenderingServer.INSTANCER_OPTIMIZED] instance. Rebuilds an already built instance.
+			</description>
+		</method>
+		<method name="instance_set_smoke_intensity">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="intensity" type="float" />
+			<description>
+				How much smoke the emitters the instance's model carries give, [code]0[/code] none to [code]1[/code] full. A backend of no emitters does nothing; this one does nothing by default.
 			</description>
 		</method>
 		<method name="instance_set_transform">

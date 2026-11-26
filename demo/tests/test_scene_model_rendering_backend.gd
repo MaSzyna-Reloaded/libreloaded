@@ -77,6 +77,27 @@ func test_built_as_nodes_it_is_the_scene_under_the_attached_node() -> void:
     assert_false(wheel.visible, "a hidden part's node hidden")
 
 
+## The render layers a model is drawn on, set through the server: the scene's meshes on them; and
+## the smoke of a model of no emitters, set the same way, nothing
+const INTERIOR_LAYER:int = 1 << 4
+
+
+func test_its_meshes_are_drawn_on_the_layers_set() -> void:
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var instance:RID = _create(ModelRenderingServer.INSTANCER_NODES)
+    ModelRenderingServer.instance_attach_object_instance_id(instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(instance)
+
+    ModelRenderingServer.instance_set_layer_mask(instance, INTERIOR_LAYER)
+    ModelRenderingServer.instance_set_smoke_intensity(instance, 1.0)
+
+    var meshes:Array[Node] = attached.find_children("*", "MeshInstance3D", true, false)
+    assert_true(meshes.size() > 0)
+    for mesh:Node in meshes:
+        assert_eq((mesh as MeshInstance3D).layers, INTERIOR_LAYER, mesh.name)
+
+
 ## A model of two bogies of an axle each, both axles of the same name, saved where the backend loads it of
 const BOGIES_MODEL:String = "user://scene_model_bogies.scn"
 const AXLE_SHIFT:Vector3 = Vector3(0.0, 0.0, 1.0)

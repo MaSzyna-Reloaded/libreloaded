@@ -153,6 +153,10 @@ namespace godot {
             void instance_set_part_emission_energy(const RID &p_instance, const String &p_part, float p_energy);
             /// The self-illumination of every emissive material of the instance
             void instance_set_emission_energy(const RID &p_instance, float p_energy);
+            /// The render layers the instance is drawn on, as its backend draws them
+            void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask);
+            /// How much smoke the emitters its model carries give, 0 none to 1 full
+            void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);
 
             /// The model has the light, by name
             bool instance_has_light(const RID &p_instance, const String &p_light) const;

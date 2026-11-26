@@ -163,6 +163,14 @@
 				Builds the instance again with another instancer, keeping the RID and everything set on it.
 			</description>
 		</method>
+		<method name="instance_set_layer_mask">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="mask" type="int" />
+			<description>
+				The render layers the instance is drawn on, as [member VisualInstance3D.layers], set by its backend - a backend of no layers does nothing.
+			</description>
+		</method>
 		<method name="instance_set_lights_colors">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -275,6 +283,14 @@
 			<param index="1" name="skins" type="PackedStringArray" />
 			<description>
 				The instance's replaceable materials take [param skins] - in what is built, as it stands, with nothing built again.
+			</description>
+		</method>
+		<method name="instance_set_smoke_intensity">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="intensity" type="float" />
+			<description>
+				How much smoke the emitters the instance's model carries give, [code]0[/code] none to [code]1[/code] full, set by its backend - a backend of no emitters does nothing.
 			</description>
 		</method>
 		<method name="instance_set_transform">
