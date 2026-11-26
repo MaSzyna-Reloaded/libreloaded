@@ -2,11 +2,6 @@
 extends Node
 class_name EnvironmentNode
 
-## Group the player sets cabin_view on when switching between the cabin and the exterior view
-const GROUP: StringName = &"reloaded_environment"
-## Render layer of the cab interior - with reloaded/cabin/improve_shadows_quality the cab is lit by a
-## sun of its own that reaches only this layer (SkyEnvironment._create_cabin_light())
-const CABIN_RENDER_LAYER: int = 1 << 18
 ## Wind speed the 0-1 wind_strength maps onto, m/s
 const WIND_SPEED_MIN: float = 0.15
 const WIND_SPEED_MAX: float = 3.0
@@ -194,15 +189,6 @@ const MAX_SIMULATION_SPEED: float = 100.0
 var _dirty_time: bool = true
 var _dirty_visuals: bool = true
 var _dirty_weather_preset: bool = false
-var _dirty_view: bool = false
-
-## Cabin view (the player in a cab) - whoever draws the environment gives the cab a light of its
-## own then (SkyEnvironment)
-var cabin_view: bool = false:
-    set(value):
-        if not value == cabin_view:
-            cabin_view = value
-            _dirty_view = true
 
 
 ## A new environment starts from SimulationServer's defaults - the values its scene stores are set
@@ -220,7 +206,6 @@ func _ready() -> void:
 ## What the backends take of SimulationServer's environment they are handed now, and again
 ## whenever the server announces a change
 func _enter_tree() -> void:
-    add_to_group(GROUP)
     # the time of day passes while the environment is there (SimulationServer's clock)
     if not Engine.is_editor_hint():
         SimulationServer.clock_hold()
@@ -302,10 +287,6 @@ func _process_dirty() -> void:
                 SkyEnvironment.FOG_SCENERY_DISTANCE_FACTOR_SETTING))
             if fog_enabled
             else FOG_RANGE_MAX)
-        applied = true
-
-    if _dirty_view:
-        _dirty_view = false
         applied = true
 
     if _dirty_time:

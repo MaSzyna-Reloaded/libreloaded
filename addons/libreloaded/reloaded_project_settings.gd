@@ -17,11 +17,6 @@ static func register() -> void:
     # self-shadowing acne; off by default like in Godot, because an open single-sided model then casts
     # no shadow and the acne only moves to the unlit side
     ReloadedProjectSetting.add(SkyEnvironment.REVERSE_CULL_FACE_SETTING, SkyEnvironment.REVERSE_CULL_FACE, TYPE_BOOL)
-    # The cab gets a sun of its own with sharp shadows over its few metres, and the world's sun keeps
-    # its far cascades in the cab view too; costs a second shadow map and a twice larger atlas
-    ReloadedProjectSetting.add(
-        SkyEnvironment.CABIN_SHADOWS_IMPROVED_SETTING, SkyEnvironment.CABIN_SHADOWS_IMPROVED, TYPE_BOOL
-    )
     # How far the camera sees (Player.FAR_DISTANCE_SETTING): a world's far terrain, drawn outside the
     # streaming, past its draw distance
     ReloadedProjectSetting.add(
@@ -93,39 +88,9 @@ static func register() -> void:
         PROPERTY_HINT_RANGE, "0.0,10000.0,1.0,suffix:m"
     )
     ReloadedProjectSetting.add(SkyEnvironment.SHADOW_SCENERY_BLEND_SPLITS_SETTING, SkyEnvironment.SHADOW_BLEND_SPLITS, TYPE_BOOL)
-    ReloadedProjectSetting.add(SkyEnvironment.SHADOW_CABIN_ENABLED_SETTING, SkyEnvironment.SHADOW_ENABLED, TYPE_BOOL)
-    ReloadedProjectSetting.add(
-        SkyEnvironment.SHADOW_CABIN_MODE_SETTING, SkyEnvironment.SHADOW_CABIN_MODE, TYPE_INT,
-        PROPERTY_HINT_ENUM, "Orthogonal,PSSM 2 Splits,PSSM 4 Splits"
-    )
-    ReloadedProjectSetting.add(
-        SkyEnvironment.SHADOW_CABIN_BLUR_SETTING, SkyEnvironment.SHADOW_CABIN_BLUR, TYPE_FLOAT,
-        PROPERTY_HINT_RANGE, "0.0,10.0,0.01,or_greater"
-    )
-    ReloadedProjectSetting.add(
-        SkyEnvironment.SHADOW_CABIN_OPACITY_SETTING, SkyEnvironment.SHADOW_OPACITY, TYPE_FLOAT,
-        PROPERTY_HINT_RANGE, "0.0,1.0,0.01"
-    )
-    ReloadedProjectSetting.add(
-        SkyEnvironment.SHADOW_CABIN_BIAS_SETTING, SkyEnvironment.SHADOW_BIAS, TYPE_FLOAT,
-        PROPERTY_HINT_RANGE, "0.0,10.0,0.001,or_greater"
-    )
-    ReloadedProjectSetting.add(
-        SkyEnvironment.SHADOW_CABIN_NORMAL_BIAS_SETTING, SkyEnvironment.SHADOW_CABIN_NORMAL_BIAS, TYPE_FLOAT,
-        PROPERTY_HINT_RANGE, "0.0,32.0,0.001,or_greater"
-    )
-    ReloadedProjectSetting.add(
-        SkyEnvironment.SHADOW_CABIN_MAX_DISTANCE_SETTING, SkyEnvironment.SHADOW_CABIN_MAX_DISTANCE, TYPE_FLOAT,
-        PROPERTY_HINT_RANGE, "0.0,10000.0,1.0,suffix:m"
-    )
-    ReloadedProjectSetting.add(SkyEnvironment.SHADOW_CABIN_BLEND_SPLITS_SETTING, SkyEnvironment.SHADOW_BLEND_SPLITS, TYPE_BOOL)
     for i: int in SkyEnvironment.SHADOW_SCENERY_SPLIT_SETTINGS.size():
         ReloadedProjectSetting.add(
             SkyEnvironment.SHADOW_SCENERY_SPLIT_SETTINGS[i], SkyEnvironment.SHADOW_SCENERY_SPLITS[i],
-            TYPE_FLOAT, PROPERTY_HINT_RANGE, "0.0,1.0,0.001"
-        )
-        ReloadedProjectSetting.add(
-            SkyEnvironment.SHADOW_CABIN_SPLIT_SETTINGS[i], SkyEnvironment.SHADOW_CABIN_SPLITS[i],
             TYPE_FLOAT, PROPERTY_HINT_RANGE, "0.0,1.0,0.001"
         )
     ReloadedProjectSetting.add(

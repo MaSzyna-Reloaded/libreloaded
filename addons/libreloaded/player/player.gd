@@ -495,7 +495,6 @@ func _show_view(view:Node3D) -> void:
         headlamp.reparent(view, false)
         headlamp_glow.reparent(view, false)
     var in_cabin:bool = view == cabin_view
-    get_tree().set_group(EnvironmentNode.GROUP, &"cabin_view", in_cabin)
     SceneryHUDMouseServer.mouse_set_camera(camera.get_instance_id())
     SceneryHUDMouseServer.mouse_set_active(not in_cabin)
     _draw_cab_interior()
