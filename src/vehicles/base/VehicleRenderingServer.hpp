@@ -170,6 +170,10 @@ namespace godot {
             virtual void _vehicle_pose(const RID &p_vehicle) {}
             /* vehicle_set_shown_cabin() changed */
             virtual void _vehicle_shown_cabin_changed(const RID &p_vehicle) {}
+            /* Whether the low-poly interior stays drawn while a cabin is shown: a renderer whose
+             * low-poly interiors have a part for each cab hides the cab shown itself. The base hides
+             * the whole low-poly interior, the cabin's interior standing in its place. */
+            virtual bool _low_poly_interior_keeps_cabins(const RID &p_vehicle) const;
             /* Once a frame, after every vehicle's own work */
             virtual void _frame_processed(double p_delta) {}
 
@@ -299,12 +303,14 @@ namespace godot {
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
-            /* Whether the low-poly interior is drawn, as a tool showing the vehicle asks */
+            /* Whether the low-poly interior is drawn, as a tool showing the vehicle asks - while
+             * no cabin is shown in its place */
             void vehicle_set_low_poly_interior_visible(const RID &p_vehicle, bool p_visible);
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
-             * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
-             * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every
-             * low-poly cab is drawn */
+             * low-poly interior - whoever drives (the player's cab): the whole low-poly interior is
+             * hidden, or the cab's part of it by a renderer that keeps it
+             * (_low_poly_interior_keeps_cabins()); RID() while none is: the low-poly interior is
+             * drawn whole */
             void vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin);
             /* Whether the vehicle is drawn in detail - as nodes, animated */
             bool vehicle_is_detailed(const RID &p_vehicle) const;

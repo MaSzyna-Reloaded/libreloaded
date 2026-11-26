@@ -514,20 +514,27 @@ namespace godot {
         _update_low_poly_interior(p_vehicle, *visual);
     }
 
-    /* The low-poly interior this server built drawn as the tool asks (low_poly_interior_visible) -
-     * the one place its visibility is set */
-    void VehicleRenderingServer::_update_low_poly_interior(const RID & /* p_vehicle */, const Visual &p_visual) const {
+    bool VehicleRenderingServer::_low_poly_interior_keeps_cabins(const RID & /* p_vehicle */) const {
+        return false;
+    }
+
+    /* The low-poly interior this server built drawn as the tool asks (low_poly_interior_visible),
+     * hidden whole while a cabin is shown in its place - unless the renderer keeps it - the one
+     * place its visibility is set */
+    void VehicleRenderingServer::_update_low_poly_interior(const RID &p_vehicle, const Visual &p_visual) const {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         if (models == nullptr || !p_visual.own_models || !p_visual.low_poly.is_valid()) {
             return;
         }
-        models->instance_set_visible(p_visual.low_poly, p_visual.low_poly_interior_visible);
+        const bool given_way = p_visual.shown_cabin.is_valid() && !_low_poly_interior_keeps_cabins(p_vehicle);
+        models->instance_set_visible(p_visual.low_poly, p_visual.low_poly_interior_visible && !given_way);
     }
 
     void VehicleRenderingServer::vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
         visual->shown_cabin = p_cabin;
+        _update_low_poly_interior(p_vehicle, *visual);
         _vehicle_shown_cabin_changed(p_vehicle);
     }
 

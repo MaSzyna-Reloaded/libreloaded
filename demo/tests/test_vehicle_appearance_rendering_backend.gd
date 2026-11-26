@@ -11,6 +11,8 @@ const INTERIOR:String = "scene_interior.tscn"
 const INTERIOR_ROOT:String = "Interior"
 
 var _vehicle:RID = RID()
+## A cabin whose interior is shown in the place of the low-poly interior
+var _cabin:RID = RID()
 
 
 func after_each() -> void:
@@ -18,6 +20,9 @@ func after_each() -> void:
         RailVehicleRenderingServer.vehicle_detach(_vehicle)
         VehicleServer.vehicle_free(_vehicle)
     _vehicle = RID()
+    if _cabin.is_valid():
+        VehicleServer.cabin_free(_cabin)
+    _cabin = RID()
 
 
 ## An editable vehicle - its models built at once - standing at the origin, drawn at a node of the
@@ -62,3 +67,33 @@ func test_a_low_poly_interior_is_hidden_and_drawn_as_a_tool_asks() -> void:
 
     RailVehicleRenderingServer.vehicle_set_low_poly_interior_visible(vehicle, true)
     assert_true(interior.visible, "drawn again")
+
+
+func test_a_cabin_shown_takes_the_place_of_the_whole_low_poly_interior() -> void:
+    var vehicle:RID = _vehicle_drawn(BACKEND, INTERIOR)
+    _cabin = VehicleServer.cabin_create()
+    var interior:Node3D = _low_poly_interior()
+    assert_not_null(interior, "the low-poly interior built as nodes")
+    assert_true(interior.visible, "drawn while no cabin is shown")
+
+    RailVehicleRenderingServer.vehicle_set_shown_cabin(vehicle, _cabin)
+    assert_false(interior.visible, "hidden whole, the cabin's interior in its place")
+
+    RailVehicleRenderingServer.vehicle_set_shown_cabin(vehicle, RID())
+    assert_true(interior.visible, "drawn again as the cabin is left")
+
+
+func test_a_low_poly_interior_hidden_by_a_tool_stays_hidden_as_a_cabin_is_left() -> void:
+    var vehicle:RID = _vehicle_drawn(BACKEND, INTERIOR)
+    _cabin = VehicleServer.cabin_create()
+    var interior:Node3D = _low_poly_interior()
+
+    RailVehicleRenderingServer.vehicle_set_low_poly_interior_visible(vehicle, false)
+    assert_false(interior.visible, "hidden with no cabin shown")
+
+    RailVehicleRenderingServer.vehicle_set_shown_cabin(vehicle, _cabin)
+    RailVehicleRenderingServer.vehicle_set_shown_cabin(vehicle, RID())
+    assert_false(interior.visible, "still hidden as the cabin is left")
+
+    RailVehicleRenderingServer.vehicle_set_low_poly_interior_visible(vehicle, true)
+    assert_true(interior.visible, "drawn as the tool asks again")

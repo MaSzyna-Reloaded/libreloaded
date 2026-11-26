@@ -114,7 +114,7 @@
 			<param index="0" name="vehicle" type="RID" />
 			<param index="1" name="visible" type="bool" />
 			<description>
-				Whether the vehicle's low-poly interior ([member VehicleAppearance.low_poly_model_filename]) is drawn, as a tool showing the vehicle asks - an editor hiding it to look at the others. Kept as the models are built anew.
+				Whether the vehicle's low-poly interior ([member VehicleAppearance.low_poly_model_filename]) is drawn, as a tool showing the vehicle asks - an editor hiding it to look at the others. Kept as the models are built anew; while a cabin is shown in its place ([method vehicle_set_shown_cabin]) it is hidden all the same.
 			</description>
 		</method>
 		<method name="vehicle_set_models">
@@ -139,7 +139,7 @@
 			<param index="0" name="vehicle" type="RID" />
 			<param index="1" name="cabin" type="RID" />
 			<description>
-				The cabin whose interior is drawn, by whoever shows it, in the place of the low-poly interior's cab it stands for - which a plugin's renderer hides, whoever drives (the player's cab). [code]RID()[/code] while none is: every low-poly cab is drawn.
+				The cabin whose interior is drawn, by whoever shows it, in the place of the low-poly interior - whoever drives (the player's cab). The whole low-poly interior is hidden while it is shown, but by a plugin's renderer whose low-poly interiors have a part for each cab: it hides the cab shown alone. [code]RID()[/code] while none is: the low-poly interior is drawn whole.
 			</description>
 		</method>
 		<method name="vehicle_set_skins">
