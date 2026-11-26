@@ -283,6 +283,9 @@ namespace godot {
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_low_poly_interior_visible", "vehicle", "visible"),
+                &VehicleRenderingServer::vehicle_set_low_poly_interior_visible);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
                 &VehicleRenderingServer::vehicle_set_shown_cabin);
         ClassDB::bind_method(D_METHOD("vehicle_is_detailed", "vehicle"), &VehicleRenderingServer::vehicle_is_detailed);
@@ -504,6 +507,23 @@ namespace godot {
         return visual->model;
     }
 
+    void VehicleRenderingServer::vehicle_set_low_poly_interior_visible(const RID &p_vehicle, const bool p_visible) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        visual->low_poly_interior_visible = p_visible;
+        _update_low_poly_interior(p_vehicle, *visual);
+    }
+
+    /* The low-poly interior this server built drawn as the tool asks (low_poly_interior_visible) -
+     * the one place its visibility is set */
+    void VehicleRenderingServer::_update_low_poly_interior(const RID & /* p_vehicle */, const Visual &p_visual) const {
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        if (models == nullptr || !p_visual.own_models || !p_visual.low_poly.is_valid()) {
+            return;
+        }
+        models->instance_set_visible(p_visual.low_poly, p_visual.low_poly_interior_visible);
+    }
+
     void VehicleRenderingServer::vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
@@ -627,6 +647,7 @@ namespace godot {
             models->instance_set_shader_parameter(
                     p_visual.low_poly, LOW_POLY_DEPTH_BEHIND_PARAMETER, LOW_POLY_DEPTH_BEHIND);
         }
+        _update_low_poly_interior(p_vehicle, p_visual);
         // the passengers carry no skin of their own
         p_visual.passengers =
                 create(appearance->get_passengers_model_filename(), PackedStringArray(),

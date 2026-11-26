@@ -92,6 +92,8 @@ namespace godot {
                     RID passengers;
                     Vector<RID> attachments;
                     bool own_models = false;
+                    /* vehicle_set_low_poly_interior_visible(), kept as the models are built anew */
+                    bool low_poly_interior_visible = true;
                     /* The appearance's model files registered with ResourceLazyLoader, by file
                      * name - loaded at once without lazy loading - and what the models built from
                      * them hold, one per model */
@@ -173,6 +175,7 @@ namespace godot {
 
             Visual *_get_visual(const RID &p_vehicle);
             const Visual *_get_visual(const RID &p_vehicle) const;
+            void _update_low_poly_interior(const RID &p_vehicle, const Visual &p_visual) const;
             Part _part(const Visual &p_visual, const String &p_submodel) const;
             Vector<Part> _parts(const Visual &p_visual, const PackedStringArray &p_submodels) const;
             static void _pose(Visual &p_visual, const Part &p_part, const Basis &p_pose);
@@ -296,6 +299,8 @@ namespace godot {
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
+            /* Whether the low-poly interior is drawn, as a tool showing the vehicle asks */
+            void vehicle_set_low_poly_interior_visible(const RID &p_vehicle, bool p_visible);
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
              * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
              * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every
