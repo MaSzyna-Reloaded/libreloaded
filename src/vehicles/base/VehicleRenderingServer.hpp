@@ -180,6 +180,8 @@ namespace godot {
             Visual *_get_visual(const RID &p_vehicle);
             const Visual *_get_visual(const RID &p_vehicle) const;
             void _update_low_poly_interior(const RID &p_vehicle, const Visual &p_visual) const;
+            void _parts_hide(
+                    const Visual &p_visual, const PackedStringArray &p_shown, const PackedStringArray &p_hidden) const;
             Part _part(const Visual &p_visual, const String &p_submodel) const;
             Vector<Part> _parts(const Visual &p_visual, const PackedStringArray &p_submodels) const;
             static void _pose(Visual &p_visual, const Part &p_part, const Basis &p_pose);
@@ -303,6 +305,11 @@ namespace godot {
              * standing and take them (ModelRenderingServer.instance_set_replaceable_textures()), and
              * the vehicle's appearance, a copy of the one set, has them for the next build */
             void vehicle_set_replaceable_textures(const RID &p_vehicle, const Dictionary &p_textures);
+            /* The vehicle drawn without other parts of its models - as another variant of the models
+             * it shares (VehicleAppearance.hidden_parts): the models built keep standing, the parts
+             * hidden before drawn again, and the vehicle's appearance, a copy of the one set, has
+             * them for the next build */
+            void vehicle_set_hidden_parts(const RID &p_vehicle, const PackedStringArray &p_parts);
             /* The exterior and the low-poly interior, as ModelRenderingServer instances somebody else
              * owns - a vehicle assembled by hand */
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);

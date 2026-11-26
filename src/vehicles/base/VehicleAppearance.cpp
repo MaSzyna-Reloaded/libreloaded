@@ -38,6 +38,10 @@ namespace godot {
         ADD_PROPERTY(
                 PropertyInfo(Variant::DICTIONARY, "replaceable_textures"), "set_replaceable_textures",
                 "get_replaceable_textures");
+        ClassDB::bind_method(D_METHOD("set_hidden_parts", "value"), &VehicleAppearance::set_hidden_parts);
+        ClassDB::bind_method(D_METHOD("get_hidden_parts"), &VehicleAppearance::get_hidden_parts);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::PACKED_STRING_ARRAY, "hidden_parts"), "set_hidden_parts", "get_hidden_parts");
         ClassDB::bind_method(D_METHOD("set_model_transform", "value"), &VehicleAppearance::set_model_transform);
         ClassDB::bind_method(D_METHOD("get_model_transform"), &VehicleAppearance::get_model_transform);
         ADD_PROPERTY(
@@ -103,6 +107,14 @@ namespace godot {
 
     Dictionary VehicleAppearance::get_replaceable_textures() const {
         return replaceable_textures;
+    }
+
+    void VehicleAppearance::set_hidden_parts(const PackedStringArray &p_value) {
+        hidden_parts = p_value;
+    }
+
+    PackedStringArray VehicleAppearance::get_hidden_parts() const {
+        return hidden_parts;
     }
 
     void VehicleAppearance::set_model_transform(const Transform3D &p_value) {

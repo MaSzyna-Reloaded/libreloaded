@@ -32,13 +32,14 @@ func after_each() -> void:
 ## An editable vehicle - its models built at once - standing at the origin, drawn at a node of the
 ## scene, in the appearance of the fixture's scene drawn by `backend`
 func _vehicle_drawn(backend:StringName, low_poly_interior:String = "", model:String = MODEL,
-        replaceable_textures:Dictionary = {}) -> RID:
+        replaceable_textures:Dictionary = {}, hidden_parts:PackedStringArray = []) -> RID:
     var node:Node3D = Node3D.new()
     add_child_autofree(node)
     var appearance:VehicleAppearance = VehicleAppearance.new()
     appearance.data_path = DATA_PATH
     appearance.model_filename = model
     appearance.replaceable_textures = replaceable_textures
+    appearance.hidden_parts = hidden_parts
     appearance.low_poly_model_filename = low_poly_interior
     appearance.rendering_backend = backend
     _vehicle = VehicleServer.vehicle_create()
@@ -140,3 +141,21 @@ func test_another_livery_replaces_the_textures_of_the_vehicle_drawn() -> void:
 
     RailVehicleRenderingServer.vehicle_set_replaceable_textures(vehicle, {})
     assert_null(_drawn_material("Body"), "the model's own, of none")
+
+
+func test_a_part_the_appearance_hides_is_not_drawn() -> void:
+    _vehicle_drawn(BACKEND, INTERIOR, LIVERY_MODEL, {}, PackedStringArray(["Frame", "Seats"]))
+
+    assert_false((find_child("Frame", true, false) as Node3D).visible, "the exterior's part hidden")
+    assert_true((find_child("Body", true, false) as Node3D).visible, "the others drawn")
+    assert_false((find_child("Seats", true, false) as Node3D).visible, "the low-poly interior's part hidden")
+
+
+func test_other_parts_hidden_are_hidden_on_the_vehicle_drawn_the_first_drawn_again() -> void:
+    var vehicle:RID = _vehicle_drawn(BACKEND, INTERIOR, LIVERY_MODEL, {}, PackedStringArray(["Frame"]))
+
+    RailVehicleRenderingServer.vehicle_set_hidden_parts(vehicle, PackedStringArray(["Body", "Seats"]))
+
+    assert_true((find_child("Frame", true, false) as Node3D).visible, "the part hidden before drawn again")
+    assert_false((find_child("Body", true, false) as Node3D).visible, "the exterior's other part hidden")
+    assert_false((find_child("Seats", true, false) as Node3D).visible, "and the low-poly interior's")

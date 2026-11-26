@@ -282,6 +282,9 @@ namespace godot {
                 D_METHOD("vehicle_set_replaceable_textures", "vehicle", "textures"),
                 &VehicleRenderingServer::vehicle_set_replaceable_textures);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_hidden_parts", "vehicle", "parts"),
+                &VehicleRenderingServer::vehicle_set_hidden_parts);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_models", "vehicle", "model", "low_poly"),
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
@@ -510,6 +513,40 @@ namespace godot {
         }
     }
 
+    void VehicleRenderingServer::vehicle_set_hidden_parts(const RID &p_vehicle, const PackedStringArray &p_parts) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        ERR_FAIL_COND(visual->appearance.is_null());
+        const PackedStringArray hidden_before = visual->appearance->get_hidden_parts();
+        // the appearance is whoever set it's: the vehicle takes a copy in the parts
+        visual->appearance = visual->appearance->duplicate();
+        visual->appearance->set_hidden_parts(p_parts);
+        if (visual->own_models) {
+            _parts_hide(*visual, hidden_before, p_parts);
+        }
+    }
+
+    /* The exterior's and the low-poly interior's parts of `p_hidden` not drawn, those of `p_shown`
+     * not among them drawn again - the one place the appearance's hidden parts are set */
+    void VehicleRenderingServer::_parts_hide(
+            const Visual &p_visual, const PackedStringArray &p_shown, const PackedStringArray &p_hidden) const {
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        ERR_FAIL_NULL(models);
+        for (const RID &instance: {p_visual.model, p_visual.low_poly}) {
+            if (!instance.is_valid()) {
+                continue;
+            }
+            for (const String &part: p_shown) {
+                if (!p_hidden.has(part)) {
+                    models->instance_set_part_visible(instance, part, true);
+                }
+            }
+            for (const String &part: p_hidden) {
+                models->instance_set_part_visible(instance, part, false);
+            }
+        }
+    }
+
     void VehicleRenderingServer::vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
@@ -681,6 +718,8 @@ namespace godot {
                     p_visual.low_poly, LOW_POLY_DEPTH_BEHIND_PARAMETER, LOW_POLY_DEPTH_BEHIND);
         }
         _update_low_poly_interior(p_vehicle, p_visual);
+        // a variant's of the same models drawn without the other variants' parts
+        _parts_hide(p_visual, PackedStringArray(), appearance->get_hidden_parts());
         // the passengers carry no skin of their own
         p_visual.passengers =
                 create(appearance->get_passengers_model_filename(), PackedStringArray(),

@@ -22,6 +22,7 @@ namespace godot {
             PackedStringArray attachment_model_filenames;
             PackedStringArray skins;
             Dictionary replaceable_textures;
+            PackedStringArray hidden_parts;
             Transform3D model_transform;
             StringName rendering_backend;
 
@@ -49,6 +50,10 @@ namespace godot {
              * for the models' own */
             void set_replaceable_textures(const Dictionary &p_value);
             Dictionary get_replaceable_textures() const;
+            /* The parts of the exterior and of the low-poly interior the vehicle is not drawn with,
+             * as the models name them - a variant's of the same models drawn of another */
+            void set_hidden_parts(const PackedStringArray &p_value);
+            PackedStringArray get_hidden_parts() const;
             /* Where every model of the vehicle sits in the vehicle's own frame */
             void set_model_transform(const Transform3D &p_value);
             Transform3D get_model_transform() const;
