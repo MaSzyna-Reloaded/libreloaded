@@ -126,6 +126,14 @@
 				The exterior and the low-poly interior as [ModelRenderingServer] instances somebody else owns - a vehicle assembled by hand. Announced by [signal vehicle_model_built].
 			</description>
 		</method>
+		<method name="vehicle_set_replaceable_textures">
+			<return type="void" />
+			<param index="0" name="vehicle" type="RID" />
+			<param index="1" name="textures" type="Dictionary" />
+			<description>
+				The vehicle in other replaceable textures - another livery ([member VehicleAppearance.replaceable_textures]): the models built from its appearance keep standing and take them ([method ModelRenderingServer.instance_set_replaceable_textures]), and the vehicle's appearance, a copy of the one set, has them for the next build.
+			</description>
+		</method>
 		<method name="vehicle_set_scenario">
 			<return type="void" />
 			<param index="0" name="vehicle" type="RID" />

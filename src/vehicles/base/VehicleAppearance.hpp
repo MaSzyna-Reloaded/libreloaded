@@ -1,5 +1,6 @@
 #pragma once
 #include <godot_cpp/classes/resource.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
@@ -20,6 +21,7 @@ namespace godot {
             String passengers_model_filename;
             PackedStringArray attachment_model_filenames;
             PackedStringArray skins;
+            Dictionary replaceable_textures;
             Transform3D model_transform;
             StringName rendering_backend;
 
@@ -42,6 +44,11 @@ namespace godot {
             PackedStringArray get_attachment_model_filenames() const;
             void set_skins(const PackedStringArray &p_value);
             PackedStringArray get_skins() const;
+            /* The models' replaceable textures - a livery's - by the name of the slot the materials
+             * that take them name (ModelRenderingServer.instance_set_replaceable_textures()); none
+             * for the models' own */
+            void set_replaceable_textures(const Dictionary &p_value);
+            Dictionary get_replaceable_textures() const;
             /* Where every model of the vehicle sits in the vehicle's own frame */
             void set_model_transform(const Transform3D &p_value);
             Transform3D get_model_transform() const;

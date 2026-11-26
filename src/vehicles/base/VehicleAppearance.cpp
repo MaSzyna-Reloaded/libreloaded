@@ -32,6 +32,12 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("set_skins", "value"), &VehicleAppearance::set_skins);
         ClassDB::bind_method(D_METHOD("get_skins"), &VehicleAppearance::get_skins);
         ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "skins"), "set_skins", "get_skins");
+        ClassDB::bind_method(
+                D_METHOD("set_replaceable_textures", "value"), &VehicleAppearance::set_replaceable_textures);
+        ClassDB::bind_method(D_METHOD("get_replaceable_textures"), &VehicleAppearance::get_replaceable_textures);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::DICTIONARY, "replaceable_textures"), "set_replaceable_textures",
+                "get_replaceable_textures");
         ClassDB::bind_method(D_METHOD("set_model_transform", "value"), &VehicleAppearance::set_model_transform);
         ClassDB::bind_method(D_METHOD("get_model_transform"), &VehicleAppearance::get_model_transform);
         ADD_PROPERTY(
@@ -89,6 +95,14 @@ namespace godot {
 
     PackedStringArray VehicleAppearance::get_skins() const {
         return skins;
+    }
+
+    void VehicleAppearance::set_replaceable_textures(const Dictionary &p_value) {
+        replaceable_textures = p_value;
+    }
+
+    Dictionary VehicleAppearance::get_replaceable_textures() const {
+        return replaceable_textures;
     }
 
     void VehicleAppearance::set_model_transform(const Transform3D &p_value) {

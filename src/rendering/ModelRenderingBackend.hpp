@@ -95,6 +95,10 @@ namespace godot {
             /// How much smoke the emitters the model carries give, 0 none to 1 full; a backend of no
             /// emitters does nothing
             virtual void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);
+            /// The textures that replace the textures of the materials of a slot
+            /// (ModelRenderingServer.instance_set_replaceable_textures()); a backend of no such slots
+            /// does nothing
+            virtual void instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures);
 
             /// The model has the light, by name
             virtual bool instance_has_light(const RID &p_instance, const String &p_light) const = 0;

@@ -157,6 +157,11 @@ namespace godot {
             void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask);
             /// How much smoke the emitters its model carries give, 0 none to 1 full
             void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);
+            /// The textures that replace the textures of the model's materials of a slot - a livery:
+            /// by the slot's name, each a Dictionary of its "base_color", "orm" (occlusion, roughness,
+            /// metalness) and "normal" Texture2D, any of them left out; a material takes them whose
+            /// metadata "extras" names its slot "replacable_texture", as a glTF model's do
+            void instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures);
 
             /// The model has the light, by name
             bool instance_has_light(const RID &p_instance, const String &p_light) const;

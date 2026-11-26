@@ -9,6 +9,10 @@ const MODEL:String = "scene_model.tscn"
 ## The low-poly interior's scene, and its root's name
 const INTERIOR:String = "scene_interior.tscn"
 const INTERIOR_ROOT:String = "Interior"
+## A body whose paint is a slot of replaceable textures ("body"), its frame of no slot
+const LIVERY_MODEL:String = "scene_livery.tscn"
+const SLOT:StringName = &"body"
+const TEXTURE_SIZE:int = 4
 
 var _vehicle:RID = RID()
 ## A cabin whose interior is shown in the place of the low-poly interior
@@ -27,12 +31,14 @@ func after_each() -> void:
 
 ## An editable vehicle - its models built at once - standing at the origin, drawn at a node of the
 ## scene, in the appearance of the fixture's scene drawn by `backend`
-func _vehicle_drawn(backend:StringName, low_poly_interior:String = "") -> RID:
+func _vehicle_drawn(backend:StringName, low_poly_interior:String = "", model:String = MODEL,
+        replaceable_textures:Dictionary = {}) -> RID:
     var node:Node3D = Node3D.new()
     add_child_autofree(node)
     var appearance:VehicleAppearance = VehicleAppearance.new()
     appearance.data_path = DATA_PATH
-    appearance.model_filename = MODEL
+    appearance.model_filename = model
+    appearance.replaceable_textures = replaceable_textures
     appearance.low_poly_model_filename = low_poly_interior
     appearance.rendering_backend = backend
     _vehicle = VehicleServer.vehicle_create()
@@ -97,3 +103,40 @@ func test_a_low_poly_interior_hidden_by_a_tool_stays_hidden_as_a_cabin_is_left()
 
     RailVehicleRenderingServer.vehicle_set_low_poly_interior_visible(vehicle, true)
     assert_true(interior.visible, "drawn as the tool asks again")
+
+
+func _texture() -> Texture2D:
+    return ImageTexture.create_from_image(Image.create(TEXTURE_SIZE, TEXTURE_SIZE, false, Image.FORMAT_RGBA8))
+
+
+## What a mesh of the editable vehicle's model is drawn with in place of its own material
+func _drawn_material(mesh:String) -> BaseMaterial3D:
+    var node:MeshInstance3D = find_child(mesh, true, false) as MeshInstance3D
+    return node.get_surface_override_material(0) as BaseMaterial3D if node else null
+
+
+func test_a_livery_replaces_the_textures_of_the_materials_of_its_slot() -> void:
+    var base_color:Texture2D = _texture()
+    var orm:Texture2D = _texture()
+    var textures:Dictionary = {SLOT: {"base_color": base_color, "orm": orm}}
+    _vehicle_drawn(BACKEND, "", LIVERY_MODEL, textures)
+
+    var paint:BaseMaterial3D = _drawn_material("Body")
+    assert_not_null(paint, "the body's paint drawn of the livery")
+    if paint:
+        assert_eq(paint.albedo_texture, base_color, "its base colour")
+        assert_eq(paint.roughness_texture, orm, "its roughness of the occlusion-roughness-metalness one")
+        assert_eq(paint.roughness_texture_channel, BaseMaterial3D.TEXTURE_CHANNEL_GREEN)
+    assert_null(_drawn_material("Frame"), "a material of no slot its own")
+
+
+func test_another_livery_replaces_the_textures_of_the_vehicle_drawn() -> void:
+    var vehicle:RID = _vehicle_drawn(BACKEND, "", LIVERY_MODEL, {SLOT: {"base_color": _texture()}})
+    var other:Texture2D = _texture()
+
+    RailVehicleRenderingServer.vehicle_set_replaceable_textures(vehicle, {SLOT: {"base_color": other}})
+    var paint:BaseMaterial3D = _drawn_material("Body")
+    assert_eq(paint.albedo_texture if paint else null, other, "the other livery's")
+
+    RailVehicleRenderingServer.vehicle_set_replaceable_textures(vehicle, {})
+    assert_null(_drawn_material("Body"), "the model's own, of none")

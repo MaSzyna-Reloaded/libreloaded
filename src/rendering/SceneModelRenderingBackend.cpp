@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -78,6 +79,63 @@ namespace godot {
             emission[_part_path(p_instance, part.key)] = part.value;
         }
         p_instance.part_emission = emission;
+        _replace_materials(p_instance);
+    }
+
+    namespace {
+        /* The metadata a glTF material keeps its extras in (GLTFDocument), and the key of them that
+         * names its slot of replaceable textures - spelled as the models' format spells it */
+        const char *const EXTRAS_META = "extras";
+        const char *const REPLACEABLE_TEXTURE_KEY = "replacable_texture";
+        /* The textures of a slot (ModelRenderingServer.instance_set_replaceable_textures()) */
+        const char *const BASE_COLOR_TEXTURE = "base_color";
+        const char *const ORM_TEXTURE = "orm";
+        const char *const NORMAL_TEXTURE = "normal";
+    } // namespace
+
+    /// Each material of the model's meshes of a slot the replaceable textures have, copied with the
+    /// slot's textures: the base colour; occlusion, roughness and metalness of one texture's red,
+    /// green and blue; the normal map - none while there are none
+    void SceneModelRenderingBackend::_replace_materials(InstanceData &p_instance) {
+        p_instance.replaced_materials.clear();
+        if (p_instance.replaceable_textures.is_empty()) {
+            return;
+        }
+        for (const MeshPart &mesh: p_instance.meshes) {
+            for (int surface = 0; surface < mesh.mesh->get_surface_count(); ++surface) {
+                const Ref<BaseMaterial3D> own = mesh.mesh->surface_get_material(surface);
+                if (own.is_null() || p_instance.replaced_materials.has(own->get_rid()) || !own->has_meta(EXTRAS_META)) {
+                    continue;
+                }
+                const Dictionary extras = own->get_meta(EXTRAS_META);
+                const Variant slot = extras.get(REPLACEABLE_TEXTURE_KEY, Variant());
+                if (slot.get_type() == Variant::NIL || !p_instance.replaceable_textures.has(StringName(slot))) {
+                    continue;
+                }
+                const Dictionary textures = p_instance.replaceable_textures[StringName(slot)];
+                Ref<BaseMaterial3D> replaced = own->duplicate();
+                const Ref<Texture2D> base_color = textures.get(BASE_COLOR_TEXTURE, Variant());
+                if (base_color.is_valid()) {
+                    replaced->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, base_color);
+                }
+                const Ref<Texture2D> orm = textures.get(ORM_TEXTURE, Variant());
+                if (orm.is_valid()) {
+                    replaced->set_feature(BaseMaterial3D::FEATURE_AMBIENT_OCCLUSION, true);
+                    replaced->set_texture(BaseMaterial3D::TEXTURE_AMBIENT_OCCLUSION, orm);
+                    replaced->set_ao_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
+                    replaced->set_texture(BaseMaterial3D::TEXTURE_ROUGHNESS, orm);
+                    replaced->set_roughness_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_GREEN);
+                    replaced->set_texture(BaseMaterial3D::TEXTURE_METALLIC, orm);
+                    replaced->set_metallic_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_BLUE);
+                }
+                const Ref<Texture2D> normal = textures.get(NORMAL_TEXTURE, Variant());
+                if (normal.is_valid()) {
+                    replaced->set_feature(BaseMaterial3D::FEATURE_NORMAL_MAPPING, true);
+                    replaced->set_texture(BaseMaterial3D::TEXTURE_NORMAL, normal);
+                }
+                p_instance.replaced_materials[own->get_rid()] = replaced;
+            }
+        }
     }
 
     /// A part as the model's nodes are kept: its path from the root, of a name no other node has
@@ -140,9 +198,10 @@ namespace godot {
     }
 
     /// What a surface of the mesh is drawn with instead of its own material: the override of the
-    /// deepest part above it that has one, else - while a self-illumination is set on a part above it
-    /// or on the instance - its own material lit that much when it is an emissive one; null for its
-    /// own. A mesh of more materials keeps the others: only its emissive surfaces are lit.
+    /// deepest part above it that has one, else its material - its own, or the one of the replaceable
+    /// textures of its slot - lit, while a self-illumination is set on a part above it or on the
+    /// instance, that much when it is an emissive one; null for its own. A mesh of more materials
+    /// keeps the others: only its emissive surfaces are lit.
     Ref<Material> SceneModelRenderingBackend::_get_surface_material(
             const InstanceData &p_instance, const MeshPart &p_mesh, const int p_surface) const {
         float energy = p_instance.emission_energy;
@@ -158,12 +217,16 @@ namespace godot {
                 energy = *part_energy;
             }
         }
+        const Ref<Material> source = p_mesh.mesh->surface_get_material(p_surface);
+        const Ref<Material> *replaced =
+                source.is_valid() ? p_instance.replaced_materials.getptr(source->get_rid()) : nullptr;
+        Ref<Material> material = replaced != nullptr ? *replaced : Ref<Material>();
         if (energy < 0.0F) {
-            return Ref<Material>();
+            return material;
         }
-        const Ref<BaseMaterial3D> own = p_mesh.mesh->surface_get_material(p_surface);
+        const Ref<BaseMaterial3D> own = material.is_valid() ? material : source;
         if (own.is_null() || !own->get_feature(BaseMaterial3D::FEATURE_EMISSION)) {
-            return Ref<Material>();
+            return material;
         }
         Ref<BaseMaterial3D> lit = own->duplicate();
         lit->set_emission_energy_multiplier(energy);
@@ -368,6 +431,15 @@ namespace godot {
     void SceneModelRenderingBackend::instance_set_skins(
             const RID & /* p_instance */, const PackedStringArray & /* p_skins */) {
         // a scene is drawn whole, in its own materials
+    }
+
+    void
+    SceneModelRenderingBackend::instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures) {
+        InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL(instance);
+        instance->replaceable_textures = p_textures;
+        _replace_materials(*instance);
+        _apply(*instance);
     }
 
     void SceneModelRenderingBackend::instance_set_options(

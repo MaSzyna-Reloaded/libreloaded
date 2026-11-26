@@ -260,6 +260,14 @@
 				Shows or hides a part, by name, kept across rebuilds.
 			</description>
 		</method>
+		<method name="instance_set_replaceable_textures">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="textures" type="Dictionary" />
+			<description>
+				The textures that replace the textures of the model's materials of a slot - a livery: by the slot's name, each a [Dictionary] of its [code]"base_color"[/code], [code]"orm"[/code] (ambient occlusion, roughness and metalness in its red, green and blue) and [code]"normal"[/code] [Texture2D], any of them left out. A material takes them whose metadata [code]"extras"[/code] names its slot as [code]"replacable_texture"[/code], as the materials of a glTF model imported by [GLTFDocument] keep their extras; the others keep their own. An empty [param textures] draws the model's own materials.
+			</description>
+		</method>
 		<method name="instance_set_scenario">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

@@ -214,6 +214,14 @@
 				Shows or hides a part, by name, kept across rebuilds.
 			</description>
 		</method>
+		<method name="instance_set_replaceable_textures">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="textures" type="Dictionary" />
+			<description>
+				The textures that replace the textures of the materials of a slot ([method ModelRenderingServer.instance_set_replaceable_textures]). A backend of no such slots does nothing.
+			</description>
+		</method>
 		<method name="instance_set_scenario">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

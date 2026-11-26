@@ -16,7 +16,9 @@ namespace godot {
      * nodes under the attached node (INSTANCER_NODES); a streamed placement (instance_register()) is
      * built while the camera is in its range (SceneryStreamingServer). Its models have no lights, no
      * skins and no materials read ahead: has_light() is false for every one, a signal head attached
-     * draws nothing and goes with the instance. */
+     * draws nothing and goes with the instance. A material whose metadata "extras" - a glTF
+     * material's - names a slot of replaceable textures ("replacable_texture") takes the textures
+     * of its slot (instance_set_replaceable_textures()). */
     class SceneModelRenderingBackend : public ModelRenderingBackend {
             GDCLASS(SceneModelRenderingBackend, ModelRenderingBackend)
 
@@ -50,6 +52,10 @@ namespace godot {
                     float emission_energy = -1.0F;
                     uint32_t layer_mask = DEFAULT_LAYER_MASK;
                     Ref<Material> overlay;
+                    /* instance_set_replaceable_textures(), and the model's materials of their slots
+                     * with them, by the material each is of (_replace_materials()) */
+                    Dictionary replaceable_textures;
+                    RIDMap<Ref<Material>> replaced_materials;
                     /* The materials its optimized render instances are drawn with, kept as long as
                      * they are: a render instance holds only a material's RID (_apply()) */
                     Vector<Ref<Material>> drawn_materials;
@@ -78,6 +84,7 @@ namespace godot {
             int stream_owner = -1;
 
             static void _read_model(InstanceData &p_instance);
+            static void _replace_materials(InstanceData &p_instance);
             static StringName _part_path(const InstanceData &p_instance, const StringName &p_part);
             static void _read_node(
                     const Node *p_node, const Vector<StringName> &p_names, const Vector<Transform3D> &p_transforms,
@@ -143,6 +150,7 @@ namespace godot {
             void instance_set_shader_parameter(
                     const RID &p_instance, const StringName &p_name, const Variant &p_value) override;
             void instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins) override;
+            void instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures) override;
             Dictionary instance_intersect_segment(
                     const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const override;
     };

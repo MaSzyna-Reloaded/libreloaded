@@ -279,6 +279,9 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("vehicle_set_skins", "vehicle", "skins"), &VehicleRenderingServer::vehicle_set_skins);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_replaceable_textures", "vehicle", "textures"),
+                &VehicleRenderingServer::vehicle_set_replaceable_textures);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_models", "vehicle", "model", "low_poly"),
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
@@ -485,6 +488,28 @@ namespace godot {
         }
     }
 
+    void VehicleRenderingServer::vehicle_set_replaceable_textures(const RID &p_vehicle, const Dictionary &p_textures) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        ERR_FAIL_COND(visual->appearance.is_null());
+        // the appearance is whoever set it's: the vehicle takes a copy in the textures
+        visual->appearance = visual->appearance->duplicate();
+        visual->appearance->set_replaceable_textures(p_textures);
+        if (!visual->own_models) {
+            return;
+        }
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        ERR_FAIL_NULL(models);
+        for (const RID &model: {visual->model, visual->low_poly, visual->passengers}) {
+            if (model.is_valid()) {
+                models->instance_set_replaceable_textures(model, p_textures);
+            }
+        }
+        for (const RID &attachment: visual->attachments) {
+            models->instance_set_replaceable_textures(attachment, p_textures);
+        }
+    }
+
     void VehicleRenderingServer::vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
@@ -633,6 +658,7 @@ namespace godot {
             // opaque by the optimized instancer far away; a cutout leaves holes in the glass
             constexpr bool FORCE_ALPHA = true;
             models->instance_set_options(instance, data_path, p_skins, Array(), FORCE_ALPHA, {}, 0);
+            models->instance_set_replaceable_textures(instance, appearance->get_replaceable_textures());
             if (p_instancer != ModelRenderingServer::INSTANCER_OPTIMIZED) {
                 models->instance_attach_object_instance_id(instance, holder->get_instance_id());
             }

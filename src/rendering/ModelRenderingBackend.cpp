@@ -72,6 +72,9 @@ namespace godot {
                 D_METHOD("instance_set_smoke_intensity", "instance", "intensity"),
                 &ModelRenderingBackend::instance_set_smoke_intensity);
         ClassDB::bind_method(
+                D_METHOD("instance_set_replaceable_textures", "instance", "textures"),
+                &ModelRenderingBackend::instance_set_replaceable_textures);
+        ClassDB::bind_method(
                 D_METHOD("instance_has_light", "instance", "light"), &ModelRenderingBackend::instance_has_light);
         ClassDB::bind_method(
                 D_METHOD("instance_set_lights_state", "instance", "lights_state"),
@@ -101,4 +104,7 @@ namespace godot {
 
     void
     ModelRenderingBackend::instance_set_smoke_intensity(const RID & /* p_instance */, const float /* p_intensity */) {}
+
+    void ModelRenderingBackend::instance_set_replaceable_textures(
+            const RID & /* p_instance */, const Dictionary & /* p_textures */) {}
 } // namespace godot
