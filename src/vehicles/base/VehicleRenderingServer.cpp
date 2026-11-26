@@ -648,9 +648,9 @@ namespace godot {
             !models->instance_has_part(p_visual.model, p_submodel)) {
             return Part();
         }
+        // the part as the appearance names it: how a backend tells its parts is the backend's own
         return Part{
-                p_submodel.to_lower(),
-                p_visual.model_transform * models->instance_get_part_transform(p_visual.model, p_submodel)};
+                p_submodel, p_visual.model_transform * models->instance_get_part_transform(p_visual.model, p_submodel)};
     }
 
     Vector<VehicleRenderingServer::Part>
