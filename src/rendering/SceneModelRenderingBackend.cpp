@@ -42,11 +42,13 @@ namespace godot {
     }
 
     /// The model's nodes read off a scene made of it and freed at once: its meshes with the nodes
-    /// above them, and every node's own transform by its name
+    /// above them, and every node's own transform by its path from the root; what was set of its
+    /// parts before - a streamed placement's, read when built - by their paths from now on
     void SceneModelRenderingBackend::_read_model(InstanceData &p_instance) {
         p_instance.meshes.clear();
         p_instance.part_local_transforms.clear();
         p_instance.part_model_transforms.clear();
+        p_instance.part_paths.clear();
         if (p_instance.model.is_null()) {
             return;
         }
@@ -56,6 +58,33 @@ namespace godot {
             _read_node(root->get_child(index), Vector<StringName>(), Vector<Transform3D>(), p_instance);
         }
         memdelete(root);
+        Dictionary poses;
+        for (const Variant &part: p_instance.part_poses.keys()) {
+            poses[_part_path(p_instance, part)] = p_instance.part_poses[part];
+        }
+        p_instance.part_poses = poses;
+        HashMap<StringName, bool> visible;
+        for (const KeyValue<StringName, bool> &part: p_instance.part_visible) {
+            visible[_part_path(p_instance, part.key)] = part.value;
+        }
+        p_instance.part_visible = visible;
+        HashMap<StringName, Ref<Material>> materials;
+        for (const KeyValue<StringName, Ref<Material>> &part: p_instance.part_materials) {
+            materials[_part_path(p_instance, part.key)] = part.value;
+        }
+        p_instance.part_materials = materials;
+        HashMap<StringName, float> emission;
+        for (const KeyValue<StringName, float> &part: p_instance.part_emission) {
+            emission[_part_path(p_instance, part.key)] = part.value;
+        }
+        p_instance.part_emission = emission;
+    }
+
+    /// A part as the model's nodes are kept: its path from the root, of a name no other node has
+    /// too; as it is given for any other (a path, a name of more nodes, one of no model read yet)
+    StringName SceneModelRenderingBackend::_part_path(const InstanceData &p_instance, const StringName &p_part) {
+        const StringName *path = p_instance.part_paths.getptr(p_part);
+        return path != nullptr && !path->is_empty() ? *path : p_part;
     }
 
     void SceneModelRenderingBackend::_read_node(
@@ -65,14 +94,19 @@ namespace godot {
         Vector<StringName> names = p_names;
         Vector<Transform3D> transforms = p_transforms;
         if (spatial != nullptr) {
-            names.push_back(p_node->get_name());
+            const StringName name = p_node->get_name();
+            const StringName path =
+                    p_names.is_empty() ? name : StringName(String(p_names[p_names.size() - 1]).path_join(name));
+            names.push_back(path);
             transforms.push_back(spatial->get_transform());
             Transform3D model_transform;
             for (const Transform3D &transform: transforms) {
                 model_transform = model_transform * transform;
             }
-            p_instance.part_local_transforms[p_node->get_name()] = spatial->get_transform();
-            p_instance.part_model_transforms[p_node->get_name()] = model_transform;
+            p_instance.part_local_transforms[path] = spatial->get_transform();
+            p_instance.part_model_transforms[path] = model_transform;
+            // a name of more nodes names none of them
+            p_instance.part_paths[name] = p_instance.part_paths.has(name) ? StringName() : path;
         }
         const MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node);
         if (mesh_instance != nullptr && mesh_instance->get_mesh().is_valid()) {
@@ -179,7 +213,7 @@ namespace godot {
         root->set_transform(p_instance.node_transform);
         root->set_visible(p_instance.visible);
         for (const KeyValue<StringName, Transform3D> &part: p_instance.part_local_transforms) {
-            Node3D *node = Object::cast_to<Node3D>(root->find_child(part.key, true, false));
+            Node3D *node = Object::cast_to<Node3D>(root->get_node_or_null(NodePath(String(part.key))));
             if (node == nullptr) {
                 continue;
             }
@@ -191,7 +225,7 @@ namespace godot {
         }
         for (const MeshPart &mesh: p_instance.meshes) {
             MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(
-                    root->find_child(mesh.path_names[mesh.path_names.size() - 1], true, false));
+                    root->get_node_or_null(NodePath(String(mesh.path_names[mesh.path_names.size() - 1]))));
             if (mesh_instance == nullptr) {
                 continue;
             }
@@ -407,14 +441,14 @@ namespace godot {
     bool SceneModelRenderingBackend::instance_has_part(const RID &p_instance, const String &p_part) const {
         const InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL_V(instance, false);
-        return instance->part_model_transforms.has(p_part);
+        return instance->part_model_transforms.has(_part_path(*instance, p_part));
     }
 
     Transform3D
     SceneModelRenderingBackend::instance_get_part_transform(const RID &p_instance, const String &p_part) const {
         const InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL_V(instance, Transform3D());
-        const Transform3D *transform = instance->part_model_transforms.getptr(p_part);
+        const Transform3D *transform = instance->part_model_transforms.getptr(_part_path(*instance, p_part));
         return transform != nullptr ? *transform : Transform3D();
     }
 
@@ -425,10 +459,11 @@ namespace godot {
         const Array parts = p_poses.keys();
         for (int index = 0; index < parts.size(); ++index) {
             const Transform3D pose = p_poses[parts[index]];
+            const StringName part = _part_path(*instance, parts[index]);
             if (pose == Transform3D()) {
-                instance->part_poses.erase(StringName(parts[index]));
+                instance->part_poses.erase(part);
             } else {
-                instance->part_poses[StringName(parts[index])] = pose;
+                instance->part_poses[part] = pose;
             }
         }
         _apply(*instance);
@@ -438,7 +473,7 @@ namespace godot {
             const RID &p_instance, const String &p_part, const bool p_visible) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
-        instance->part_visible[p_part] = p_visible;
+        instance->part_visible[_part_path(*instance, p_part)] = p_visible;
         _apply(*instance);
     }
 
@@ -446,7 +481,7 @@ namespace godot {
             const RID &p_instance, const String &p_part, const Ref<Material> &p_material) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
-        instance->part_materials[p_part] = p_material;
+        instance->part_materials[_part_path(*instance, p_part)] = p_material;
         _apply(*instance);
     }
 
@@ -454,7 +489,7 @@ namespace godot {
             const RID &p_instance, const String &p_part, const float p_energy) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
-        instance->part_emission[p_part] = p_energy;
+        instance->part_emission[_part_path(*instance, p_part)] = p_energy;
         _apply(*instance);
     }
 

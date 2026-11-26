@@ -77,6 +77,43 @@ func test_built_as_nodes_it_is_the_scene_under_the_attached_node() -> void:
     assert_false(wheel.visible, "a hidden part's node hidden")
 
 
+## A model of two bogies of an axle each, both axles of the same name, saved where the backend loads it of
+const BOGIES_MODEL:String = "user://scene_model_bogies.scn"
+const AXLE_SHIFT:Vector3 = Vector3(0.0, 0.0, 1.0)
+
+
+func test_a_part_is_a_node_by_its_path_or_by_a_name_no_other_has() -> void:
+    var root:Node3D = Node3D.new()
+    for bogie_name:String in ["Bogie_A", "Bogie_B"]:
+        var bogie:Node3D = Node3D.new()
+        bogie.name = bogie_name
+        root.add_child(bogie)
+        bogie.owner = root
+        var axle:MeshInstance3D = MeshInstance3D.new()
+        axle.name = "Axle"
+        axle.mesh = BoxMesh.new()
+        bogie.add_child(axle)
+        axle.owner = root
+    var scene:PackedScene = PackedScene.new()
+    scene.pack(root)
+    root.free()
+    assert_eq(ResourceSaver.save(scene, BOGIES_MODEL), OK)
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    _instance = ModelRenderingServer.instance_create(BACKEND, ModelRenderingServer.model_load(BACKEND, BOGIES_MODEL),
+            ModelRenderingServer.INSTANCER_NODES, ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    ModelRenderingServer.instance_attach_object_instance_id(_instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(_instance)
+
+    assert_true(ModelRenderingServer.instance_has_part(_instance, "Bogie_B/Axle"), "by its path")
+    assert_true(ModelRenderingServer.instance_has_part(_instance, "Bogie_A"), "by a name no other node has")
+    assert_false(ModelRenderingServer.instance_has_part(_instance, "Axle"), "a name of two nodes names neither")
+    ModelRenderingServer.instance_set_part_poses(_instance, {"Bogie_B/Axle": Transform3D(Basis(), AXLE_SHIFT)})
+    var drawn_root:Node = attached.get_child(0)
+    assert_eq((drawn_root.get_node("Bogie_B/Axle") as Node3D).position, AXLE_SHIFT, "the one of the path posed")
+    assert_eq((drawn_root.get_node("Bogie_A/Axle") as Node3D).position, Vector3.ZERO, "the other left")
+
+
 ## A model of one mesh of an emissive surface and a plain one, saved where the backend loads it of
 const EMISSIVE_MODEL:String = "user://scene_model_emissive.scn"
 const EMISSION_ENERGY:float = 2.0

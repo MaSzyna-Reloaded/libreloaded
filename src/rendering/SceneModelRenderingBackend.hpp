@@ -10,7 +10,8 @@
 
 namespace godot {
     /* Godot's scenes as models (ModelRenderingServer's backend NAME): a model is a PackedScene by its
-     * path (a .tscn, a .scn, an imported .glb), a part is a node of it by its name. An instance draws
+     * path (a .tscn, a .scn, an imported .glb), a part is a node of it by its path from the scene's
+     * root ("Bogie_A/Axle_A1"), or by its name alone where no other node has it. An instance draws
      * the scene's meshes with RenderingServer instances (INSTANCER_OPTIMIZED) or as the scene's own
      * nodes under the attached node (INSTANCER_NODES); a streamed placement (instance_register()) is
      * built while the camera is in its range (SceneryStreamingServer). Its models have no lights, no
@@ -24,8 +25,8 @@ namespace godot {
             static constexpr const char *NAME = "scene";
 
         private:
-            /* One mesh of a model: the nodes from the scene's root down to it (their names and own
-             * transforms), so a pose of any of them moves it */
+            /* One mesh of a model: the nodes from the scene's root down to it (their paths from the
+             * root and their own transforms), so a pose of any of them moves it */
             struct MeshPart {
                     Ref<Mesh> mesh;
                     Vector<StringName> path_names;
@@ -61,6 +62,9 @@ namespace godot {
                     Vector<MeshPart> meshes;
                     HashMap<StringName, Transform3D> part_local_transforms;
                     HashMap<StringName, Transform3D> part_model_transforms;
+                    /// A part named by its name alone: the path of the one node of that name; an
+                    /// empty path for a name more nodes have
+                    HashMap<StringName, StringName> part_paths;
                     /// What it draws, built optimized: one RenderingServer instance a mesh; built as
                     /// nodes: the scene's root under the attached node
                     Vector<RID> render_instances;
@@ -71,6 +75,7 @@ namespace godot {
             int stream_owner = -1;
 
             static void _read_model(InstanceData &p_instance);
+            static StringName _part_path(const InstanceData &p_instance, const StringName &p_part);
             static void _read_node(
                     const Node *p_node, const Vector<StringName> &p_names, const Vector<Transform3D> &p_transforms,
                     InstanceData &p_instance);
