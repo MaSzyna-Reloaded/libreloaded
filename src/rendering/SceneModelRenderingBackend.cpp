@@ -105,11 +105,12 @@ namespace godot {
         return true;
     }
 
-    /// What the mesh is drawn with instead of its own materials: the override of the deepest part
-    /// above it that has one, else - while a self-illumination is set on a part above it or on the
-    /// instance - its first emissive material lit that much; null for its own
-    Ref<Material>
-    SceneModelRenderingBackend::_get_mesh_material(const InstanceData &p_instance, const MeshPart &p_mesh) const {
+    /// What a surface of the mesh is drawn with instead of its own material: the override of the
+    /// deepest part above it that has one, else - while a self-illumination is set on a part above it
+    /// or on the instance - its own material lit that much when it is an emissive one; null for its
+    /// own. A mesh of more materials keeps the others: only its emissive surfaces are lit.
+    Ref<Material> SceneModelRenderingBackend::_get_surface_material(
+            const InstanceData &p_instance, const MeshPart &p_mesh, const int p_surface) const {
         float energy = p_instance.emission_energy;
         for (int64_t index = p_mesh.path_names.size() - 1; index >= 0; --index) {
             const Ref<Material> *material = p_instance.part_materials.getptr(p_mesh.path_names[index]);
@@ -126,15 +127,13 @@ namespace godot {
         if (energy < 0.0F) {
             return Ref<Material>();
         }
-        for (int surface = 0; surface < p_mesh.mesh->get_surface_count(); ++surface) {
-            const Ref<BaseMaterial3D> own = p_mesh.mesh->surface_get_material(surface);
-            if (own.is_valid() && own->get_feature(BaseMaterial3D::FEATURE_EMISSION)) {
-                Ref<BaseMaterial3D> lit = own->duplicate();
-                lit->set_emission_energy_multiplier(energy);
-                return lit;
-            }
+        const Ref<BaseMaterial3D> own = p_mesh.mesh->surface_get_material(p_surface);
+        if (own.is_null() || !own->get_feature(BaseMaterial3D::FEATURE_EMISSION)) {
+            return Ref<Material>();
         }
-        return Ref<Material>();
+        Ref<BaseMaterial3D> lit = own->duplicate();
+        lit->set_emission_energy_multiplier(energy);
+        return lit;
     }
 
     Node3D *SceneModelRenderingBackend::_get_root(const InstanceData &p_instance) const {
@@ -148,6 +147,7 @@ namespace godot {
         }
         RenderingServer *rs = RenderingServer::get_singleton();
         if (p_instance.instancer == ModelRenderingServer::INSTANCER_OPTIMIZED) {
+            p_instance.drawn_materials.clear();
             for (int index = 0; index < p_instance.meshes.size(); ++index) {
                 const MeshPart &mesh = p_instance.meshes[index];
                 const RID render_instance = p_instance.render_instances[index];
@@ -155,8 +155,11 @@ namespace godot {
                 rs->instance_set_transform(
                         render_instance, p_instance.transform * _get_mesh_transform(p_instance, mesh));
                 rs->instance_set_visible(render_instance, p_instance.visible && _is_mesh_visible(p_instance, mesh));
-                const Ref<Material> material = _get_mesh_material(p_instance, mesh);
                 for (int surface = 0; surface < mesh.mesh->get_surface_count(); ++surface) {
+                    const Ref<Material> material = _get_surface_material(p_instance, mesh, surface);
+                    if (material.is_valid()) {
+                        p_instance.drawn_materials.push_back(material);
+                    }
                     rs->instance_set_surface_override_material(
                             render_instance, surface, material.is_valid() ? material->get_rid() : RID());
                 }
@@ -192,7 +195,9 @@ namespace godot {
             if (mesh_instance == nullptr) {
                 continue;
             }
-            mesh_instance->set_material_override(_get_mesh_material(p_instance, mesh));
+            for (int surface = 0; surface < mesh.mesh->get_surface_count(); ++surface) {
+                mesh_instance->set_surface_override_material(surface, _get_surface_material(p_instance, mesh, surface));
+            }
             mesh_instance->set_material_overlay(p_instance.overlay);
             for (const Variant &name: p_instance.shader_parameters.keys()) {
                 mesh_instance->set_instance_shader_parameter(name, p_instance.shader_parameters[name]);
@@ -207,6 +212,7 @@ namespace godot {
             rs->free_rid(render_instance);
         }
         p_instance.render_instances.clear();
+        p_instance.drawn_materials.clear();
         Node3D *root = _get_root(p_instance);
         if (root != nullptr) {
             root->queue_free();

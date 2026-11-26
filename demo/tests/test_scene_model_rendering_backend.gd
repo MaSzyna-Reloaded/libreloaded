@@ -77,6 +77,45 @@ func test_built_as_nodes_it_is_the_scene_under_the_attached_node() -> void:
     assert_false(wheel.visible, "a hidden part's node hidden")
 
 
+## A model of one mesh of an emissive surface and a plain one, saved where the backend loads it of
+const EMISSIVE_MODEL:String = "user://scene_model_emissive.scn"
+const EMISSION_ENERGY:float = 2.0
+
+
+func test_lit_only_the_emissive_surfaces_of_a_mesh_are_drawn_lit() -> void:
+    var lamp:StandardMaterial3D = StandardMaterial3D.new()
+    lamp.emission_enabled = true
+    var wall:StandardMaterial3D = StandardMaterial3D.new()
+    var mesh:ArrayMesh = ArrayMesh.new()
+    for material:StandardMaterial3D in [lamp, wall]:
+        mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, BoxMesh.new().get_mesh_arrays())
+        mesh.surface_set_material(mesh.get_surface_count() - 1, material)
+    var root:Node3D = Node3D.new()
+    var interior:MeshInstance3D = MeshInstance3D.new()
+    interior.name = "Interior"
+    interior.mesh = mesh
+    root.add_child(interior)
+    interior.owner = root
+    var scene:PackedScene = PackedScene.new()
+    scene.pack(root)
+    root.free()
+    assert_eq(ResourceSaver.save(scene, EMISSIVE_MODEL), OK)
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    _instance = ModelRenderingServer.instance_create(BACKEND, ModelRenderingServer.model_load(BACKEND, EMISSIVE_MODEL),
+            ModelRenderingServer.INSTANCER_NODES, ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    ModelRenderingServer.instance_attach_object_instance_id(_instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(_instance)
+
+    ModelRenderingServer.instance_set_emission_energy(_instance, EMISSION_ENERGY)
+
+    var drawn:MeshInstance3D = attached.find_child("Interior", true, false) as MeshInstance3D
+    var lit:StandardMaterial3D = drawn.get_surface_override_material(0) as StandardMaterial3D
+    assert_not_null(lit, "the emissive surface lit")
+    assert_eq(lit.emission_energy_multiplier, EMISSION_ENERGY)
+    assert_null(drawn.get_surface_override_material(1), "the plain one of its own material")
+
+
 ## instance_find_nearest_hit(): of the built, visible instances on a segment, the nearest - what
 ## hides a pickable behind it (SceneryHUDMouseServer)
 func test_the_nearest_built_instance_on_a_segment_is_found() -> void:

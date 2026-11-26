@@ -46,6 +46,9 @@ namespace godot {
                     HashMap<StringName, float> part_emission;
                     float emission_energy = -1.0F;
                     Ref<Material> overlay;
+                    /* The materials its optimized render instances are drawn with, kept as long as
+                     * they are: a render instance holds only a material's RID (_apply()) */
+                    Vector<Ref<Material>> drawn_materials;
                     /* Per-instance uniforms of its shaders (instance_set_shader_parameter()) */
                     Dictionary shader_parameters;
                     RID signal_head;
@@ -74,7 +77,8 @@ namespace godot {
             static Transform3D _get_mesh_transform(const InstanceData &p_instance, const MeshPart &p_mesh);
             Node3D *_get_root(const InstanceData &p_instance) const;
             bool _is_mesh_visible(const InstanceData &p_instance, const MeshPart &p_mesh) const;
-            Ref<Material> _get_mesh_material(const InstanceData &p_instance, const MeshPart &p_mesh) const;
+            Ref<Material>
+            _get_surface_material(const InstanceData &p_instance, const MeshPart &p_mesh, int p_surface) const;
             void _apply(InstanceData &p_instance) const;
             void _clear(InstanceData &p_instance);
             void _stream_build(const RID &p_instance, const Variant &p_preloaded);
