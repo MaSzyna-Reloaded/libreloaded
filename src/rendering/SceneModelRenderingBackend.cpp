@@ -168,7 +168,14 @@ namespace godot {
         }
         const MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node);
         if (mesh_instance != nullptr && mesh_instance->get_mesh().is_valid()) {
-            p_instance.meshes.push_back(MeshPart{mesh_instance->get_mesh(), names, transforms});
+            p_instance.meshes.push_back(
+                    MeshPart{
+                            mesh_instance->get_mesh(), names, transforms, mesh_instance->get_visibility_range_begin(),
+                            mesh_instance->get_visibility_range_end(),
+                            mesh_instance->get_visibility_range_begin_margin(),
+                            mesh_instance->get_visibility_range_end_margin(),
+                            static_cast<RenderingServer::VisibilityRangeFadeMode>(
+                                    mesh_instance->get_visibility_range_fade_mode())});
         }
         for (int index = 0; index < p_node->get_child_count(); ++index) {
             _read_node(p_node->get_child(index), names, transforms, p_instance);
@@ -399,8 +406,8 @@ namespace godot {
         emit_signal(instance_freed_signal, p_instance);
     }
 
-    /// Optimized: a RenderingServer instance a mesh; as nodes: a scene made of the model under the
-    /// attached node
+    /// Optimized: a RenderingServer instance a mesh, drawn within its node's distances from the camera;
+    /// as nodes: a scene made of the model under the attached node
     void SceneModelRenderingBackend::instance_build(const RID &p_instance) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
@@ -413,6 +420,11 @@ namespace godot {
             for (const MeshPart &mesh: instance->meshes) {
                 const RID render_instance = rs->instance_create();
                 rs->instance_set_base(render_instance, mesh.mesh->get_rid());
+                // drawn within its node's distances, as the nodes are: a level of detail of the model
+                rs->instance_geometry_set_visibility_range(
+                        render_instance, mesh.visibility_range_begin, mesh.visibility_range_end,
+                        mesh.visibility_range_begin_margin, mesh.visibility_range_end_margin,
+                        mesh.visibility_range_fade_mode);
                 instance->render_instances.push_back(render_instance);
             }
         } else {

@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
 
@@ -30,11 +31,18 @@ namespace godot {
 
         private:
             /* One mesh of a model: the nodes from the scene's root down to it (their paths from the
-             * root and their own transforms), so a pose of any of them moves it */
+             * root and their own transforms), so a pose of any of them moves it; the distances from
+             * the camera it is drawn within, as its node has them (a level of detail of the model) */
             struct MeshPart {
                     Ref<Mesh> mesh;
                     Vector<StringName> path_names;
                     Vector<Transform3D> path_transforms;
+                    float visibility_range_begin = 0.0F;
+                    float visibility_range_end = 0.0F;
+                    float visibility_range_begin_margin = 0.0F;
+                    float visibility_range_end_margin = 0.0F;
+                    RenderingServer::VisibilityRangeFadeMode visibility_range_fade_mode =
+                            RenderingServer::VISIBILITY_RANGE_FADE_DISABLED;
             };
 
             struct InstanceData {
