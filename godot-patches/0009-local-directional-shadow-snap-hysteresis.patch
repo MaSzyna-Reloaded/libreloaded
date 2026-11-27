@@ -1,0 +1,82 @@
+diff --git a/servers/rendering/renderer_scene_cull.cpp b/servers/rendering/renderer_scene_cull.cpp
+index d88a40d..c32f586 100644
+--- a/servers/rendering/renderer_scene_cull.cpp
++++ b/servers/rendering/renderer_scene_cull.cpp
+@@ -2294,13 +2294,40 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 		frustum_circumscribing_radius *= texture_size / (texture_size - 2.0);
+ 		real_t unit = frustum_circumscribing_radius * 4.0 / texture_size;
+ 
++		// A bare Math::snapped() re-centers the sampled square the moment the camera's frustum
++		// centroid crosses a single grid line - at a short split distance that line is only a
++		// couple of centimetres away, close enough that ordinary camera or train motion crosses it
++		// often, and every crossing moves the whole square, so the shadow it draws visibly jumps a
++		// frame each time (FINDINGS.md, 2026-11-27 - a motionless camera held bit-stable; the same
++		// cab, genuinely moving, still popped, with the camera's own motion proven smooth). The
++		// square's last center is kept until the camera has drifted HYSTERESIS_UNITS grid lines
++		// past it, not merely back across the nearest one: noise or slow drift near a single line
++		// no longer re-centers every frame it touches, only sustained travel past several does. The
++		// square is grown by the same margin so it still contains the frustum while its center is
++		// stale - a fixed, tiny fraction of the square's own size at any split distance (four extra
++		// grid lines out of the few hundred the texture already spans), so it costs none of the
++		// sharpness a tight split earns.
++		constexpr real_t HYSTERESIS_UNITS = 4.0;
++		real_t hysteresis_margin = HYSTERESIS_UNITS * unit;
++		real_t drawn_radius = frustum_circumscribing_radius + hysteresis_margin;
++
+ 		Vector3 texel_snapped_frustum_centroid;
+ 		{
+ 			// Position of camera frustum centroid in the view space of the light.
+ 			Vector3 light_view_frustum_centroid = light_transform.basis.xform_inv(frustum_centroid_world);
++			Vector2 &snap_center = light->shadow_cascade_snap_center[i];
++			bool recenter = !light->shadow_cascade_snap_valid[i] ||
++					Math::abs(light_view_frustum_centroid.x - snap_center.x) > hysteresis_margin ||
++					Math::abs(light_view_frustum_centroid.y - snap_center.y) > hysteresis_margin;
++			if (recenter) {
++				snap_center = Vector2(
++						Math::snapped(light_view_frustum_centroid.x, unit),
++						Math::snapped(light_view_frustum_centroid.y, unit));
++				light->shadow_cascade_snap_valid[i] = true;
++			}
+ 			texel_snapped_frustum_centroid = Vector3(
+-					Math::snapped(light_view_frustum_centroid.x, unit),
+-					Math::snapped(light_view_frustum_centroid.y, unit),
++					snap_center.x,
++					snap_center.y,
+ 					light_view_frustum_centroid.z // Don't mind z.
+ 			);
+ 		}
+@@ -2320,7 +2347,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 			Projection ortho_camera;
+ 			Transform3D ortho_transform;
+ 			ortho_transform.basis = light_transform.basis;
+-			Vector2 light_view_fullrect_size = Vector2(frustum_circumscribing_radius, frustum_circumscribing_radius) * 2;
++			Vector2 light_view_fullrect_size = Vector2(drawn_radius, drawn_radius) * 2;
+ 
+ 			// Always the full sphere square, every split: USE_TIGHTER_DRAW_RECT's narrower
+ 			// rectangle is fit to the exact camera frustum every frame and moves with it, while
+@@ -2341,7 +2368,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 			cull.shadows[p_shadow_index].cascades[i].transform = ortho_transform;
+ 			cull.shadows[p_shadow_index].cascades[i].zfar = light_view_frustum_rect_max.z - z_min_cam;
+ 			cull.shadows[p_shadow_index].cascades[i].split = distances[i + 1];
+-			cull.shadows[p_shadow_index].cascades[i].shadow_texel_size = frustum_circumscribing_radius * 2.0 / texture_size;
++			cull.shadows[p_shadow_index].cascades[i].shadow_texel_size = drawn_radius * 2.0 / texture_size;
+ 			cull.shadows[p_shadow_index].cascades[i].bias_scale = (light_view_frustum_rect_max.z - z_min_cam);
+ 			cull.shadows[p_shadow_index].cascades[i].range_begin = light_view_frustum_rect_max.z - light_basis_z.dot(p_cam_transform.origin);
+ 			cull.shadows[p_shadow_index].cascades[i].normalized_render_bounds = Rect2(Vector2(0, 0), Vector2(1, 1));
+diff --git a/servers/rendering/renderer_scene_cull.h b/servers/rendering/renderer_scene_cull.h
+index 6933d50..3529380 100644
+--- a/servers/rendering/renderer_scene_cull.h
++++ b/servers/rendering/renderer_scene_cull.h
+@@ -705,6 +705,12 @@ public:
+ 		uint32_t max_sdfgi_cascade = 2;
+ 		uint32_t cull_mask = 0xFFFFFFFF;
+ 
++		// A directional shadow cascade's texel-grid-snapped center, kept from the frame that set
++		// it until the camera drifts far enough to need a new one - see
++		// _light_instance_setup_directional_shadow's hysteresis margin. Indexed by cascade.
++		Vector2 shadow_cascade_snap_center[4];
++		bool shadow_cascade_snap_valid[4] = { false, false, false, false };
++
+ 	private:
+ 		// Instead of a single dirty flag, we maintain a count
+ 		// so that we can detect lights that are being made dirty

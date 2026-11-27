@@ -335,6 +335,12 @@ anything. Open work belongs in `TODO.md`.
   margin, so per-frame numerical noise alone (no camera motion needed) moves it by a texel. Prove
   a shadow fix against a motionless camera first - it rules out every motion-based explanation at
   once. *(11-26 tight directional shadow splits flickered however they were fixed)*
+* Even Godot's own stabilized bounding sphere re-centers in discrete, texel-sized steps as the
+  camera actually moves - a motionless-camera proof clears numerical noise, not a moving one. A
+  split tight enough for sharpness makes that step small enough that ordinary motion crosses it
+  often, popping the shadow a frame at a time; proving the camera's own transform moved smoothly,
+  with nothing jittering, points straight at the step itself rather than at motion. *(11-27 the cab
+  shadow that only flickered while driving)*
 * A `Resource` property bound without `PROPERTY_USAGE_STORAGE` (`PROPERTY_USAGE_EDITOR` alone)
   looks and saves fine, but `duplicate()` silently drops it - every copy starts over at its
   default. *(11-11 a renamed vehicle lost its name at the first copy)*

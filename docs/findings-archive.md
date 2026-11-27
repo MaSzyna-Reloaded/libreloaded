@@ -5084,3 +5084,69 @@ lighting or the trainset.
   distance, so any per-frame numerical difference, camera motion or none, shows as the shadow
   visibly moving. Prove a fix against a motionless camera before a moving one: it is the one case
   that rules out every motion-based explanation at once.
+
+## 2026-11-27 - The cab shadow that only flickered while driving
+
+* **Symptom:** the operator kept seeing the cab's dashboard shadow flicker in play, after
+  `0008-local-directional-shadow-split-stability.patch` (2026-11-26) had already dropped the tight
+  AABB box for every split - the fix the previous day's entry ends on. The operator reported it
+  only happened while the train was moving, not standing still, and that neither re-tuning the
+  scenery sun's split distances (`reloaded/scenery/shadows/split_1`/`split_2`) nor turning TAA off
+  changed anything.
+* **What proved it:** a driver script (not committed, run only for this diagnosis) put the camera
+  in the cab or on the trainset's tail, froze the world (`SimulationServer.simulation_pause()`) and
+  the camera, and logged both every observed frame. With the camera and the followed vehicle's
+  transform both bit-identical across every logged frame (`cam_origin`/`veh_origin` printed to 17
+  decimal places, one unique value each across 600 frames), the rendered dashboard was also
+  bit-identical frame to frame outside of two already-understood, unrelated sources: the cab's own
+  blinking SHP/czuwak lamp (a fixed cadence, a fixed small region, confirmed by cropping exactly
+  that lamp across the blink) and a brief, smooth, whole-frame brightening after the camera cut
+  settled (Skydome's clouds animate on Godot's own render-time `TIME`, which keeps advancing
+  through `simulation_pause()` - a weather effect, not a shadow one). Godot's own `Image` diff
+  (`Image.load_from_file().get_data()`, compared byte for byte - a hand-rolled PNG decoder written
+  for the same purpose was dropped once it disagreed with Godot's own decoder on an otherwise
+  visually identical frame pair) is what caught both: the real, byte-identical baseline the SHP
+  lamp and the cloud ramp stood out against is itself the proof `0008` holds for a motionless
+  camera.
+
+  The same cab, with the train actually moving (handed to its AI driver, `SimulationServer.simulation_speed`
+  raised to fast-forward past its scheduled departure, then put back to 1.0 before observing), still
+  popped: one frame of a captured sequence showed a dashboard gauge's own reflected highlight band
+  visibly dimmer than the frame before and the frame after it, a single-frame dip and recovery, not
+  a gradual change. The same transform logging as the frozen case, now against a genuinely moving
+  camera, showed its own motion was smooth throughout - the distance from the cab's camera to the
+  vehicle it rides in stayed at a single fixed value to eight decimal places for the whole capture
+  (a rigid mount, as it should be), and the per-frame step size grew smoothly as the train
+  accelerated, with no discontinuity anywhere. The camera was not where the jitter was.
+
+  Scanning the whole capture's frame-to-frame diffs for isolated spikes (a frame standing well above
+  both of its neighbours, not a gradual ramp) found nine of them over 20 seconds, 25 to 165 frames
+  apart - irregular, but closer together later in the capture as the train picked up speed. A
+  camera translating at a varying but always positive speed crosses a fixed-size grid more often
+  the faster it goes; nine irregular spikes that bunch up as speed rises is the signature of exactly
+  that, not of a fixed-interval timer or an occasional rare glitch.
+
+  Widened the scenery sun's first split from 2 m back to 10 m (`SHADOW_SCENERY_SPLITS[0]`, a
+  diagnostic only - the operator wants every close shadow sharp, so this was never going to be the
+  fix) and re-ran the identical moving capture: zero isolated spikes, against nine before. A wider
+  split gives `Math::snapped()`'s grid (`unit = frustum_circumscribing_radius * 4 / texture_size`)
+  bigger cells, crossed less often by the same camera speed - confirming the grid crossing, not
+  camera motion itself, is what pops the shadow.
+* **Fix:** `0009-local-directional-shadow-snap-hysteresis.patch`. The stabilized sphere's center is
+  no longer recomputed fresh every frame: a cascade keeps the last texel-grid-snapped center it was
+  given until the camera's frustum centroid has drifted `HYSTERESIS_UNITS` (4) grid cells past it,
+  not merely back across the nearest one, and the sampled square is grown by that same margin so it
+  still contains the whole frustum while its center is stale. A camera travelling steadily still
+  crosses the (now four times as wide) deadband eventually and still pops once when it does - the
+  win is against noise and slow drift sitting near a single grid line, which no longer re-centers
+  every frame it brushes past, only a sustained quarter of the old step. The margin costs a fixed,
+  tiny fraction of the square's own size at any split distance (four grid cells out of the few
+  hundred the shadow texture already spans), not sharpness. Not yet confirmed fixed in the game -
+  the patch applies cleanly and reads correctly against the source, but has not been built
+  (`sudo nixos-rebuild switch`) or run.
+* **Rule:** proving a shadow fix against a motionless camera, as the previous entry's rule says,
+  clears numerical noise - it does not clear the stabilized sphere's own re-centering step, which
+  only shows up once the camera actually travels far enough to cross it. A tight split's cells are
+  small enough that ordinary motion crosses them often; prove or rule out the step itself by logging
+  the camera's (and the shadowed vehicle's) own transform at full precision alongside the capture -
+  a provably smooth camera with a popping shadow points at the step, not at the camera.

@@ -84,14 +84,30 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
   that the trade is not worth it; the far plane snap bought nothing a texel-grid-snapped x/y did
   not already give
 
-  The flicker the player kept seeing after both turned out to not be on the first split at all - a
-  capture of it (2026-11-26) pointed at the cab's own side wall, a couple of metres and more from
-  the camera: with a cab-tight first split (a couple of metres), everything of the cab beyond it -
-  the far wall, the ceiling - falls in the *second* split, which at the defaults still reaches from
-  there to 125 m and was still in density mode. A density split that wide, this close, resizes by a
-  visible amount every frame, on a flat wall large enough to show it plainly. The second split now
-  keeps the sphere as well - `cascade_prefers_density` is `i > 1`, not `i > 0` - leaving density
-  mode to the splits actually far enough that a resize is never seen (125 m and out, at the
-  defaults). Still not confirmed fixed in the game; a cab-tight second split distance
-  (`reloaded/scenery/shadows/split_2`, a project setting, no engine patch needed) is also expected
-  to matter here, the same way the first split's did for the cab itself
+  The flicker the player kept seeing after both turned out to not need a third mechanism at all -
+  dropping the density patch entirely, for every split, already matches this entry's own first
+  paragraph; an earlier draft of this note described a `cascade_prefers_density` flag kept for the
+  far splits only, an intermediate design abandoned before it shipped (`FINDINGS.md`, "a directional
+  shadow split's sampled rect is Godot's own stabilized bounding sphere, at any split distance")
+* `0009-local-directional-shadow-snap-hysteresis.patch` - on `0008-...`: the stabilized sphere's own
+  `Math::snapped()` re-centers the sampled square the instant the camera frustum's centroid crosses
+  a single texel-grid line - at a short split distance that line is only centimetres away, close
+  enough that ordinary camera or train motion crosses it often (2026-11-27 - frozen-camera,
+  frozen-world captures of the cab and of the trainset's tail both came back bit-stable, confirming
+  `0008` holds for a motionless camera; the same cab, genuinely moving, popped a single frame at a
+  time on a dashboard gauge's own reflection with the camera's own motion proven smooth throughout -
+  a steady, continuous path, no jitter of any kind in its own transform). Every re-center moves the
+  whole square, so the shadow it draws visibly jumps a frame each time it does - confirmed by
+  widening the cab's own first split back toward its old 20 m as a diagnostic (not a fix: the
+  operator wants every close shadow sharp) and watching the same capture's jumps disappear. The
+  patch keeps a cascade's last center from the frame that set it until the camera has drifted
+  `HYSTERESIS_UNITS` (4) grid lines past it, not merely back across the nearest one - ordinary noise
+  or slow drift near a single line no longer re-centers every frame it touches, only sustained
+  travel past several does - and grows the sampled square by the same margin so it still contains
+  the frustum while its center is stale: a fixed, tiny fraction of the square's own size at any
+  split distance, so it costs none of the sharpness a tight split earns. Adds the per-cascade
+  center and a valid flag to `InstanceLightData`, the first state `_light_instance_setup_directional_shadow`
+  keeps from one frame to the next - every split before it was computed fresh, with nothing of the
+  previous frame's cascade kept or read. Not yet confirmed fixed in the game - the patch applies
+  cleanly and reads correctly, but no build of it has run in the game yet; `sudo nixos-rebuild
+  switch` picks it up, then the operator's own play test is the real word on it
