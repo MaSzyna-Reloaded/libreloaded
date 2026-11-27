@@ -175,7 +175,8 @@ namespace godot {
                             mesh_instance->get_visibility_range_begin_margin(),
                             mesh_instance->get_visibility_range_end_margin(),
                             static_cast<RenderingServer::VisibilityRangeFadeMode>(
-                                    mesh_instance->get_visibility_range_fade_mode())});
+                                    mesh_instance->get_visibility_range_fade_mode()),
+                            mesh_instance->get_custom_aabb()});
         }
         for (int index = 0; index < p_node->get_child_count(); ++index) {
             _read_node(p_node->get_child(index), names, transforms, p_instance);
@@ -406,8 +407,8 @@ namespace godot {
         emit_signal(instance_freed_signal, p_instance);
     }
 
-    /// Optimized: a RenderingServer instance a mesh, drawn within its node's distances from the camera;
-    /// as nodes: a scene made of the model under the attached node
+    /// Optimized: a RenderingServer instance a mesh, drawn within its node's distances from the camera,
+    /// in its node's box; as nodes: a scene made of the model under the attached node
     void SceneModelRenderingBackend::instance_build(const RID &p_instance) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
@@ -425,6 +426,9 @@ namespace godot {
                         render_instance, mesh.visibility_range_begin, mesh.visibility_range_end,
                         mesh.visibility_range_begin_margin, mesh.visibility_range_end_margin,
                         mesh.visibility_range_fade_mode);
+                if (mesh.custom_aabb.has_surface()) {
+                    rs->instance_set_custom_aabb(render_instance, mesh.custom_aabb);
+                }
                 instance->render_instances.push_back(render_instance);
             }
         } else {

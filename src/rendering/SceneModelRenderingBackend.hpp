@@ -32,7 +32,8 @@ namespace godot {
         private:
             /* One mesh of a model: the nodes from the scene's root down to it (their paths from the
              * root and their own transforms), so a pose of any of them moves it; the distances from
-             * the camera it is drawn within, as its node has them (a level of detail of the model) */
+             * the camera it is drawn within and its box, as its node has them (a level of detail of
+             * the model) */
             struct MeshPart {
                     Ref<Mesh> mesh;
                     Vector<StringName> path_names;
@@ -43,6 +44,9 @@ namespace godot {
                     float visibility_range_end_margin = 0.0F;
                     RenderingServer::VisibilityRangeFadeMode visibility_range_fade_mode =
                             RenderingServer::VISIBILITY_RANGE_FADE_DISABLED;
+                    /* The box its node gives it in place of its mesh's own, none of no size: where its
+                     * distance from the camera is measured from, its levels' one point */
+                    AABB custom_aabb;
             };
 
             struct InstanceData {
