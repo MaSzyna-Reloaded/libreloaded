@@ -16,6 +16,10 @@ namespace godot {
 
     void ModelRenderingServer::project_settings_register() {
         ReloadedProjectSetting::add(BACKEND_SETTING, StringName(), Variant::STRING_NAME);
+        ReloadedProjectSetting::add(
+                BODY_LAYER_SETTING, DEFAULT_BODY_LAYER, Variant::INT, PROPERTY_HINT_LAYERS_3D_PHYSICS);
+        ReloadedProjectSetting::add(
+                INTERIOR_LAYER_SETTING, DEFAULT_INTERIOR_LAYER, Variant::INT, PROPERTY_HINT_LAYERS_3D_PHYSICS);
     }
 
     void ModelRenderingServer::_bind_methods() {
@@ -86,6 +90,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("instance_set_layer_mask", "instance", "mask"),
                 &ModelRenderingServer::instance_set_layer_mask);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_space", "instance", "space"), &ModelRenderingServer::instance_set_space);
         ClassDB::bind_method(
                 D_METHOD("instance_set_smoke_intensity", "instance", "intensity"),
                 &ModelRenderingServer::instance_set_smoke_intensity);
@@ -428,6 +434,12 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_layer_mask(p_instance, p_mask);
+    }
+
+    void ModelRenderingServer::instance_set_space(const RID &p_instance, const RID &p_space) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_space(p_instance, p_space);
     }
 
     void ModelRenderingServer::instance_set_smoke_intensity(const RID &p_instance, const float p_intensity) {

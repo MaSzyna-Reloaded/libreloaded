@@ -223,6 +223,7 @@ namespace godot {
             float detail_distance = DEFAULT_DETAIL_DISTANCE;
 
             static Node3D *_node(const Visual &p_visual);
+            static RID _space(const Visual &p_visual);
             void _set_processing(bool p_processing);
             void _process_frame();
             void _on_data_reload_requested();

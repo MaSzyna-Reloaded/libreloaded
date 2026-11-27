@@ -48,6 +48,13 @@ namespace godot {
 
             /// The backend a model of no backend named is the one of, by its name
             static constexpr const char *BACKEND_SETTING = "reloaded/models/backend";
+            /// The physics layers a model's collision shapes are on, by their role (the model format's
+            /// `<object>.collision.body` and `.interior`): the outer volume, and what a person inside
+            /// collides with
+            static constexpr const char *BODY_LAYER_SETTING = "reloaded/physics/vehicle_body_layer";
+            static constexpr const char *INTERIOR_LAYER_SETTING = "reloaded/physics/vehicle_interior_layer";
+            static constexpr uint32_t DEFAULT_BODY_LAYER = 1U << 1U;
+            static constexpr uint32_t DEFAULT_INTERIOR_LAYER = 1U << 2U;
 
             static const char *instance_built_signal;
             /// A built instance has been cleared by its backend, and is not built until it is built again
@@ -155,6 +162,9 @@ namespace godot {
             void instance_set_emission_energy(const RID &p_instance, float p_energy);
             /// The render layers the instance is drawn on, as its backend draws them
             void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask);
+            /// The physics space the collision shapes of the instance's model are in, posed with its
+            /// parts; an empty RID for none
+            void instance_set_space(const RID &p_instance, const RID &p_space);
             /// How much smoke the emitters its model carries give, 0 none to 1 full
             void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);
             /// The textures that replace the textures of the model's materials of a slot - a livery:

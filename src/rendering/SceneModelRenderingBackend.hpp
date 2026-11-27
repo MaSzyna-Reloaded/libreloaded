@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/classes/shape3d.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
 
@@ -49,6 +50,16 @@ namespace godot {
                     AABB custom_aabb;
             };
 
+            /* One collision shape of a model: the nodes from the scene's root down to its shape's node,
+             * as a mesh's (MeshPart), so that it is posed as the meshes of its part are; the physics
+             * layer of its body's role (ModelRenderingServer.BODY_LAYER_SETTING, .INTERIOR_...) */
+            struct ShapePart {
+                    Ref<Shape3D> shape;
+                    Vector<StringName> path_names;
+                    Vector<Transform3D> path_transforms;
+                    uint32_t layer = 0;
+            };
+
             struct InstanceData {
                     Ref<PackedScene> model;
                     Instancer instancer = ModelRenderingServer::INSTANCER_OPTIMIZED;
@@ -89,6 +100,11 @@ namespace godot {
                     /// What it draws, built optimized: one RenderingServer instance a mesh; built as
                     /// nodes: the scene's root under the attached node
                     Vector<RID> render_instances;
+                    /// Its model's collision shapes (_read_model()), a kinematic PhysicsServer3D body
+                    /// each once built, in the space set (instance_set_space())
+                    Vector<ShapePart> shapes;
+                    Vector<RID> bodies;
+                    RID space;
                     ObjectID root_id;
             };
 
@@ -101,9 +117,11 @@ namespace godot {
             static void _read_node(
                     const Node *p_node, const Vector<StringName> &p_names, const Vector<Transform3D> &p_transforms,
                     InstanceData &p_instance);
-            static Transform3D _get_mesh_transform(const InstanceData &p_instance, const MeshPart &p_mesh);
+            static Transform3D _get_path_transform(
+                    const InstanceData &p_instance, const Vector<StringName> &p_names,
+                    const Vector<Transform3D> &p_transforms);
             Node3D *_get_root(const InstanceData &p_instance) const;
-            bool _is_mesh_visible(const InstanceData &p_instance, const MeshPart &p_mesh) const;
+            static bool _is_path_visible(const InstanceData &p_instance, const Vector<StringName> &p_names);
             Ref<Material>
             _get_surface_material(const InstanceData &p_instance, const MeshPart &p_mesh, int p_surface) const;
             void _apply(InstanceData &p_instance) const;
@@ -151,6 +169,7 @@ namespace godot {
             instance_set_part_emission_energy(const RID &p_instance, const String &p_part, float p_energy) override;
             void instance_set_emission_energy(const RID &p_instance, float p_energy) override;
             void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask) override;
+            void instance_set_space(const RID &p_instance, const RID &p_space) override;
             bool instance_has_light(const RID &p_instance, const String &p_light) const override;
             void instance_set_lights_state(const RID &p_instance, const Dictionary &p_lights_state) override;
             void instance_set_lights_dimmed(

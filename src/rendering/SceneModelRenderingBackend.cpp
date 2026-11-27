@@ -3,8 +3,12 @@
 #include "signalling/SignallingServer.hpp"
 
 #include <godot_cpp/classes/base_material3d.hpp>
+#include <godot_cpp/classes/collision_object3d.hpp>
+#include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/geometry3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
+#include <godot_cpp/classes/physics_server3d.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
@@ -47,6 +51,7 @@ namespace godot {
     /// parts before - a streamed placement's, read when built - by their paths from now on
     void SceneModelRenderingBackend::_read_model(InstanceData &p_instance) {
         p_instance.meshes.clear();
+        p_instance.shapes.clear();
         p_instance.part_local_transforms.clear();
         p_instance.part_model_transforms.clear();
         p_instance.part_paths.clear();
@@ -86,6 +91,11 @@ namespace godot {
         /* The metadata a glTF material keeps its extras in (GLTFDocument), and the key of them that
          * names its slot of replaceable textures - spelled as the models' format spells it */
         const char *const EXTRAS_META = "extras";
+        /* The key of a node's extras naming its role, and the roles of a collision body's (the model
+         * format's `<object>.collision.body` and `.interior`) */
+        const char *const SEMANTIC_ID_KEY = "semantic_id";
+        const char *const BODY_ROLE_SUFFIX = ".collision.body";
+        const char *const INTERIOR_ROLE_SUFFIX = ".collision.interior";
         const char *const REPLACEABLE_TEXTURE_KEY = "replacable_texture";
         /* The textures of a slot (ModelRenderingServer.instance_set_replaceable_textures()) */
         const char *const BASE_COLOR_TEXTURE = "base_color";
@@ -178,25 +188,47 @@ namespace godot {
                                     mesh_instance->get_visibility_range_fade_mode()),
                             mesh_instance->get_custom_aabb()});
         }
+        // a collision shape of a body of a role: on its role's layer (the model format's collisions)
+        const CollisionShape3D *shape = Object::cast_to<CollisionShape3D>(p_node);
+        const CollisionObject3D *body =
+                shape != nullptr ? Object::cast_to<CollisionObject3D>(p_node->get_parent()) : nullptr;
+        if (body != nullptr && shape->get_shape().is_valid() && body->has_meta(EXTRAS_META)) {
+            const Dictionary extras = body->get_meta(EXTRAS_META);
+            const String role = extras.get(SEMANTIC_ID_KEY, String());
+            const char *setting = nullptr;
+            if (role.ends_with(BODY_ROLE_SUFFIX)) {
+                setting = ModelRenderingServer::BODY_LAYER_SETTING;
+            } else if (role.ends_with(INTERIOR_ROLE_SUFFIX)) {
+                setting = ModelRenderingServer::INTERIOR_LAYER_SETTING;
+            }
+            if (setting != nullptr) {
+                const uint32_t layer = ProjectSettings::get_singleton()->get_setting(setting);
+                p_instance.shapes.push_back(ShapePart{shape->get_shape(), names, transforms, layer});
+            }
+        }
         for (int index = 0; index < p_node->get_child_count(); ++index) {
             _read_node(p_node->get_child(index), names, transforms, p_instance);
         }
     }
 
-    /// The mesh in the model's space, each node above it posed on top of its own transform
-    Transform3D
-    SceneModelRenderingBackend::_get_mesh_transform(const InstanceData &p_instance, const MeshPart &p_mesh) {
+    /// A mesh or a shape in the model's space by the nodes down to it, each posed on top of its own
+    /// transform
+    Transform3D SceneModelRenderingBackend::_get_path_transform(
+            const InstanceData &p_instance, const Vector<StringName> &p_names,
+            const Vector<Transform3D> &p_transforms) {
         Transform3D transform;
-        for (int64_t index = 0; index < p_mesh.path_names.size(); ++index) {
-            const Variant pose = p_instance.part_poses.get(p_mesh.path_names[index], Variant());
-            transform = transform * p_mesh.path_transforms[index] *
+        for (int64_t index = 0; index < p_names.size(); ++index) {
+            const Variant pose = p_instance.part_poses.get(p_names[index], Variant());
+            transform = transform * p_transforms[index] *
                         (pose.get_type() == Variant::TRANSFORM3D ? Transform3D(pose) : Transform3D());
         }
         return transform;
     }
 
-    bool SceneModelRenderingBackend::_is_mesh_visible(const InstanceData &p_instance, const MeshPart &p_mesh) const {
-        for (const StringName &name: p_mesh.path_names) {
+    /// Whether no node down to a mesh or a shape is hidden (instance_set_part_visible())
+    bool
+    SceneModelRenderingBackend::_is_path_visible(const InstanceData &p_instance, const Vector<StringName> &p_names) {
+        for (const StringName &name: p_names) {
             const bool *visible = p_instance.part_visible.getptr(name);
             if (visible != nullptr && !*visible) {
                 return false;
@@ -250,6 +282,17 @@ namespace godot {
         if (!p_instance.built) {
             return;
         }
+        // the collision shapes where the meshes of their parts are, posed; none of a part hidden
+        PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
+        for (int index = 0; index < p_instance.bodies.size(); ++index) {
+            const ShapePart &shape = p_instance.shapes[index];
+            ps->body_set_state(
+                    p_instance.bodies[index], PhysicsServer3D::BODY_STATE_TRANSFORM,
+                    p_instance.transform * _get_path_transform(p_instance, shape.path_names, shape.path_transforms));
+            ps->body_set_shape_disabled(
+                    p_instance.bodies[index], 0,
+                    !p_instance.visible || !_is_path_visible(p_instance, shape.path_names));
+        }
         RenderingServer *rs = RenderingServer::get_singleton();
         if (p_instance.instancer == ModelRenderingServer::INSTANCER_OPTIMIZED) {
             p_instance.drawn_materials.clear();
@@ -258,8 +301,10 @@ namespace godot {
                 const RID render_instance = p_instance.render_instances[index];
                 rs->instance_set_scenario(render_instance, p_instance.scenario);
                 rs->instance_set_transform(
-                        render_instance, p_instance.transform * _get_mesh_transform(p_instance, mesh));
-                rs->instance_set_visible(render_instance, p_instance.visible && _is_mesh_visible(p_instance, mesh));
+                        render_instance,
+                        p_instance.transform * _get_path_transform(p_instance, mesh.path_names, mesh.path_transforms));
+                rs->instance_set_visible(
+                        render_instance, p_instance.visible && _is_path_visible(p_instance, mesh.path_names));
                 rs->instance_set_layer_mask(render_instance, p_instance.layer_mask);
                 for (int surface = 0; surface < mesh.mesh->get_surface_count(); ++surface) {
                     const Ref<Material> material = _get_surface_material(p_instance, mesh, surface);
@@ -320,6 +365,11 @@ namespace godot {
         }
         p_instance.render_instances.clear();
         p_instance.drawn_materials.clear();
+        PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
+        for (const RID &body: p_instance.bodies) {
+            ps->free_rid(body);
+        }
+        p_instance.bodies.clear();
         Node3D *root = _get_root(p_instance);
         if (root != nullptr) {
             root->queue_free();
@@ -408,7 +458,8 @@ namespace godot {
     }
 
     /// Optimized: a RenderingServer instance a mesh, drawn within its node's distances from the camera,
-    /// in its node's box; as nodes: a scene made of the model under the attached node
+    /// in its node's box; as nodes: a scene made of the model under the attached node, but its
+    /// collision objects. Either: a kinematic PhysicsServer3D body a collision shape, in the space set
     void SceneModelRenderingBackend::instance_build(const RID &p_instance) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
@@ -436,8 +487,25 @@ namespace godot {
             ERR_FAIL_NULL_MSG(attached, "A scene model built as nodes is built under its attached Node3D");
             Node3D *root = Object::cast_to<Node3D>(instance->model->instantiate());
             ERR_FAIL_NULL_MSG(root, "A scene model's root is a Node3D");
+            // its collision shapes are the instance's bodies below, not the scene's own
+            const TypedArray<Node> collision_objects = root->find_children("*", "CollisionObject3D", true, false);
+            for (int64_t index = 0; index < collision_objects.size(); ++index) {
+                Node *collision_object = Object::cast_to<Node>(collision_objects[index]);
+                collision_object->get_parent()->remove_child(collision_object);
+                memdelete(collision_object);
+            }
             attached->add_child(root);
             instance->root_id = root->get_instance_id();
+        }
+        PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
+        for (const ShapePart &shape: instance->shapes) {
+            const RID body = ps->body_create();
+            ps->body_set_mode(body, PhysicsServer3D::BODY_MODE_KINEMATIC);
+            ps->body_add_shape(body, shape.shape->get_rid());
+            ps->body_set_collision_layer(body, shape.layer);
+            ps->body_set_collision_mask(body, 0);
+            ps->body_set_space(body, instance->space);
+            instance->bodies.push_back(body);
         }
         instance->built = true;
         _apply(*instance);
@@ -521,7 +589,8 @@ namespace godot {
         AABB bounds;
         bool first = true;
         for (const MeshPart &mesh: instance->meshes) {
-            const AABB mesh_bounds = _get_mesh_transform(*instance, mesh).xform(mesh.mesh->get_aabb());
+            const AABB mesh_bounds =
+                    _get_path_transform(*instance, mesh.path_names, mesh.path_transforms).xform(mesh.mesh->get_aabb());
             bounds = first ? mesh_bounds : bounds.merge(mesh_bounds);
             first = false;
         }
@@ -597,6 +666,16 @@ namespace godot {
         _apply(*instance);
     }
 
+    void SceneModelRenderingBackend::instance_set_space(const RID &p_instance, const RID &p_space) {
+        InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL(instance);
+        instance->space = p_space;
+        PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
+        for (const RID &body: instance->bodies) {
+            ps->body_set_space(body, p_space);
+        }
+    }
+
     bool
     SceneModelRenderingBackend::instance_has_light(const RID & /* p_instance */, const String & /* p_light */) const {
         return false;
@@ -653,10 +732,11 @@ namespace godot {
         Dictionary nearest;
         real_t nearest_distance = Math::INF;
         for (const MeshPart &mesh: instance->meshes) {
-            if (!_is_mesh_visible(*instance, mesh)) {
+            if (!_is_path_visible(*instance, mesh.path_names)) {
                 continue;
             }
-            const Transform3D transform = instance->transform * _get_mesh_transform(*instance, mesh);
+            const Transform3D transform =
+                    instance->transform * _get_path_transform(*instance, mesh.path_names, mesh.path_transforms);
             const PackedVector3Array faces = mesh.mesh->get_faces();
             for (int64_t index = 0; index + 2 < faces.size(); index += 3) {
                 const Variant hit = geometry->segment_intersects_triangle(

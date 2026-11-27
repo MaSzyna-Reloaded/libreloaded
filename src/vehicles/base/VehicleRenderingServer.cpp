@@ -401,14 +401,24 @@ namespace godot {
         }
     }
 
+    /* The physics space of the world the vehicle's scene node is in, none out of one: its models'
+     * collision shapes go there */
+    RID VehicleRenderingServer::_space(const Visual &p_visual) {
+        const Node3D *node = _node(p_visual);
+        return node != nullptr && node->is_inside_tree() ? node->get_world_3d()->get_space() : RID();
+    }
+
     /* The models this server built drawn in p_scenario - in none for an empty one */
     void VehicleRenderingServer::_show_models(const RID &p_vehicle, const Visual &p_visual, const RID &p_scenario) {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         ERR_FAIL_NULL(models);
         if (p_visual.own_models) {
+            // their collision shapes in the scene node's physics space while they are drawn
+            const RID space = p_scenario.is_valid() ? _space(p_visual) : RID();
             for (const RID &instance: {p_visual.model, p_visual.low_poly, p_visual.passengers}) {
                 if (instance.is_valid()) {
                     models->instance_set_scenario(instance, p_scenario);
+                    models->instance_set_space(instance, space);
                 }
             }
             for (const RID &instance: p_visual.attachments) {
@@ -701,6 +711,7 @@ namespace godot {
             }
             models->instance_set_node_transform(instance, appearance->get_model_transform());
             models->instance_set_scenario(instance, p_visual.placed ? p_visual.scenario : RID());
+            models->instance_set_space(instance, p_visual.placed ? _space(p_visual) : RID());
             models->instance_set_transform(instance, p_visual.transform * appearance->get_model_transform());
             models->instance_build(instance);
             return instance;

@@ -92,6 +92,9 @@ namespace godot {
             /// The render layers the instance is drawn on (VisualInstance3D.layers); a backend of no
             /// layers does nothing
             virtual void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask);
+            /// The physics space the collision shapes of the model are in; a backend of no shapes does
+            /// nothing
+            virtual void instance_set_space(const RID &p_instance, const RID &p_space);
             /// How much smoke the emitters the model carries give, 0 none to 1 full; a backend of no
             /// emitters does nothing
             virtual void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);

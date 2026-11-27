@@ -238,6 +238,14 @@
 				How much smoke the emitters the instance's model carries give, [code]0[/code] none to [code]1[/code] full. A backend of no emitters does nothing; this one does nothing by default.
 			</description>
 		</method>
+		<method name="instance_set_space">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="space" type="RID" />
+			<description>
+				The physics space the collision shapes of the [param instance]'s model are in, posed with its parts ([method ModelRenderingServer.instance_set_space]). A backend of no shapes does nothing; this one does nothing by default.
+			</description>
+		</method>
 		<method name="instance_set_transform">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

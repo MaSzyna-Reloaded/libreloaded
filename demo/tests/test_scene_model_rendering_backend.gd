@@ -222,3 +222,81 @@ func test_a_placement_the_camera_has_left_is_not_searched() -> void:
     ModelRenderingServer.instance_built.disconnect(on_built)
     ModelRenderingServer.instance_cleared.disconnect(on_cleared)
     SceneryStreamingServer.streaming_set_camera(0)
+
+
+## A model of a hull's collision box (vehicle.collision.body) and a door's (vehicle.collision.interior)
+const COLLISION_MODEL:String = "res://tests/fixtures/scene_model_collision.tscn"
+## The fixture's Door, its box's half depth along X; how far a pose of the door moves it
+const DOOR_ORIGIN:Vector3 = Vector3(3.0, 0.0, 0.0)
+const DOOR_HALF_DEPTH:float = 0.05
+const DOOR_SHIFT:Vector3 = Vector3(0.0, 0.0, 2.0)
+const HULL_HALF_WIDTH:float = 1.0
+## A point of the hull a ray along X through misses the door
+const BESIDE_DOOR:Vector3 = Vector3(0.0, 0.0, -1.5)
+## The layers of the roles' shapes (ModelRenderingServer)
+const BODY_LAYER_SETTING:String = "reloaded/physics/vehicle_body_layer"
+const INTERIOR_LAYER_SETTING:String = "reloaded/physics/vehicle_interior_layer"
+## How long a kinematic body may take to stand where it is put
+const PHYSICS_TIMEOUT_SEC:float = 1.0
+
+
+func _collision_instance(space:RID) -> RID:
+    var model:Resource = ModelRenderingServer.model_load(BACKEND, COLLISION_MODEL)
+    _instance = ModelRenderingServer.instance_create(BACKEND, model, ModelRenderingServer.INSTANCER_OPTIMIZED,
+            ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    ModelRenderingServer.instance_set_space(_instance, space)
+    ModelRenderingServer.instance_build(_instance)
+    return _instance
+
+
+## What a ray of the layers of `mask` from +X along -X through `at` hits first in `space`
+func _ray_hit(space:RID, at:Vector3, mask:int) -> Dictionary:
+    var query:PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
+            at + Vector3.RIGHT * RAY_LENGTH, at - Vector3.RIGHT * RAY_LENGTH, mask)
+    return PhysicsServer3D.space_get_direct_state(space).intersect_ray(query)
+
+
+func _space() -> RID:
+    var node:Node3D = add_child_autofree(Node3D.new())
+    return node.get_world_3d().space
+
+
+func test_a_models_collision_shapes_stand_in_the_space_on_their_roles_layers() -> void:
+    var space:RID = _space()
+    _collision_instance(space)
+    await wait_physics_frames(2)
+    var body_layer:int = ProjectSettings.get_setting(BODY_LAYER_SETTING)
+    var interior_layer:int = ProjectSettings.get_setting(INTERIOR_LAYER_SETTING)
+
+    var door:Dictionary = _ray_hit(space, DOOR_ORIGIN, interior_layer)
+    assert_almost_eq(Vector3(door.get("position", Vector3.INF)).x, DOOR_ORIGIN.x + DOOR_HALF_DEPTH, 0.001,
+            "the door's box where the door stands, on the interior's layer")
+    var hull:Dictionary = _ray_hit(space, BESIDE_DOOR, body_layer)
+    assert_almost_eq(Vector3(hull.get("position", Vector3.INF)).x, HULL_HALF_WIDTH, 0.001, "the hull's on the body's")
+    assert_eq(_ray_hit(space, BESIDE_DOOR, interior_layer), {}, "the hull on no other layer")
+
+
+func test_a_collision_shape_moves_with_its_parts_pose() -> void:
+    var space:RID = _space()
+    var instance:RID = _collision_instance(space)
+    var interior_layer:int = ProjectSettings.get_setting(INTERIOR_LAYER_SETTING)
+    await wait_physics_frames(2)
+    ModelRenderingServer.instance_set_part_poses(instance, {"Door": Transform3D(Basis(), DOOR_SHIFT)})
+    # a kinematic body moves where it is put by the steps of the physics
+    await wait_until(func() -> bool: return _ray_hit(space, DOOR_ORIGIN, interior_layer).is_empty(),
+            PHYSICS_TIMEOUT_SEC)
+
+    assert_eq(_ray_hit(space, DOOR_ORIGIN, interior_layer), {}, "gone from where the door stood")
+    assert_false(_ray_hit(space, DOOR_ORIGIN + DOOR_SHIFT, interior_layer).is_empty(), "where the pose puts it")
+
+
+func test_a_model_in_no_space_collides_with_nothing() -> void:
+    var space:RID = _space()
+    var instance:RID = _collision_instance(RID())
+    await wait_physics_frames(2)
+    var body_layer:int = ProjectSettings.get_setting(BODY_LAYER_SETTING)
+    assert_eq(_ray_hit(space, Vector3.ZERO, body_layer), {}, "no space set")
+
+    ModelRenderingServer.instance_set_space(instance, space)
+    await wait_physics_frames(2)
+    assert_false(_ray_hit(space, Vector3.ZERO, body_layer).is_empty(), "in the space once set")

@@ -301,6 +301,14 @@
 				How much smoke the emitters the instance's model carries give, [code]0[/code] none to [code]1[/code] full, set by its backend - a backend of no emitters does nothing.
 			</description>
 		</method>
+		<method name="instance_set_space">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="space" type="RID" />
+			<description>
+				The physics space the collision shapes of the [param instance]'s model are in, set by its backend: each a kinematic body on the layer of its role ([code]reloaded/physics/vehicle_body_layer[/code] for the model format's [code]&lt;object&gt;.collision.body[/code], [code]reloaded/physics/vehicle_interior_layer[/code] for [code].collision.interior[/code]), where the meshes of its part are, their poses included. An empty RID for none; a backend of no shapes does nothing.
+			</description>
+		</method>
 		<method name="instance_set_transform">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

@@ -69,6 +69,8 @@ namespace godot {
                 D_METHOD("instance_set_layer_mask", "instance", "mask"),
                 &ModelRenderingBackend::instance_set_layer_mask);
         ClassDB::bind_method(
+                D_METHOD("instance_set_space", "instance", "space"), &ModelRenderingBackend::instance_set_space);
+        ClassDB::bind_method(
                 D_METHOD("instance_set_smoke_intensity", "instance", "intensity"),
                 &ModelRenderingBackend::instance_set_smoke_intensity);
         ClassDB::bind_method(
@@ -101,6 +103,8 @@ namespace godot {
     }
 
     void ModelRenderingBackend::instance_set_layer_mask(const RID & /* p_instance */, const uint32_t /* p_mask */) {}
+
+    void ModelRenderingBackend::instance_set_space(const RID & /* p_instance */, const RID & /* p_space */) {}
 
     void
     ModelRenderingBackend::instance_set_smoke_intensity(const RID & /* p_instance */, const float /* p_intensity */) {}
