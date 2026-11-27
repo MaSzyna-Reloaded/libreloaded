@@ -1,0 +1,123 @@
+diff --git a/servers/rendering/renderer_scene_cull.cpp b/servers/rendering/renderer_scene_cull.cpp
+index 7ca0066..b2093a4 100644
+--- a/servers/rendering/renderer_scene_cull.cpp
++++ b/servers/rendering/renderer_scene_cull.cpp
+@@ -1168,6 +1168,24 @@ void RendererSceneCull::instance_set_ignore_culling(RID p_instance, bool p_enabl
+ 	}
+ }
+ 
++void RendererSceneCull::instance_light_set_shadow_cascade_anchor(RID p_instance, const Vector3 &p_origin, bool p_enabled) {
++	Instance *instance = instance_owner.get_or_null(p_instance);
++	ERR_FAIL_NULL(instance);
++	ERR_FAIL_COND(instance->base_type != RSE::INSTANCE_LIGHT);
++
++	InstanceLightData *light = static_cast<InstanceLightData *>(instance->base_data);
++	if (light->shadow_cascade_anchor_enabled != p_enabled) {
++		// The snap centers already stored are relative to whichever anchor (or lack of one) was in
++		// effect when they were last set - turning the anchor on or off changes what they are
++		// relative to, so none of them are still valid. One clean recenter, same as any other cause.
++		for (int i = 0; i < 4; i++) {
++			light->shadow_cascade_snap_valid[i] = false;
++		}
++	}
++	light->shadow_cascade_anchor_origin = p_origin;
++	light->shadow_cascade_anchor_enabled = p_enabled;
++}
++
+ Vector<ObjectID> RendererSceneCull::instances_cull_aabb(const AABB &p_aabb, RID p_scenario) const {
+ 	Vector<ObjectID> instances;
+ 	Scenario *scenario = scenario_owner.get_or_null(p_scenario);
+@@ -2328,7 +2346,21 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 		{
+ 			// Position of camera frustum centroid in the view space of the light.
+ 			Vector3 light_view_frustum_centroid = light_transform.basis.xform_inv(frustum_centroid_world);
+-			Vector2 raw_centroid = Vector2(light_view_frustum_centroid.x, light_view_frustum_centroid.y);
++
++			// When anchored, x/y are read, snapped and stepped relative to the anchor's own
++			// position in the light's view space, not the raw frustum centroid - a cascade whose
++			// anchor travels together with what it shadows (the frustum centroid included) then
++			// reads as standing still here, however far or fast the anchor itself has actually
++			// moved through the world, and never needs to recenter on that account. Added back
++			// once snapping is done so every later use of texel_snapped_frustum_centroid stays in
++			// the light's ordinary, un-anchored view space, unchanged from before.
++			Vector2 anchor_light_space;
++			if (light->shadow_cascade_anchor_enabled) {
++				Vector3 anchor_light_view = light_transform.basis.xform_inv(light->shadow_cascade_anchor_origin);
++				anchor_light_space = Vector2(anchor_light_view.x, anchor_light_view.y);
++			}
++
++			Vector2 raw_centroid = Vector2(light_view_frustum_centroid.x, light_view_frustum_centroid.y) - anchor_light_space;
+ 			Vector2 &snap_center = light->shadow_cascade_snap_center[i];
+ 			bool recenter = !light->shadow_cascade_snap_valid[i] ||
+ 					Math::abs(raw_centroid.x - snap_center.x) > hysteresis_margin ||
+@@ -2352,8 +2384,8 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+ 				light->shadow_cascade_snap_valid[i] = true;
+ 			}
+ 			texel_snapped_frustum_centroid = Vector3(
+-					snap_center.x,
+-					snap_center.y,
++					snap_center.x + anchor_light_space.x,
++					snap_center.y + anchor_light_space.y,
+ 					light_view_frustum_centroid.z // Don't mind z.
+ 			);
+ 		}
+diff --git a/servers/rendering/renderer_scene_cull.h b/servers/rendering/renderer_scene_cull.h
+index 3529380..35dbac9 100644
+--- a/servers/rendering/renderer_scene_cull.h
++++ b/servers/rendering/renderer_scene_cull.h
+@@ -711,6 +711,15 @@ public:
+ 		Vector2 shadow_cascade_snap_center[4];
+ 		bool shadow_cascade_snap_valid[4] = { false, false, false, false };
+ 
++		// A world-space point (RenderingServer.instance_light_set_shadow_cascade_anchor()) that every
++		// cascade's snap grid is read relative to instead of the camera frustum's own centroid, so a
++		// point translating together with it (the vehicle a close cascade is meant to shadow) never
++		// crosses a grid line from travel alone - only the two staying apart (a curve, the vehicle
++		// pitching) still can, already absorbed the same way camera rotation is. Switching it on or
++		// off, or to a different point outright, is one clean recenter, same as any other cause of one.
++		Vector3 shadow_cascade_anchor_origin;
++		bool shadow_cascade_anchor_enabled = false;
++
+ 	private:
+ 		// Instead of a single dirty flag, we maintain a count
+ 		// so that we can detect lights that are being made dirty
+@@ -1053,6 +1062,8 @@ public:
+ 
+ 	virtual void instance_set_ignore_culling(RID p_instance, bool p_enabled);
+ 
++	virtual void instance_light_set_shadow_cascade_anchor(RID p_instance, const Vector3 &p_origin, bool p_enabled);
++
+ 	bool _update_instance_visibility_depth(Instance *p_instance);
+ 	void _update_instance_visibility_dependencies(Instance *p_instance) const;
+ 
+diff --git a/servers/rendering/rendering_server.h b/servers/rendering/rendering_server.h
+index b35c56d..b780b69 100644
+--- a/servers/rendering/rendering_server.h
++++ b/servers/rendering/rendering_server.h
+@@ -747,6 +747,13 @@ public:
+ 
+ 	virtual void instance_set_ignore_culling(RID p_instance, bool p_enabled) = 0;
+ 
++	// For a directional light's instance only: anchor its shadow cascades' texel-grid snapping to
++	// a world-space point that travels with whatever the light is meant to shadow up close, instead
++	// of the camera frustum's own centroid - see _light_instance_setup_directional_shadow in
++	// renderer_scene_cull.cpp for why. Disabled (the camera frustum's centroid, as before) unless
++	// a caller turns it on.
++	virtual void instance_light_set_shadow_cascade_anchor(RID p_instance, const Vector3 &p_origin, bool p_enabled) = 0;
++
+ 	// Don't use these in a game!
+ 	virtual Vector<ObjectID> instances_cull_aabb(const AABB &p_aabb, RID p_scenario = RID()) const = 0;
+ 	virtual Vector<ObjectID> instances_cull_ray(const Vector3 &p_from, const Vector3 &p_to, RID p_scenario = RID()) const = 0;
+diff --git a/servers/rendering/rendering_server_default.h b/servers/rendering/rendering_server_default.h
+index 3cb2fa3..6bc7f48 100644
+--- a/servers/rendering/rendering_server_default.h
++++ b/servers/rendering/rendering_server_default.h
+@@ -956,6 +956,8 @@ public:
+ 
+ 	FUNC2(instance_set_ignore_culling, RID, bool)
+ 
++	FUNC3(instance_light_set_shadow_cascade_anchor, RID, const Vector3 &, bool)
++
+ 	// don't use these in a game!
+ 	FUNC2RC(Vector<ObjectID>, instances_cull_aabb, const AABB &, RID)
+ 	FUNC3RC(Vector<ObjectID>, instances_cull_ray, const Vector3 &, const Vector3 &, RID)

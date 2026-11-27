@@ -5156,6 +5156,21 @@ lighting or the trainset.
   settled it instead: a fast orbit turns the frustum's centroid by rotation alone, not by travel, and
   can cross many of the stabilized sphere's grid lines within a single frame - something the first
   fix's margin, sized only to absorb noise and ordinary steady motion, was never going to cover.
+  The operator later confirmed the stepped version of `0009` (`HYSTERESIS_UNITS = 8`) fixed the
+  exterior/`FollowView` orbit case outright - "already at camera movement it's fine" - but reported
+  two things the hysteresis margin was never going to reach: the cab's dashboard still flickered
+  while driving, faster the faster the train went, and the shadow at a station, camera and train
+  both standing still, was visibly blocky/low-resolution (screenshots). The second is not this
+  entry's bug - it is the exact tension `db0f87d`'s now-removed cab light existed to paper over
+  (`FINDINGS.md`, "a shadow softened by the light's angular size costs by the texels it spans... the
+  cab view at half the frame rate", 2026-11-23, and "two shadowed directional lights halve the
+  atlas", 2026-09-27): one shared light and atlas, so the near split's own sharpness and every other
+  split's share of the same texture budget trade directly against each other, unrelated to anything
+  `0008`/`0009` touch. The first is: `HYSTERESIS_UNITS` buys a fixed *world-space distance* of travel
+  before a recenter is forced, not immunity from one - a faster train crosses that fixed distance
+  faster, so it recenters more often, however high the constant is raised. The margin was always
+  going to run out eventually against sustained travel in one direction; it was never going to make
+  that case pop-free, only rarer.
 * **Fix:** `0009-local-directional-shadow-snap-hysteresis.patch`. The stabilized sphere's center is
   no longer recomputed fresh every frame: a cascade keeps the last texel-grid-snapped center it was
   given until the camera's frustum centroid has drifted `HYSTERESIS_UNITS` (8) grid cells past it,
@@ -5169,8 +5184,24 @@ lighting or the trainset.
   than teleporting. If even one such step would still leave the real frustum outside the margin -
   motion too large for stepping to keep pace with - the center jumps the rest of the way at once
   instead, the same single pop as before stepping existed: a clean pop beats the shadow sampling
-  outside the square it was drawn on. Built and run for the cab only so far (2026-11-27) - not yet
-  confirmed fixed for the exterior/`FollowView` orbit case, the one it specifically targets.
+  outside the square it was drawn on. Confirmed fixed for the exterior/`FollowView` orbit case
+  (2026-11-27, operator's own play test); left the cab's own residual, speed-scaled flicker open,
+  since that one is travel, not rotation, and no margin absorbs unbounded travel in one direction.
+
+  `0010-local-directional-shadow-cascade-anchor.patch`, on `0009`: a cascade's grid position can now
+  be read, snapped and stepped relative to a world-space point the game supplies
+  (`RenderingServer.instance_light_set_shadow_cascade_anchor()`) instead of always the raw camera
+  frustum centroid. A point that travels together with the anchor (the frustum centroid included -
+  true of a cab camera rigidly mounted to the vehicle it anchors to) then reads as standing still
+  here however far or fast the anchor has actually moved through the world, and the travel term that
+  `0009`'s margin could only buy time against is gone outright for as long as that holds; a curve or
+  a pitch still moves the camera relative to the anchor, and still needs `0009`'s margin and step the
+  same way a free-look camera's rotation does. The anchor itself is a bare point, no concept of a
+  vehicle or a game anywhere in the engine - `addons/libreloaded/environment/sky_environment.gd`'s
+  `set_shadow_cascade_anchor()` is the one generic, backend-agnostic place that forwards a point to
+  it; which point to send, and when, is for a sky backend that actually knows what a vehicle is to
+  decide. Not yet built and run (2026-11-27) - `sudo nixos-rebuild switch` and an actual drive at
+  speed is the real word on whether the cab's residual flicker is gone.
 * **Rule:** proving a shadow fix against a motionless camera, as the previous entry's rule says,
   clears numerical noise - it does not clear the stabilized sphere's own re-centering step, which
   only shows up once the camera actually travels far enough to cross it. A tight split's cells are
@@ -5183,3 +5214,8 @@ lighting or the trainset.
   the operator is live on can pick up the operator's own keystrokes as if they were the probe's
   camera moving on its own - a script-side state as clean as this one's `_process_dirty` log is
   stronger evidence against a GDScript cause than any amount of re-reading the script itself.
+  Lastly: a margin sized in world-space distance only ever buys time against *sustained* motion in
+  one direction, never immunity - before raising a constant to chase a residual pop, check whether
+  the pop's cause is travel (unbounded, no margin survives it) or rotation/noise (bounded, a margin
+  does); a travel-caused pop needs the frame of reference itself to stop drifting, not a bigger
+  margin.

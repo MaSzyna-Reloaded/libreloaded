@@ -122,6 +122,26 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
   that one step would still leave the real frustum outside the margin (motion too large for stepping
   to keep up with), the center jumps the rest of the way at once instead, the same single pop as
   before stepping existed - a clean pop beats the shadow sampling outside the square it was drawn
-  on. Not yet confirmed fixed for the exterior view - built and run for the cab only so far; `sudo
-  nixos-rebuild switch` picks up this version, then the operator's own play test, free-look included,
-  is the real word on it
+  on. Confirmed fixed for the exterior/free-look case (2026-11-27, operator's own play test); the
+  cab's own residual flicker while driving, faster the faster the train went, was not - a fixed
+  margin only buys time against sustained travel in one direction, never immunity from it, however
+  high it is raised
+* `0010-local-directional-shadow-cascade-anchor.patch` - on `0009-...`: a new, generic RenderingServer
+  call, `instance_light_set_shadow_cascade_anchor(light_instance, origin, enabled)`, lets every
+  cascade of a directional light's shadow read, snap and step its grid position relative to a
+  world-space point the caller supplies instead of always the raw camera frustum centroid. A point
+  that travels together with the anchor (the frustum centroid included - true of a camera rigidly
+  mounted to whatever it is anchored to, a cab to its own vehicle) then reads as standing still here
+  however far or fast the anchor has actually moved through the world, removing `0009`'s margin's
+  travel term outright instead of only buying time against it: `0009`'s hysteresis and stepped
+  catch-up still apply on top, now against whatever drift is left between the camera and its anchor
+  (a curve, a pitch) rather than against travel itself. Disabled (the plain camera frustum centroid,
+  exactly as before) unless a caller turns it on - a plain Godot has no such method at all, called
+  by name (`RenderingServer.has_method(...)`) the same way every other patch-only call in this
+  addon is. No concept of a vehicle, or of a game, anywhere in this patch: it takes a bare point and
+  nothing else, same as every other call on this RID. Which point to anchor to, and when, is a
+  policy decision for whatever owns the light - `addons/libreloaded/environment/sky_environment.gd`'s
+  `set_shadow_cascade_anchor()` is the one place in the addon that forwards a point to it; a sky
+  backend that actually knows what a vehicle is decides what to send it and when. Not yet built and
+  run (2026-11-27) - `sudo nixos-rebuild switch` and an actual drive at speed is the real word on
+  whether the cab's residual flicker is gone

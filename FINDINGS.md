@@ -351,6 +351,13 @@ anything. Open work belongs in `TODO.md`.
   script's own state (did its re-trigger condition actually fire?) is stronger evidence against a
   GDScript cause than re-reading the script. *(11-27 the cab shadow that only flickered while
   driving)*
+* A margin sized in world-space distance only buys time against sustained one-direction travel,
+  never immunity - raising it only makes a translation-caused pop rarer, never gone, since the
+  margin is a fixed distance and travel crosses any fixed distance eventually. Anchoring the
+  stabilized grid's own position to a point that travels together with the camera (not the camera's
+  raw position) removes the travel term outright instead of just buying more time against it -
+  rotation relative to that point still needs the margin, the same way an orbiting camera already
+  does. *(11-27 the cab shadow that only flickered while driving)*
 * A `Resource` property bound without `PROPERTY_USAGE_STORAGE` (`PROPERTY_USAGE_EDITOR` alone)
   looks and saves fine, but `duplicate()` silently drops it - every copy starts over at its
   default. *(11-11 a renamed vehicle lost its name at the first copy)*
