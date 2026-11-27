@@ -101,13 +101,27 @@ A fix of our own that is no pull request is named `<order>-local-<what it fixes>
   widening the cab's own first split back toward its old 20 m as a diagnostic (not a fix: the
   operator wants every close shadow sharp) and watching the same capture's jumps disappear. The
   patch keeps a cascade's last center from the frame that set it until the camera has drifted
-  `HYSTERESIS_UNITS` (4) grid lines past it, not merely back across the nearest one - ordinary noise
+  `HYSTERESIS_UNITS` (8) grid lines past it, not merely back across the nearest one - ordinary noise
   or slow drift near a single line no longer re-centers every frame it touches, only sustained
   travel past several does - and grows the sampled square by the same margin so it still contains
   the frustum while its center is stale: a fixed, tiny fraction of the square's own size at any
   split distance, so it costs none of the sharpness a tight split earns. Adds the per-cascade
   center and a valid flag to `InstanceLightData`, the first state `_light_instance_setup_directional_shadow`
   keeps from one frame to the next - every split before it was computed fresh, with nothing of the
-  previous frame's cascade kept or read. Not yet confirmed fixed in the game - the patch applies
-  cleanly and reads correctly, but no build of it has run in the game yet; `sudo nixos-rebuild
-  switch` picks it up, then the operator's own play test is the real word on it
+  previous frame's cascade kept or read.
+
+  Built and run (2026-11-27); the operator reported the exterior view's free-look camera
+  (`FollowView`, orbiting at a held right mouse button) still popped just as often with the first
+  version of this patch, standing still was fine. It turns the frustum's centroid by rotation alone -
+  a fast orbit crosses many grid lines in a single frame, more than any margin small enough to keep
+  sharpness can absorb in one step. When the drift is more than one margin's worth, the center is
+  now moved only
+  one margin closer to where it belongs and re-snapped onto the grid, instead of jumping straight
+  there - the same size step an ordinary recenter already took, repeated every frame the orbit
+  continues, reading as the shadow sliding to catch up rather than one frame teleporting it; if even
+  that one step would still leave the real frustum outside the margin (motion too large for stepping
+  to keep up with), the center jumps the rest of the way at once instead, the same single pop as
+  before stepping existed - a clean pop beats the shadow sampling outside the square it was drawn
+  on. Not yet confirmed fixed for the exterior view - built and run for the cab only so far; `sudo
+  nixos-rebuild switch` picks up this version, then the operator's own play test, free-look included,
+  is the real word on it

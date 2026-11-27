@@ -341,6 +341,16 @@ anything. Open work belongs in `TODO.md`.
   often, popping the shadow a frame at a time; proving the camera's own transform moved smoothly,
   with nothing jittering, points straight at the step itself rather than at motion. *(11-27 the cab
   shadow that only flickered while driving)*
+* A camera that rotates crosses a directional shadow's stabilized grid by an amount no
+  translation-sized margin was built to absorb - orbiting turns the frustum's centroid by rotation
+  alone, fast enough to cross many grid cells in one frame. Test a shadow-stability fix against an
+  actively orbited camera as well as a steadily translating one. *(11-27 the cab shadow that only
+  flickered while driving)*
+* An automated capture that runs a real, focused window on a desktop the operator is live on can
+  read the operator's own keystrokes as if they were the probe's own camera moving - a diagnostic
+  script's own state (did its re-trigger condition actually fire?) is stronger evidence against a
+  GDScript cause than re-reading the script. *(11-27 the cab shadow that only flickered while
+  driving)*
 * A `Resource` property bound without `PROPERTY_USAGE_STORAGE` (`PROPERTY_USAGE_EDITOR` alone)
   looks and saves fine, but `duplicate()` silently drops it - every copy starts over at its
   default. *(11-11 a renamed vehicle lost its name at the first copy)*

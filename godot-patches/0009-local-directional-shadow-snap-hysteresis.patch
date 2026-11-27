@@ -1,8 +1,8 @@
 diff --git a/servers/rendering/renderer_scene_cull.cpp b/servers/rendering/renderer_scene_cull.cpp
-index d88a40d..c32f586 100644
+index d88a40d..7ca0066 100644
 --- a/servers/rendering/renderer_scene_cull.cpp
 +++ b/servers/rendering/renderer_scene_cull.cpp
-@@ -2294,13 +2294,40 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+@@ -2294,13 +2294,66 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
  		frustum_circumscribing_radius *= texture_size / (texture_size - 2.0);
  		real_t unit = frustum_circumscribing_radius * 4.0 / texture_size;
  
@@ -16,10 +16,23 @@ index d88a40d..c32f586 100644
 +		// past it, not merely back across the nearest one: noise or slow drift near a single line
 +		// no longer re-centers every frame it touches, only sustained travel past several does. The
 +		// square is grown by the same margin so it still contains the frustum while its center is
-+		// stale - a fixed, tiny fraction of the square's own size at any split distance (four extra
-+		// grid lines out of the few hundred the texture already spans), so it costs none of the
-+		// sharpness a tight split earns.
-+		constexpr real_t HYSTERESIS_UNITS = 4.0;
++		// stale - a fixed, tiny fraction of the square's own size at any split distance (a dozen
++		// extra grid lines out of the few hundred the texture already spans), so it costs none of
++		// the sharpness a tight split earns.
++		//
++		// A free-look camera orbiting its target turns the frustum's centroid by rotation alone,
++		// not just by travel - a fast orbit can cross many grid lines in a single frame, something
++		// no margin small enough to keep sharpness can absorb outright (FINDINGS.md, 2026-11-27,
++		// "the exterior view's free-look camera"). When the drift is more than one margin's worth,
++		// the center is moved only one margin closer to where it belongs, re-snapped onto the grid,
++		// instead of jumping straight there - the same size step an ordinary recenter already took,
++		// repeated every frame the orbit continues, reading as the shadow sliding to catch up
++		// rather than one frame teleporting it. If even that one step would still leave the real
++		// frustum outside the margin the square was grown for - motion too large for stepping to
++		// keep up with it - the center jumps the rest of the way at once instead, same as before
++		// stepping existed: a single clean pop is still better than the shadow sampling outside the
++		// square it was drawn on.
++		constexpr real_t HYSTERESIS_UNITS = 8.0;
 +		real_t hysteresis_margin = HYSTERESIS_UNITS * unit;
 +		real_t drawn_radius = frustum_circumscribing_radius + hysteresis_margin;
 +
@@ -27,14 +40,27 @@ index d88a40d..c32f586 100644
  		{
  			// Position of camera frustum centroid in the view space of the light.
  			Vector3 light_view_frustum_centroid = light_transform.basis.xform_inv(frustum_centroid_world);
++			Vector2 raw_centroid = Vector2(light_view_frustum_centroid.x, light_view_frustum_centroid.y);
 +			Vector2 &snap_center = light->shadow_cascade_snap_center[i];
 +			bool recenter = !light->shadow_cascade_snap_valid[i] ||
-+					Math::abs(light_view_frustum_centroid.x - snap_center.x) > hysteresis_margin ||
-+					Math::abs(light_view_frustum_centroid.y - snap_center.y) > hysteresis_margin;
++					Math::abs(raw_centroid.x - snap_center.x) > hysteresis_margin ||
++					Math::abs(raw_centroid.y - snap_center.y) > hysteresis_margin;
 +			if (recenter) {
-+				snap_center = Vector2(
-+						Math::snapped(light_view_frustum_centroid.x, unit),
-+						Math::snapped(light_view_frustum_centroid.y, unit));
++				// snap_center is always grid-aligned already (set only through this same snap, or
++				// to target below), so stepping from it and re-snapping the result is enough to
++				// keep every intermediate step texel-stable too, not just the final one.
++				Vector2 target = Vector2(
++						Math::snapped(raw_centroid.x, unit),
++						Math::snapped(raw_centroid.y, unit));
++				if (light->shadow_cascade_snap_valid[i]) {
++					Vector2 stepped = snap_center.move_toward(target, hysteresis_margin);
++					stepped = Vector2(Math::snapped(stepped.x, unit), Math::snapped(stepped.y, unit));
++					bool still_outside = Math::abs(raw_centroid.x - stepped.x) > hysteresis_margin ||
++							Math::abs(raw_centroid.y - stepped.y) > hysteresis_margin;
++					snap_center = still_outside ? target : stepped;
++				} else {
++					snap_center = target;
++				}
 +				light->shadow_cascade_snap_valid[i] = true;
 +			}
  			texel_snapped_frustum_centroid = Vector3(
@@ -45,7 +71,7 @@ index d88a40d..c32f586 100644
  					light_view_frustum_centroid.z // Don't mind z.
  			);
  		}
-@@ -2320,7 +2347,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+@@ -2320,7 +2373,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
  			Projection ortho_camera;
  			Transform3D ortho_transform;
  			ortho_transform.basis = light_transform.basis;
@@ -54,7 +80,7 @@ index d88a40d..c32f586 100644
  
  			// Always the full sphere square, every split: USE_TIGHTER_DRAW_RECT's narrower
  			// rectangle is fit to the exact camera frustum every frame and moves with it, while
-@@ -2341,7 +2368,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
+@@ -2341,7 +2394,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
  			cull.shadows[p_shadow_index].cascades[i].transform = ortho_transform;
  			cull.shadows[p_shadow_index].cascades[i].zfar = light_view_frustum_rect_max.z - z_min_cam;
  			cull.shadows[p_shadow_index].cascades[i].split = distances[i + 1];

@@ -5132,21 +5132,54 @@ lighting or the trainset.
   split gives `Math::snapped()`'s grid (`unit = frustum_circumscribing_radius * 4 / texture_size`)
   bigger cells, crossed less often by the same camera speed - confirming the grid crossing, not
   camera motion itself, is what pops the shadow.
+
+  A first version of the fix (`HYSTERESIS_UNITS = 4`, the center jumping straight to the new grid
+  point whenever drift exceeded the margin, never partway) built and ran; the operator reported it
+  held for the cab but not for the exterior/tail `FollowView` camera, which still popped on the
+  wagon, the trees and the platform alike as soon as it was actively orbited (held right mouse
+  button, dragged) - standing still, that same view was fine. Logging the `FollowView`'s own
+  transform while deliberately frozen (world paused, nothing sent to it) first turned up a real,
+  measured drift - the camera held a shot to the decimal place for seconds, then smoothly flew off
+  on its own, tripling its distance from the wagon and nearly reversing its facing within a couple
+  of seconds. Instrumenting `follow_view.gd` itself (`_dirty`, `_process_dirty`, `_on_trainset_changed`,
+  temporary prints only, never committed) showed `_process_dirty` firing exactly once, at setup, and
+  never again for the rest of either capture - ruling out every GDScript-side cause that would have
+  explained a self-driving camera. The likelier explanation: this probe runs a real, visible,
+  focus-stealing Godot window on the operator's own desktop while they are live in conversation, and
+  `FollowView._move_view()` reads real physical key state (`Input.is_physical_key_pressed`) every
+  frame regardless of which window is meant to have focus - a stray arrow key from typing elsewhere
+  at the wrong moment is a far simpler explanation for an untouched window's camera drifting than a
+  new engine-adjacent bug would be, and was treated as such rather than chased further once the
+  GDScript side came back clean.
+
+  The operator's own confirmation (camera moving - still flickers; camera still - fine) is what
+  settled it instead: a fast orbit turns the frustum's centroid by rotation alone, not by travel, and
+  can cross many of the stabilized sphere's grid lines within a single frame - something the first
+  fix's margin, sized only to absorb noise and ordinary steady motion, was never going to cover.
 * **Fix:** `0009-local-directional-shadow-snap-hysteresis.patch`. The stabilized sphere's center is
   no longer recomputed fresh every frame: a cascade keeps the last texel-grid-snapped center it was
-  given until the camera's frustum centroid has drifted `HYSTERESIS_UNITS` (4) grid cells past it,
+  given until the camera's frustum centroid has drifted `HYSTERESIS_UNITS` (8) grid cells past it,
   not merely back across the nearest one, and the sampled square is grown by that same margin so it
-  still contains the whole frustum while its center is stale. A camera travelling steadily still
-  crosses the (now four times as wide) deadband eventually and still pops once when it does - the
-  win is against noise and slow drift sitting near a single grid line, which no longer re-centers
-  every frame it brushes past, only a sustained quarter of the old step. The margin costs a fixed,
-  tiny fraction of the square's own size at any split distance (four grid cells out of the few
-  hundred the shadow texture already spans), not sharpness. Not yet confirmed fixed in the game -
-  the patch applies cleanly and reads correctly against the source, but has not been built
-  (`sudo nixos-rebuild switch`) or run.
+  still contains the whole frustum while its center is stale - noise and slow, steady motion (the
+  cab case) resolve in one step, same as a straight jump would, and cost nothing but a fixed, tiny
+  fraction of the square's own size at any split distance. For a jump bigger than one margin's worth
+  (a fast orbit), the center is moved only one margin closer to the raw position and re-snapped onto
+  the grid, repeated every frame the orbit continues, instead of jumping the whole way at once - the
+  same size step an ordinary recenter already took, reading as the shadow sliding to catch up rather
+  than teleporting. If even one such step would still leave the real frustum outside the margin -
+  motion too large for stepping to keep pace with - the center jumps the rest of the way at once
+  instead, the same single pop as before stepping existed: a clean pop beats the shadow sampling
+  outside the square it was drawn on. Built and run for the cab only so far (2026-11-27) - not yet
+  confirmed fixed for the exterior/`FollowView` orbit case, the one it specifically targets.
 * **Rule:** proving a shadow fix against a motionless camera, as the previous entry's rule says,
   clears numerical noise - it does not clear the stabilized sphere's own re-centering step, which
   only shows up once the camera actually travels far enough to cross it. A tight split's cells are
   small enough that ordinary motion crosses them often; prove or rule out the step itself by logging
   the camera's (and the shadowed vehicle's) own transform at full precision alongside the capture -
-  a provably smooth camera with a popping shadow points at the step, not at the camera.
+  a provably smooth camera with a popping shadow points at the step, not at the camera. A camera
+  that *rotates* crosses that same grid by an amount no translation-sized margin was built to
+  absorb - test a fix against an actively orbited camera, not only a steadily translating one,
+  before calling it done. And: an automated capture that runs a real, focused window on a desktop
+  the operator is live on can pick up the operator's own keystrokes as if they were the probe's
+  camera moving on its own - a script-side state as clean as this one's `_process_dirty` log is
+  stronger evidence against a GDScript cause than any amount of re-reading the script itself.
