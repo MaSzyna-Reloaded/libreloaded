@@ -90,6 +90,32 @@ index 3529380..35dbac9 100644
  	bool _update_instance_visibility_depth(Instance *p_instance);
  	void _update_instance_visibility_dependencies(Instance *p_instance) const;
  
+diff --git a/servers/rendering/rendering_method.h b/servers/rendering/rendering_method.h
+index c06adc8..da8bb31 100644
+--- a/servers/rendering/rendering_method.h
++++ b/servers/rendering/rendering_method.h
+@@ -103,6 +103,8 @@ public:
+ 
+ 	virtual void instance_set_ignore_culling(RID p_instance, bool p_enabled) = 0;
+ 
++	virtual void instance_light_set_shadow_cascade_anchor(RID p_instance, const Vector3 &p_origin, bool p_enabled) = 0;
++
+ 	// don't use these in a game!
+ 	virtual Vector<ObjectID> instances_cull_aabb(const AABB &p_aabb, RID p_scenario = RID()) const = 0;
+ 	virtual Vector<ObjectID> instances_cull_ray(const Vector3 &p_from, const Vector3 &p_to, RID p_scenario = RID()) const = 0;
+diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/rendering_server.cpp
+index dde6b3e..601c591 100644
+--- a/servers/rendering/rendering_server.cpp
++++ b/servers/rendering/rendering_server.cpp
+@@ -3232,6 +3232,8 @@ void RenderingServer::_bind_methods() {
+ 	ClassDB::bind_method(D_METHOD("instance_set_visibility_parent", "instance", "parent"), &RenderingServer::instance_set_visibility_parent);
+ 	ClassDB::bind_method(D_METHOD("instance_set_ignore_culling", "instance", "enabled"), &RenderingServer::instance_set_ignore_culling);
+ 
++	ClassDB::bind_method(D_METHOD("instance_light_set_shadow_cascade_anchor", "instance", "origin", "enabled"), &RenderingServer::instance_light_set_shadow_cascade_anchor);
++
+ 	ClassDB::bind_method(D_METHOD("instance_geometry_set_flag", "instance", "flag", "enabled"), &RenderingServer::instance_geometry_set_flag);
+ 	ClassDB::bind_method(D_METHOD("instance_geometry_set_cast_shadows_setting", "instance", "shadow_casting_setting"), &RenderingServer::instance_geometry_set_cast_shadows_setting);
+ 	ClassDB::bind_method(D_METHOD("instance_geometry_set_material_override", "instance", "material"), &RenderingServer::instance_geometry_set_material_override);
 diff --git a/servers/rendering/rendering_server.h b/servers/rendering/rendering_server.h
 index b35c56d..b780b69 100644
 --- a/servers/rendering/rendering_server.h
