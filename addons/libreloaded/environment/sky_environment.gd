@@ -687,6 +687,20 @@ func get_shadow_atlas_size() -> int:
     return mini(SHADOW_TEXTURE_QUALITY_SIZES[quality], SHADOW_ATLAS_MAX_SIZE)
 
 
+## Pins every cascade of world_light's shadow to a world-space point that travels together with
+## whatever it is meant to shadow up close (RenderingServer.
+## instance_light_set_shadow_cascade_anchor(), godot-patches/0010-local-directional-shadow-
+## cascade-anchor.patch): a point moving together with it then never crosses a texel-grid line from
+## travel alone, so its shadow does not pop while it does - a curve or a pitch still can, the same
+## way a free-look camera's own rotation does. [param enabled] false returns to the plain camera
+## frustum centroid every cascade reads by default. By name, as the other patch-only calls here
+## are, so a plain Godot's editor still compiles and runs this script with nothing to anchor to.
+func set_shadow_cascade_anchor(world_light: DirectionalLight3D, origin: Vector3, enabled: bool) -> void:
+    if RenderingServer.has_method(&"instance_light_set_shadow_cascade_anchor"):
+        RenderingServer.call(&"instance_light_set_shadow_cascade_anchor",
+            world_light.get_instance(), origin, enabled)
+
+
 func _apply_directional_light_settings(light: DirectionalLight3D) -> void:
     light.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(REVERSE_CULL_FACE_SETTING))
     light.shadow_enabled = bool(ProjectSettings.get_setting(SHADOW_SCENERY_ENABLED_SETTING))
