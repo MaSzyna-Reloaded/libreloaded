@@ -46,17 +46,19 @@ varying float ray_angle;
 varying vec3 centre_view;
 
 void vertex() {
-	vec3 centre_world = MODEL_MATRIX[3].xyz;
-	centre_view = (VIEW_MATRIX * vec4(centre_world, 1.0)).xyz;
+	// all of it in the camera's frame, of the lamp's place there as the engine worked it out: a double
+	// precision build gives a shader the camera's position in the world negated (CAMERA_POSITION_WORLD,
+	// INV_VIEW_MATRIX's origin), which turned the glare with the world
+	centre_view = MODELVIEW_MATRIX[3].xyz;
 	// towards the beam: the angle between the lamp's axis and the camera
-	vec3 axis = normalize(-MODEL_MATRIX[2].xyz);
-	vec3 to_camera = normalize(CAMERA_POSITION_WORLD - centre_world);
+	vec3 axis = normalize(mat3(MODELVIEW_MATRIX) * vec3(0.0, 0.0, -1.0));
+	vec3 to_camera = normalize(-centre_view);
 	float facing = dot(axis, to_camera);
 	float beam = cos_outer <= -1.0 ? 1.0 : smoothstep(0.0, cos_outer, facing);
 	float night = 1.0 - smoothstep(night_light_level, day_light_level, reloaded_light_level);
 	glare_strength = clamp(glare_level, 0.0, 2.0) * beam * night * intensity;
 	// the rays turn with the camera's way round the lamp
-	vec3 side = normalize(MODEL_MATRIX[0].xyz);
+	vec3 side = normalize(mat3(MODELVIEW_MATRIX) * vec3(1.0, 0.0, 0.0));
 	ray_angle = atan(dot(to_camera, side), dot(to_camera, axis)) * ray_turn;
 
 	// as tall as the least share of the screen from afar: its height projected, of the screen's 2;
@@ -67,7 +69,7 @@ void vertex() {
 	float size = glare_size * max(1.0, min_screen_size / max(screen_size, 0.0001)) * beam;
 	// a quad facing the camera, at the lamp's centre
 	VERTEX = vec3(VERTEX.xy * size, 0.0);
-	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+	MODELVIEW_MATRIX = mat4(vec4(1.0, 0.0, 0.0, 0.0), vec4(0.0, 1.0, 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0), vec4(centre_view, 1.0));
 }
 
 float seen(vec2 uv_screen, vec2 ring_size, mat4 inv_projection) {
