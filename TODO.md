@@ -493,12 +493,20 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 
 ## Rendering
 
-* **A model's parts driven by channels: only `rotation_control` and only the axles' angles (#128).**
-  `SceneModelRenderingBackend` turns the nodes of the glTF extras' `rotation_control` by
+* **A vehicle's lights read every frame (#128).** `RailVehicleRenderingServer._fill_channels()`
+  reads the headlights of `RailVehicleLighting` every frame a vehicle is drawn in detail, as a
+  plugin's renderer reads the lights of its own models, and sends their levels as the model's
+  channels. The lamps' state is the backend's, read live by the lighting's getters: the lighting is
+  to tell its change by an event, and the levels to be sent only then.
+* **A model's parts driven by channels: only `rotation_control`, `light_control` and `light_id`
+  (#128).** `SceneModelRenderingBackend` turns the nodes of the glTF extras' `rotation_control` and
+  dims the lights of `light_control` and their lenses of `light_id` by
   `ModelRenderingServer.instance_set_channels()`, and `RailVehicleRenderingServer` gives
-  `axle.<n>.angle`. Not yet: `translation_control` (suspension, buffers), the other channels of the
-  model format (`bogie.<n>.yaw`, `door.<side>.<n>.open_fraction` with the clips of `playback`,
-  #126), and a vehicle's low-poly interior, which is given no channels.
+  `axle.<n>.angle` and `headlight.<end>.<side>.level`. A scene's lights are not drawn optimized.
+  Not yet: the red markers (no channel of the model format), `visibility_control`,
+  `translation_control` (suspension, buffers), the other channels of the model format
+  (`bogie.<n>.yaw`, `door.<side>.<n>.open_fraction` with the clips of `playback`, #126), and a
+  vehicle's low-poly interior, which is given no channels.
 
 * **GPU 22 ms of a 33 ms frame** (RX 580, 3607 draw calls) - measure on `make compile-profiling`
   and split by pass before any hypothesis.

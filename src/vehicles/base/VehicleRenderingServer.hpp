@@ -142,6 +142,9 @@ namespace godot {
              * before the poses are sent, every frame the vehicle is drawn in detail */
             virtual void _bind_running_gear(const RID &p_vehicle, Visual &p_visual) {}
             virtual void _pose_running_gear(const RID &p_vehicle, Visual &p_visual) {}
+            /* The kind's channels of the vehicle's state the exterior's parts are driven by (its
+             * lights' levels), every frame the vehicle is drawn in detail, before its poses are sent */
+            virtual void _fill_channels(const RID &p_vehicle, Visual &p_visual) {}
             /* The kind's server announces by p_placed that it placed a vehicle and by p_changed that
              * it moved one: the vehicle is drawn there from then on */
             void _follow_placements(Object *p_server, const char *p_placed, const char *p_changed);

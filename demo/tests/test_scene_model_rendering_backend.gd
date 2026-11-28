@@ -372,3 +372,38 @@ func test_a_part_driven_by_its_data_turns_by_its_channel_alone() -> void:
     ModelRenderingServer.instance_set_part_poses(instance, {"Crank": Transform3D(Basis(Vector3.RIGHT, PI / 2.0))})
     ModelRenderingServer.instance_set_channels(instance, {AXLE_CHANNEL: PI / 2.0})
     assert_true(crank.transform.basis.is_equal_approx(Basis(Vector3.RIGHT, PI / 2.0)), "a quarter turn, not a half")
+
+
+## A model's headlight dimmed by its channel (the model format's light_control): off of no value, at
+## its own energy times the level, and its lens (light_id) lit at the same level
+const LIGHTS_MODEL:String = "res://tests/fixtures/scene_model_lights.tscn"
+const HEADLIGHT_CHANNEL:String = "headlight.front.left.level"
+const HEADLIGHT_ENERGY:float = 8.0
+const LENS_EMISSION:float = 4.0
+const DIMMED:float = 0.5
+
+
+func test_a_headlight_and_its_lens_shine_at_the_level_of_their_channel() -> void:
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var model:Resource = ModelRenderingServer.model_load(BACKEND, LIGHTS_MODEL)
+    _instance = ModelRenderingServer.instance_create(BACKEND, model, ModelRenderingServer.INSTANCER_NODES,
+            ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    ModelRenderingServer.instance_attach_object_instance_id(_instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(_instance)
+    var light:SpotLight3D = attached.find_child("Headlight", true, false) as SpotLight3D
+    var lens:MeshInstance3D = attached.find_child("Lens", true, false) as MeshInstance3D
+    var lens_emission:Callable = func() -> float:
+        var drawn:BaseMaterial3D = lens.get_surface_override_material(0) as BaseMaterial3D
+        return drawn.emission_energy_multiplier if drawn else -1.0
+
+    assert_false(light.visible, "off of no value: its default")
+    assert_almost_eq(lens_emission.call(), 0.0, 0.001, "the lens dark")
+
+    ModelRenderingServer.instance_set_channels(_instance, {HEADLIGHT_CHANNEL: DIMMED})
+    assert_true(light.visible)
+    assert_almost_eq(light.light_energy, HEADLIGHT_ENERGY * DIMMED, 0.001, "its energy times the level")
+    assert_almost_eq(lens_emission.call(), LENS_EMISSION * DIMMED, 0.001, "the lens at the same level")
+
+    ModelRenderingServer.instance_set_channels(_instance, {HEADLIGHT_CHANNEL: 0.0})
+    assert_false(light.visible, "off at 0")

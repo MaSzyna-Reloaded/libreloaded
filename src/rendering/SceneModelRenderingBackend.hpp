@@ -75,6 +75,22 @@ namespace godot {
                     double limit_max = 0.0;
             };
 
+            /* A light dimmed by a channel's value, as its glTF extras' light_control says: its own
+             * energy times the value - off at 0 - the default for a channel of no value; and a lens
+             * of a light (extras' light_id naming the light's node or its semantic_id), its emission
+             * of the same channel */
+            struct LightControl {
+                    StringName part;
+                    StringName source;
+                    double default_value = 0.0;
+                    float energy = 0.0F;
+            };
+            struct LensControl {
+                    StringName part;
+                    StringName source;
+                    double default_value = 0.0;
+            };
+
             struct InstanceData {
                     Ref<PackedScene> model;
                     Instancer instancer = ModelRenderingServer::INSTANCER_OPTIMIZED;
@@ -89,6 +105,12 @@ namespace godot {
                     Dictionary channels;
                     Vector<RotationControl> rotation_controls;
                     HashMap<StringName, Transform3D> channel_poses;
+                    /* The lights and the lenses the channels dim (_read_model()), and their levels of
+                     * them (_pose_channels()): a light's energy and a lens's emission times its level */
+                    Vector<LightControl> light_controls;
+                    Vector<LensControl> lens_controls;
+                    HashMap<StringName, float> light_levels;
+                    HashMap<StringName, float> lens_levels;
                     HashMap<StringName, bool> part_visible;
                     HashMap<StringName, Ref<Material>> part_materials;
                     HashMap<StringName, float> part_emission;
@@ -137,7 +159,7 @@ namespace godot {
             static void _read_node(
                     const Node *p_node, const Vector<StringName> &p_names, const Vector<Transform3D> &p_transforms,
                     InstanceData &p_instance);
-            static void _pose_channels(InstanceData &p_instance);
+            static bool _pose_channels(InstanceData &p_instance);
             static Transform3D _get_part_pose(const InstanceData &p_instance, const StringName &p_part);
             static Transform3D _get_path_transform(
                     const InstanceData &p_instance, const Vector<StringName> &p_names,

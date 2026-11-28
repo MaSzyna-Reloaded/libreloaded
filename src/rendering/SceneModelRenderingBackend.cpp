@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/collision_object3d.hpp>
 #include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/geometry3d.hpp>
+#include <godot_cpp/classes/light3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/physics_server3d.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
@@ -46,6 +47,37 @@ namespace godot {
         return Variant();
     }
 
+    namespace {
+        /* The metadata a glTF material keeps its extras in (GLTFDocument), and the key of them that
+         * names its slot of replaceable textures - spelled as the models' format spells it */
+        const char *const EXTRAS_META = "extras";
+        /* The key of a node's extras naming its role, and the roles of a collision body's (the model
+         * format's `<object>.collision.body` and `.interior`) */
+        const char *const SEMANTIC_ID_KEY = "semantic_id";
+        const char *const BODY_ROLE_SUFFIX = ".collision.body";
+        const char *const INTERIOR_ROLE_SUFFIX = ".collision.interior";
+        const char *const REPLACEABLE_TEXTURE_KEY = "replacable_texture";
+        /* The key of a node's extras turning it by a channel, and the keys of what it gives (the
+         * model format's procedural motion) */
+        const char *const ROTATION_CONTROL_KEY = "rotation_control";
+        const char *const CONTROL_SOURCE_KEY = "source";
+        const char *const CONTROL_AXIS_KEY = "axis";
+        const char *const CONTROL_SCALE_KEY = "scale";
+        const char *const CONTROL_OFFSET_KEY = "offset";
+        const char *const CONTROL_DEFAULT_KEY = "default";
+        const char *const CONTROL_LIMITS_KEY = "limits";
+        /* The keys of a light's extras dimming it by a channel, and of a lens naming its light */
+        const char *const LIGHT_CONTROL_KEY = "light_control";
+        const char *const LIGHT_ID_KEY = "light_id";
+        /* An axis written as its three components, limits as their two */
+        constexpr int64_t AXIS_COMPONENTS = 3;
+        constexpr int64_t LIMITS_BOUNDS = 2;
+        /* The textures of a slot (ModelRenderingServer.instance_set_replaceable_textures()) */
+        const char *const BASE_COLOR_TEXTURE = "base_color";
+        const char *const ORM_TEXTURE = "orm";
+        const char *const NORMAL_TEXTURE = "normal";
+    } // namespace
+
     /// The model's nodes read off a scene made of it and freed at once: its meshes with the nodes
     /// above them, and every node's own transform by its path from the root; what was set of its
     /// parts before - a streamed placement's, read when built - by their paths from now on
@@ -53,6 +85,8 @@ namespace godot {
         p_instance.meshes.clear();
         p_instance.shapes.clear();
         p_instance.rotation_controls.clear();
+        p_instance.light_controls.clear();
+        p_instance.lens_controls.clear();
         p_instance.part_local_transforms.clear();
         p_instance.part_model_transforms.clear();
         p_instance.part_paths.clear();
@@ -64,6 +98,24 @@ namespace godot {
         for (int index = 0; index < root->get_child_count(); ++index) {
             _read_node(root->get_child(index), Vector<StringName>(), Vector<Transform3D>(), p_instance);
         }
+        // a lens takes the channel of the light it names, read by now (_read_node() keeps the name)
+        Vector<LensControl> lenses;
+        for (const LensControl &lens: p_instance.lens_controls) {
+            for (const LightControl &light: p_instance.light_controls) {
+                const Node *light_node = root->get_node_or_null(NodePath(String(light.part)));
+                if (light_node == nullptr) {
+                    continue;
+                }
+                const Dictionary extras = light_node->has_meta(EXTRAS_META)
+                                                  ? Dictionary(light_node->get_meta(EXTRAS_META))
+                                                  : Dictionary();
+                const StringName semantic_id = String(extras.get(SEMANTIC_ID_KEY, String()));
+                if (lens.source == light_node->get_name() || lens.source == semantic_id) {
+                    lenses.push_back(LensControl{lens.part, light.source, light.default_value});
+                }
+            }
+        }
+        p_instance.lens_controls = lenses;
         memdelete(root);
         Dictionary poses;
         for (const Variant &part: p_instance.part_poses.keys()) {
@@ -89,33 +141,6 @@ namespace godot {
         _pose_channels(p_instance);
     }
 
-    namespace {
-        /* The metadata a glTF material keeps its extras in (GLTFDocument), and the key of them that
-         * names its slot of replaceable textures - spelled as the models' format spells it */
-        const char *const EXTRAS_META = "extras";
-        /* The key of a node's extras naming its role, and the roles of a collision body's (the model
-         * format's `<object>.collision.body` and `.interior`) */
-        const char *const SEMANTIC_ID_KEY = "semantic_id";
-        const char *const BODY_ROLE_SUFFIX = ".collision.body";
-        const char *const INTERIOR_ROLE_SUFFIX = ".collision.interior";
-        const char *const REPLACEABLE_TEXTURE_KEY = "replacable_texture";
-        /* The key of a node's extras turning it by a channel, and the keys of what it gives (the
-         * model format's procedural motion) */
-        const char *const ROTATION_CONTROL_KEY = "rotation_control";
-        const char *const CONTROL_SOURCE_KEY = "source";
-        const char *const CONTROL_AXIS_KEY = "axis";
-        const char *const CONTROL_SCALE_KEY = "scale";
-        const char *const CONTROL_OFFSET_KEY = "offset";
-        const char *const CONTROL_DEFAULT_KEY = "default";
-        const char *const CONTROL_LIMITS_KEY = "limits";
-        /* An axis written as its three components, limits as their two */
-        constexpr int64_t AXIS_COMPONENTS = 3;
-        constexpr int64_t LIMITS_BOUNDS = 2;
-        /* The textures of a slot (ModelRenderingServer.instance_set_replaceable_textures()) */
-        const char *const BASE_COLOR_TEXTURE = "base_color";
-        const char *const ORM_TEXTURE = "orm";
-        const char *const NORMAL_TEXTURE = "normal";
-    } // namespace
 
     /// Each material of the model's meshes of a slot the replaceable textures have, copied with the
     /// slot's textures: the base colour; occlusion, roughness and metalness of one texture's red,
@@ -214,6 +239,24 @@ namespace godot {
                     p_instance.rotation_controls.push_back(rotation);
                 }
             }
+            // a light dimmed by a channel, and a lens of a light (named here, its channel once all
+            // the lights are read)
+            const Light3D *light = Object::cast_to<Light3D>(p_node);
+            const Variant light_data = extras.get(LIGHT_CONTROL_KEY, Variant());
+            if (light != nullptr && light_data.get_type() == Variant::DICTIONARY) {
+                const Dictionary control = light_data;
+                const String source = control.get(CONTROL_SOURCE_KEY, String());
+                if (!source.is_empty()) {
+                    p_instance.light_controls.push_back(
+                            LightControl{
+                                    path, source, control.get(CONTROL_DEFAULT_KEY, 0.0),
+                                    static_cast<float>(light->get_param(Light3D::PARAM_ENERGY))});
+                }
+            }
+            const String light_id = extras.get(LIGHT_ID_KEY, String());
+            if (!light_id.is_empty()) {
+                p_instance.lens_controls.push_back(LensControl{path, light_id, 0.0});
+            }
         }
         const MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node);
         if (mesh_instance != nullptr && mesh_instance->get_mesh().is_valid()) {
@@ -251,8 +294,31 @@ namespace godot {
     }
 
     /// The nodes the channels turn posed of their values (instance_set_channels()), or of their
-    /// defaults; a turn reduced to a full one
-    void SceneModelRenderingBackend::_pose_channels(InstanceData &p_instance) {
+    /// defaults - a turn reduced to a full one - and the lights and the lenses they dim at their
+    /// levels; whether a light's or a lens's level changed
+    bool SceneModelRenderingBackend::_pose_channels(InstanceData &p_instance) {
+        HashMap<StringName, float> light_levels;
+        for (const LightControl &control: p_instance.light_controls) {
+            light_levels[control.part] = static_cast<float>(
+                    MAX(0.0, static_cast<double>(p_instance.channels.get(control.source, control.default_value))));
+        }
+        HashMap<StringName, float> lens_levels;
+        for (const LensControl &control: p_instance.lens_controls) {
+            lens_levels[control.part] = static_cast<float>(
+                    MAX(0.0, static_cast<double>(p_instance.channels.get(control.source, control.default_value))));
+        }
+        bool lit_changed = light_levels.size() != p_instance.light_levels.size() ||
+                           lens_levels.size() != p_instance.lens_levels.size();
+        for (const KeyValue<StringName, float> &level: light_levels) {
+            const float *was = p_instance.light_levels.getptr(level.key);
+            lit_changed = lit_changed || was == nullptr || *was != level.value;
+        }
+        for (const KeyValue<StringName, float> &level: lens_levels) {
+            const float *was = p_instance.lens_levels.getptr(level.key);
+            lit_changed = lit_changed || was == nullptr || *was != level.value;
+        }
+        p_instance.light_levels = light_levels;
+        p_instance.lens_levels = lens_levels;
         p_instance.channel_poses.clear();
         for (const RotationControl &control: p_instance.rotation_controls) {
             const double value = p_instance.channels.get(control.source, control.default_value);
@@ -263,6 +329,7 @@ namespace godot {
             p_instance.channel_poses[control.part] =
                     Transform3D(Basis(control.axis, static_cast<real_t>(Math::fmod(angle, Math::TAU))));
         }
+        return lit_changed;
     }
 
     /// A part's pose on top of its own transform: its channel's, the one writer of a part its data
@@ -320,11 +387,20 @@ namespace godot {
                 energy = *part_energy;
             }
         }
+        // a lens of a light dimmed by a channel: its own emission at the light's level, the one
+        // writer of it (a self-illumination set for it too is left out)
+        float lens_level = -1.0F;
+        for (const StringName &name: p_mesh.path_names) {
+            const float *level = p_instance.lens_levels.getptr(name);
+            if (level != nullptr) {
+                lens_level = *level;
+            }
+        }
         const Ref<Material> source = p_mesh.mesh->surface_get_material(p_surface);
         const Ref<Material> *replaced =
                 source.is_valid() ? p_instance.replaced_materials.getptr(source->get_rid()) : nullptr;
         Ref<Material> material = replaced != nullptr ? *replaced : Ref<Material>();
-        if (energy < 0.0F) {
+        if (energy < 0.0F && lens_level < 0.0F) {
             return material;
         }
         const Ref<BaseMaterial3D> own = material.is_valid() ? material : source;
@@ -332,7 +408,8 @@ namespace godot {
             return material;
         }
         Ref<BaseMaterial3D> lit = own->duplicate();
-        lit->set_emission_energy_multiplier(energy);
+        lit->set_emission_energy_multiplier(
+                lens_level >= 0.0F ? own->get_emission_energy_multiplier() * lens_level : energy);
         return lit;
     }
 
@@ -340,7 +417,6 @@ namespace godot {
         return Object::cast_to<Node3D>(ObjectDB::get_instance(p_instance.root_id));
     }
 
-    /// What is set on the instance onto what it draws
     /// Where the instance's meshes, nodes and collision shapes stand, of their parts' poses
     void SceneModelRenderingBackend::_apply_poses(InstanceData &p_instance) const {
         if (!p_instance.built) {
@@ -375,6 +451,7 @@ namespace godot {
         }
     }
 
+    /// What is set on the instance onto what it draws
     void SceneModelRenderingBackend::_apply(InstanceData &p_instance) const {
         if (!p_instance.built) {
             return;
@@ -427,6 +504,17 @@ namespace godot {
             }
             const bool *visible = p_instance.part_visible.getptr(part.key);
             node->set_visible(visible == nullptr || *visible);
+        }
+        // the lights the channels dim, at their levels - off at 0; drawn optimized, a scene's
+        // lights are not drawn at all
+        for (const LightControl &control: p_instance.light_controls) {
+            Light3D *light = Object::cast_to<Light3D>(root->get_node_or_null(NodePath(String(control.part))));
+            const float *level = p_instance.light_levels.getptr(control.part);
+            if (light == nullptr || level == nullptr) {
+                continue;
+            }
+            light->set_param(Light3D::PARAM_ENERGY, control.energy * *level);
+            light->set_visible(light->is_visible() && *level > 0.0F);
         }
         for (const MeshPart &mesh: p_instance.meshes) {
             MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(
@@ -720,8 +808,12 @@ namespace godot {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
         instance->channels = p_channels.duplicate();
-        _pose_channels(*instance);
-        _apply_poses(*instance);
+        // a light or a lens of another level redrawn whole - its materials - else only moved
+        if (_pose_channels(*instance)) {
+            _apply(*instance);
+        } else {
+            _apply_poses(*instance);
+        }
     }
 
     void SceneModelRenderingBackend::instance_set_part_visible(

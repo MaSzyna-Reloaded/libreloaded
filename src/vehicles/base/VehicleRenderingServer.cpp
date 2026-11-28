@@ -829,6 +829,7 @@ namespace godot {
         }
         if (p_visual.detailed) {
             _pose_running_gear(p_vehicle, p_visual);
+            _fill_channels(p_vehicle, p_visual);
             _send_poses(p_visual);
         }
     }
@@ -1166,6 +1167,7 @@ namespace godot {
             }
             ++visited;
             _vehicle_pose(vehicle);
+            _fill_channels(vehicle, visual);
             _send_poses(visual);
         }
         _frame_processed(delta);
