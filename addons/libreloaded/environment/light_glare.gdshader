@@ -22,14 +22,14 @@ instance uniform float cos_outer = -1.0;
 
 // the quad's size [m] near the camera, and the least of the screen's height it keeps from afar
 uniform float glare_size = 2.5;
-uniform float min_screen_size = 0.05;
+uniform float min_screen_size = 0.12;
 // the light level from which the glare is gone, and the one up to which it is whole
 uniform float day_light_level = 0.6;
 uniform float night_light_level = 0.15;
 uniform float intensity = 1.0;
 // the rays: how many, how thin, how far they reach of the quad's half
 uniform int ray_count = 6;
-uniform float ray_width = 180.0;
+uniform float ray_width = 120.0;
 uniform float ray_length = 0.95;
 // how much the rays turn as the camera goes round the lamp [turns a radian]
 uniform float ray_turn = 0.35;
