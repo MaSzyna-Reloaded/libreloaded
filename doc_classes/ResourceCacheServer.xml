@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ResourceCacheServer" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		The caches on disk as a whole, kept within the player's maximum size and the disk's free space.
+	</brief_description>
+	<description>
+		Every [ResourceCache] keeps its files under [member root]. An entry is what a cache keeps under one path: its file, the file's hash and the directory of files it writes beside it ([method ResourceCache.get_file_path]). The server knows when each entry was last used, across sessions, and how large it is.
+		When the caches grow past what they may take ([method budget_get]) - the player's maximum size ([code]reloaded/cache/max_size[/code] [lb]bytes[rb]), or less when the disk's free space would fall under a reserve the caches never take - the least recently used entries are removed first. An entry used in this session is never removed: what is streamed or loaded lazily reads its files later.
+		The caches are trimmed when the server is created, before anything reads them, after every entry a cache writes, and when the player changes the maximum size. The default maximum size is a share of the disk's free space as the game starts, at most 20 GB, and always one of [method max_size_get_choices]. Nothing is trimmed in the editor: it shares the game's user directory and would remove what a running game uses.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="budget_get" qualifiers="static">
+			<return type="int" />
+			<param index="0" name="max_size" type="int" />
+			<param index="1" name="used" type="int" />
+			<param index="2" name="free_space" type="int" />
+			<description>
+				Returns what the caches may take [lb]bytes[rb]: [param max_size], or less when the disk's [param free_space] would fall under the reserve the caches never take while they hold [param used]. A [param max_size] of [constant MAX_SIZE_UNLIMITED] leaves only the reserve. Never less than 0.
+			</description>
+		</method>
+		<method name="cache_clear">
+			<return type="void" />
+			<param index="0" name="directory" type="String" />
+			<description>
+				Removes every file under [param directory] of [member root], and the whole [member root] for an empty [param directory]. [method ResourceCache.clear] and "Clear cache" ([method GameDataServer.cache_clear]) go through it.
+			</description>
+		</method>
+		<method name="cache_trim">
+			<return type="void" />
+			<description>
+				Removes the least recently used entries not used in this session until the caches fit what they may take ([method budget_get]). Does nothing in the editor.
+			</description>
+		</method>
+		<method name="max_size_get_choices" qualifiers="static">
+			<return type="PackedInt64Array" />
+			<description>
+				Returns the maximum sizes the player chooses from [lb]bytes[rb], smallest first, with [constant MAX_SIZE_UNLIMITED] last.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="root" type="String" setter="set_root" getter="get_root" default="&quot;user://cache/&quot;">
+			Where every cache keeps its files. Another root (the tests') is measured at once as a new session: nothing in it counts as used yet, and the previous root is left as it is.
+		</member>
+	</members>
+	<constants>
+		<constant name="MAX_SIZE_UNLIMITED" value="0">
+			The maximum size that sets no maximum: only the disk's free space limits the caches.
+		</constant>
+	</constants>
+</class>

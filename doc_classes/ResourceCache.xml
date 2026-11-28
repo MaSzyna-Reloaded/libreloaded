@@ -12,7 +12,7 @@
 		<method name="clear">
 			<return type="void" />
 			<description>
-				Clears all cache files in [member cache_dir] directory set by [method ResourceCache.create]
+				Clears all cache files in [member cache_dir] directory set by [method ResourceCache.create] ([method ResourceCacheServer.cache_clear]).
 			</description>
 		</method>
 		<method name="create" qualifiers="static">
@@ -34,7 +34,7 @@
 			<return type="String" />
 			<param index="0" name="path" type="String" />
 			<description>
-				Where the entry [param path] is kept, for files an entry writes beside it (a scenery's terrain chunks).
+				Where the entry [param path] is kept, for files an entry writes beside it (a scenery's terrain chunks). [param path] is the entry's path without its extension: the directory is part of its entry, which counts as used in this session and is never trimmed away under it ([ResourceCacheServer]).
 			</description>
 		</method>
 		<method name="has" qualifiers="const">

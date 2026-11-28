@@ -24,6 +24,7 @@ namespace godot {
             Vector3 position;
             /* Euler angles (radians), same order as Node3D.rotation */
             Vector3 rotation;
+            Vector3 scale = Vector3(1.0, 1.0, 1.0);
             double range_min = 0.0;
             /* Visible up to this distance, 0 - no limit */
             double range_max = 0.0;
@@ -44,6 +45,7 @@ namespace godot {
             MAKE_GS(PackedStringArray, skins);
             MAKE_GS(Vector3, position);
             MAKE_GS(Vector3, rotation);
+            MAKE_GS(Vector3, scale);
             MAKE_GS_NR(double, range_min);
             MAKE_GS_NR(double, range_max);
             MAKE_GS_NR(Ref<SignalHeadKind>, signal_head_kind);

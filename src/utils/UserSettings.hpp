@@ -31,6 +31,11 @@ namespace godot {
             /// The settings added to the game's: the plugins' (ReloadedPlugin::get_user_settings_provider())
             /// and those added since (provider_add())
             Vector<Ref<UserSettingsProvider>> providers;
+            /// Named sets of settings set at once (preset_set()), in their order: by name, a "title"
+            /// and the "values" by section and key - PROJECT_SETTINGS_SECTION's keys project
+            /// settings'. The declarations' "presets" with every provider's values merged in, and
+            /// those created since (preset_create())
+            Dictionary presets;
 
             static constexpr const char *DATA_DIR_SECTION = "reloaded";
             static constexpr const char *DATA_DIR_KEY = "data_dir";
@@ -43,6 +48,18 @@ namespace godot {
             static constexpr const char *DECLARATIONS_SETTING = "reloaded/user_settings/declarations";
 
             void _apply_defaults();
+            /// The game's settings' file (DECLARATIONS_SETTING), parsed - none without it
+            Dictionary _read_declarations_file() const;
+            /// `p_presets` added to presets: a new name appended, a known one's values merged
+            void _add_presets(const Array &p_presets);
+            /// Every declared setting by its section and key - a "project" one's section is
+            /// PROJECT_SETTINGS_SECTION
+            Dictionary _get_declared_settings() const;
+            /// `p_value` as the type `p_setting` declares - a preset's number read from JSON is a float
+            static Variant _as_declared(const Variant &p_value, const Dictionary &p_setting);
+            /// `p_value` set in memory, a project setting's onto ProjectSettings too; false when it was
+            /// the value already
+            bool _write_setting(const String &p_section, const String &p_key, const Variant &p_value);
             /// The player's values of the project settings `p_sections` declare a player's
             void _apply_project_values(const Array &p_sections);
             void _set_project_setting(const String &p_name, const Variant &p_value);
@@ -94,6 +111,22 @@ namespace godot {
             /// `p_provider`'s settings added to the game's, the player's values of its "project" ones
             /// applied now (config_changed)
             void provider_add(const Ref<UserSettingsProvider> &p_provider);
+
+            /// The presets' names, in their order
+            PackedStringArray preset_list() const;
+            /// The preset's "title" and its "values" by section and key
+            Dictionary preset_get(const String &p_name) const;
+            /// A preset of `p_values` by section and key, in place of one of that name
+            void preset_create(const String &p_name, const String &p_title, const Dictionary &p_values);
+            void preset_delete(const String &p_name);
+            /// Every value of the preset set as set_setting() sets one - in memory and in effect at
+            /// once - each change announced (setting_changed), the configuration's change once
+            /// (config_changed)
+            void preset_set(const String &p_name);
+            /// The first preset every value of which the settings have now - none when they match no
+            /// preset. A setting the player never set has its declared "default", a project setting its
+            /// project's value, or its "default" where the project has none
+            String preset_get_current() const;
 
             /// Set in memory and in effect at once; saved by save_config(), dropped by load_config()
             void set_setting(const String &p_section, const String &p_key, const Variant &p_value);

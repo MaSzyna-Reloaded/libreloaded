@@ -24,11 +24,12 @@ namespace godot {
             /// (SceneryStreamingServer.content_set_consumer()); the items of a kind are of the type its
             /// provider and its consumer agree on
             enum ContentKind {
-                CONTENT_TERRAIN, ///< terrain geometry
-                CONTENT_MODELS,  ///< SceneryModelPlacement
-                CONTENT_SOUNDS,  ///< ScenerySoundPlacement
-                CONTENT_LINES,   ///< line geometry (wires, fences)
-                CONTENT_MESHES,  ///< mesh placements
+                CONTENT_TERRAIN,   ///< terrain geometry
+                CONTENT_MODELS,    ///< SceneryModelPlacement
+                CONTENT_SOUNDS,    ///< ScenerySoundPlacement
+                CONTENT_LINES,     ///< line geometry (wires, fences)
+                CONTENT_MESHES,    ///< mesh placements
+                CONTENT_HEIGHTMAP, ///< heightmap terrain regions
                 CONTENT_KIND_MAX,
             };
 
@@ -37,6 +38,7 @@ namespace godot {
 
             GDVIRTUAL0RC(TypedArray<Vector2i>, _get_chunk_cells)
             GDVIRTUAL1RC(float, _chunk_get_overhang, Vector2i)
+            GDVIRTUAL0RC(float, _get_range)
             GDVIRTUAL0RC(PackedInt32Array, _get_content_kinds)
             GDVIRTUAL2R(Array, _chunk_load, Vector2i, int)
 
@@ -45,6 +47,8 @@ namespace godot {
             virtual TypedArray<Vector2i> get_chunk_cells() const;
             /// How far the content of a cell reaches out of it [m]
             virtual float chunk_get_overhang(const Vector2i &p_cell) const;
+            /// How far from the camera its cells are wanted [m]; 0, the default, for the draw distance
+            virtual float get_range() const;
             /// The ContentKind values the provider supplies
             virtual PackedInt32Array get_content_kinds() const;
             /// The content of one kind in a cell - items of the type its ContentKind names

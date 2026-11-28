@@ -20,6 +20,13 @@ namespace godot {
         return p_deceleration > 0.0 ? p_velocity * p_velocity / (2.0 * p_deceleration) : 0.0;
     }
 
+    double
+    RoadVehicleServer::_limit_velocity(const AheadLimit &p_limit, const double p_went, const double p_deceleration) {
+        const double distance = p_limit.distance - p_went;
+        return braked_velocity(
+                p_limit.velocity, p_limit.kept_once_reached ? MAX(distance, 0.0) : distance, p_deceleration);
+    }
+
     /* Entered by one end, a road is travelled toward the other */
     static RoadServer::RoadEnd travelled_toward(const RoadServer::RoadEnd p_entered_by) {
         return p_entered_by == RoadServer::ROAD_END_START ? RoadServer::ROAD_END_END : RoadServer::ROAD_END_START;
@@ -74,6 +81,7 @@ namespace godot {
             return;
         }
         placement->controller = vehicle_server->vehicle_get_controller(p_vehicle);
+        placement->look_ahead_in = 0.0; // another controller looks ahead at once
     }
 
     void RoadVehicleServer::vehicle_attach(const RID &p_vehicle) {
@@ -115,6 +123,11 @@ namespace godot {
         ERR_FAIL_COND_MSG(!roads->road_exists(p_road), "Not a road of RoadServer");
         placement->offset = CLAMP(p_offset, 0.0, roads->road_get_length(p_road));
         placement->route.clear();
+        // it looks ahead in the first step, its group's share of the interval early, so the groups
+        // look in steps of their own from then on
+        placement->look_ahead_in = -LOOK_AHEAD_INTERVAL * static_cast<double>(next_look_ahead_group) /
+                                   static_cast<double>(LOOK_AHEAD_GROUPS);
+        next_look_ahead_group = (next_look_ahead_group + 1) % LOOK_AHEAD_GROUPS;
         if (!_enter(p_vehicle, *placement, p_road, p_facing)) {
             return; // a listener of the reports freed it
         }
@@ -179,15 +192,16 @@ namespace godot {
         }
     }
 
-    double RoadVehicleServer::_vehicles_allowed_velocity(
+    RoadVehicleServer::AheadLimit RoadVehicleServer::_vehicles_ahead_limit(
             const RID &p_vehicle, const Placement &p_placement, const RID &p_road, const RoadServer::RoadEnd p_toward,
-            const double p_distance, const double p_step_distance, const double p_delta) const {
+            const double p_distance) const {
         const RoadServer *roads = RoadServer::get_instance();
         const RoadVehicleController *own = p_placement.controller.ptr();
+        const double deceleration = own->get_acceleration_limit();
         const double length = roads->road_get_length(p_road);
         // across the road, measured to the right of its own way from start to end
         const double own_side = own->get_side_offset() * (p_toward == RoadServer::ROAD_END_END ? 1.0 : -1.0);
-        double allowed = Math::INF;
+        AheadLimit tightest;
         for (const RID &listed: roads->road_get_vehicle_list(p_road)) {
             const Placement *other = rid_get_id(listed) == rid_get_id(p_vehicle) ? nullptr : vehicles.getptr(listed);
             if (other == nullptr || other->controller.is_null()) {
@@ -206,34 +220,36 @@ namespace godot {
                 continue;
             }
             const double gap = ahead - (0.5 * (own->get_dimensions_length() + vehicle->get_dimensions_length())) -
-                               own->get_following_gap() - p_step_distance;
+                               own->get_following_gap();
             // one ahead travelling its way is followed at its velocity; one coming the other way is
-            // stopped for where it stops itself
+            // stopped for where it stops itself, nearer by as far as it comes until it looks again
+            AheadLimit limit;
             if (other->toward == p_toward) {
-                allowed = MIN(allowed, braked_velocity(vehicle->get_velocity(), gap, own->get_acceleration_limit()));
-                continue;
+                limit.velocity = vehicle->get_velocity();
+                limit.distance = gap;
+            } else {
+                const double oncoming = vehicle->get_velocity();
+                limit.velocity = 0.0;
+                limit.distance = gap - braking_distance(oncoming, vehicle->get_acceleration_limit()) -
+                                 (oncoming * LOOK_AHEAD_INTERVAL);
             }
-            const double oncoming = vehicle->get_velocity();
-            allowed =
-                    MIN(allowed, braked_velocity(
-                                         0.0,
-                                         gap - braking_distance(oncoming, vehicle->get_acceleration_limit()) -
-                                                 (oncoming * p_delta),
-                                         own->get_acceleration_limit()));
+            if (_limit_velocity(limit, 0.0, deceleration) < _limit_velocity(tightest, 0.0, deceleration)) {
+                tightest = limit;
+            }
         }
-        return allowed;
+        return tightest;
     }
 
-    double RoadVehicleServer::_allowed_velocity(const RID &p_vehicle, Placement &p_placement, const double p_delta) {
+    RoadVehicleServer::AheadLimit RoadVehicleServer::_look_ahead(const RID &p_vehicle, Placement &p_placement) {
         const RoadServer *roads = RoadServer::get_instance();
         const RoadVehicleController *controller = p_placement.controller.ptr();
         const double deceleration = controller->get_acceleration_limit();
-        // what is ahead is braked for from where this step takes it
-        const double step_distance = controller->get_velocity() * p_delta;
-        double allowed = controller->get_wanted_velocity() / RoadVehicleController::KMH_PER_MPS;
-        if (controller->get_max_velocity() > 0.0) {
-            allowed = MIN(allowed, controller->get_max_velocity() / RoadVehicleController::KMH_PER_MPS);
-        }
+        AheadLimit tightest;
+        const auto keep_tighter = [&](const AheadLimit &p_limit) {
+            if (_limit_velocity(p_limit, 0.0, deceleration) < _limit_velocity(tightest, 0.0, deceleration)) {
+                tightest = p_limit;
+            }
+        };
         RID road = p_placement.road;
         RoadServer::RoadEnd toward = p_placement.toward;
         double length = roads->road_get_length(road);
@@ -242,23 +258,19 @@ namespace godot {
         uint32_t step = 0;
         while (true) {
             if (const double limit = roads->road_get_velocity(road); limit >= 0.0) {
-                allowed =
-                        MIN(allowed, braked_velocity(
-                                             limit / RoadVehicleController::KMH_PER_MPS,
-                                             MAX(entered - step_distance, 0.0), deceleration));
+                keep_tighter({limit / RoadVehicleController::KMH_PER_MPS, MAX(entered, 0.0), true});
             }
-            allowed = MIN(
-                    allowed,
-                    _vehicles_allowed_velocity(p_vehicle, p_placement, road, toward, entered, step_distance, p_delta));
+            keep_tighter(_vehicles_ahead_limit(p_vehicle, p_placement, road, toward, entered));
             const double left = entered + length;
             if (left >= controller->get_obstacle_range()) {
-                return allowed;
+                return tightest;
             }
             RoadServer::Link link;
             if (!_route_link(p_placement, step++, road, toward, link) ||
                 roads->road_get_length(link.road) < MIN_PASSABLE_LENGTH) {
                 // a dead end - or a road that leads nowhere, never entered: it stops there
-                return MIN(allowed, braked_velocity(0.0, MAX(left - step_distance, 0.0), deceleration));
+                keep_tighter({0.0, left, false});
+                return tightest;
             }
             road = link.road;
             toward = travelled_toward(link.end);
@@ -352,8 +364,23 @@ namespace godot {
                 continue;
             }
             const Ref<RoadVehicleController> controller = placement->controller;
-            const double distance =
-                    controller->process_movement(p_delta, _allowed_velocity(vehicle, *placement, p_delta));
+            placement->look_ahead_in -= p_delta;
+            if (placement->look_ahead_in <= 0.0) {
+                placement->ahead_limit = _look_ahead(vehicle, *placement);
+                placement->travelled_since_look = 0.0;
+                placement->look_ahead_in = MAX(placement->look_ahead_in + LOOK_AHEAD_INTERVAL, 0.0);
+            }
+            // what is ahead is braked for from where this step takes it
+            const double ahead_velocity = _limit_velocity(
+                    placement->ahead_limit, placement->travelled_since_look + (controller->get_velocity() * p_delta),
+                    controller->get_acceleration_limit());
+            double allowed =
+                    MIN(ahead_velocity, controller->get_wanted_velocity() / RoadVehicleController::KMH_PER_MPS);
+            if (controller->get_max_velocity() > 0.0) {
+                allowed = MIN(allowed, controller->get_max_velocity() / RoadVehicleController::KMH_PER_MPS);
+            }
+            const double distance = controller->process_movement(p_delta, allowed);
+            placement->travelled_since_look += distance;
             if (distance > 0.0 && _move(vehicle, *placement, distance)) {
                 _place(vehicle, *vehicles.getptr(vehicle));
                 moved.push_back(vehicle);

@@ -4,6 +4,7 @@
 
 #include <godot_cpp/classes/base_material3d.hpp>
 #include <godot_cpp/classes/geometry3d.hpp>
+#include <godot_cpp/classes/geometry_instance3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -216,13 +217,14 @@ namespace godot {
     }
 
     RID SceneModelRenderingBackend::instance_create(
-            const Ref<Resource> &p_model, const Instancer p_instancer, const InstanceKind /* p_instance_kind */) {
+            const Ref<Resource> &p_model, const Instancer p_instancer, const InstanceKind p_instance_kind) {
         const Ref<PackedScene> model = p_model;
         ERR_FAIL_COND_V(model.is_null(), RID());
         const RID rid = UtilityFunctions::rid_from_int64(UtilityFunctions::rid_allocate_id());
         InstanceData &instance = instances[rid];
         instance.model = model;
         instance.instancer = p_instancer;
+        instance.instance_kind = p_instance_kind;
         _read_model(instance);
         emit_signal(instance_created_signal, rid);
         return rid;
@@ -295,7 +297,9 @@ namespace godot {
     }
 
     /// Optimized: a RenderingServer instance a mesh; as nodes: a scene made of the model under the
-    /// attached node
+    /// attached node. A dynamic instance moves: baked into SDFGI's distance field where a cascade
+    /// found it, it would shade itself black after it has moved on - it takes the GI without making
+    /// it (GeometryInstance3D::GI_MODE_DYNAMIC)
     void SceneModelRenderingBackend::instance_build(const RID &p_instance) {
         InstanceData *instance = instances.getptr(p_instance);
         ERR_FAIL_NULL(instance);
@@ -303,11 +307,18 @@ namespace godot {
         if (instance->model.is_null()) {
             return;
         }
+        const bool dynamic = instance->instance_kind == ModelRenderingServer::INSTANCE_KIND_DYNAMIC;
         if (instance->instancer == ModelRenderingServer::INSTANCER_OPTIMIZED) {
             RenderingServer *rs = RenderingServer::get_singleton();
             for (const MeshPart &mesh: instance->meshes) {
                 const RID render_instance = rs->instance_create();
                 rs->instance_set_base(render_instance, mesh.mesh->get_rid());
+                if (dynamic) {
+                    rs->instance_geometry_set_flag(
+                            render_instance, RenderingServer::INSTANCE_FLAG_USE_BAKED_LIGHT, false);
+                    rs->instance_geometry_set_flag(
+                            render_instance, RenderingServer::INSTANCE_FLAG_USE_DYNAMIC_GI, true);
+                }
                 instance->render_instances.push_back(render_instance);
             }
         } else {
@@ -315,6 +326,13 @@ namespace godot {
             ERR_FAIL_NULL_MSG(attached, "A scene model built as nodes is built under its attached Node3D");
             Node3D *root = Object::cast_to<Node3D>(instance->model->instantiate());
             ERR_FAIL_NULL_MSG(root, "A scene model's root is a Node3D");
+            if (dynamic) {
+                const TypedArray<Node> geometries = root->find_children("*", "GeometryInstance3D", true, false);
+                for (int i = 0; i < geometries.size(); i++) {
+                    Object::cast_to<GeometryInstance3D>(geometries[i])
+                            ->set_gi_mode(GeometryInstance3D::GI_MODE_DYNAMIC);
+                }
+            }
             attached->add_child(root);
             instance->root_id = root->get_instance_id();
         }
@@ -326,7 +344,8 @@ namespace godot {
     void SceneModelRenderingBackend::instance_set_options(
             const RID & /* p_instance */, const String & /* p_data_path */, const PackedStringArray & /* p_skins */,
             const Array & /* p_exclude_node_names */, const bool /* p_force_alpha */,
-            const TypedArray<NodePath> & /* p_force_alpha_part_paths */, const int /* p_max_texture_size */) {
+            const TypedArray<NodePath> & /* p_force_alpha_part_paths */, const int /* p_max_texture_size */,
+            const bool /* p_low_poly_interior */) {
         // a scene is drawn whole, in its own materials
     }
 

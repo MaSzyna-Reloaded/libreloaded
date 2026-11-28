@@ -1,6 +1,7 @@
 #include "cabin/Cabin3D.hpp"
 #include "cabin/CabinHUDMouseSystem.hpp"
 #include "cache/ResourceCache.hpp"
+#include "cache/ResourceCacheServer.hpp"
 #include "driver/DriverImplementation.hpp"
 #include "driver/DriverServer.hpp"
 #include "driver/DriverState.hpp"
@@ -171,6 +172,7 @@ GameLog *game_log_singleton = nullptr;
 UserSettings *user_settings_singleton = nullptr;
 SimulationServer *simulation_server_singleton = nullptr;
 GameDataServer *game_data_server_singleton = nullptr;
+ResourceCacheServer *resource_cache_server_singleton = nullptr;
 ResourceLazyLoader *resource_lazy_loader_singleton = nullptr;
 TrackServer *track_server_singleton = nullptr;
 PersonServer *person_server_singleton = nullptr;
@@ -217,6 +219,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(GameDataServer);
         GDREGISTER_ABSTRACT_CLASS(ReloadedTranslationServer);
         GDREGISTER_CLASS(ResourceCache);
+        GDREGISTER_CLASS(ResourceCacheServer);
         GDREGISTER_CLASS(ResourceLazyLoader);
         GDREGISTER_CLASS(PlanarMirror3D);
         GDREGISTER_CLASS(RailMiniMap);
@@ -372,6 +375,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         RailVehicleServer::project_settings_register();
         ReloadedTranslationServer::project_settings_register();
         ResourceCache::project_settings_register();
+        ResourceCacheServer::project_settings_register();
         ResourceLazyLoader::project_settings_register();
         SceneryStreamingServer::project_settings_register();
         SimulationServer::project_settings_register();
@@ -389,6 +393,10 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
         user_settings_singleton = memnew(UserSettings);
         Engine::get_singleton()->register_singleton("UserSettings", user_settings_singleton); // 1
+        // after UserSettings, whose player's maximum size it trims the caches to; before
+        // GameDataServer, which clears the caches through it, and every ResourceCache
+        resource_cache_server_singleton = memnew(ResourceCacheServer);
+        Engine::get_singleton()->register_singleton("ResourceCacheServer", resource_cache_server_singleton); // 1d
         // after UserSettings is registered: the constructor follows the game directory; before
         // every server whose constructor creates a ResourceCache, which follows its cache clearing
         game_data_server_singleton = memnew(GameDataServer);
@@ -806,6 +814,14 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     if (game_data_server_singleton != nullptr) {
         memdelete(game_data_server_singleton);
         game_data_server_singleton = nullptr;
+    }
+
+    if (Engine::get_singleton()->has_singleton("ResourceCacheServer")) {
+        Engine::get_singleton()->unregister_singleton("ResourceCacheServer"); // 1d
+    }
+    if (resource_cache_server_singleton != nullptr) {
+        memdelete(resource_cache_server_singleton);
+        resource_cache_server_singleton = nullptr;
     }
 
     if (Engine::get_singleton()->has_singleton("UserSettings")) {

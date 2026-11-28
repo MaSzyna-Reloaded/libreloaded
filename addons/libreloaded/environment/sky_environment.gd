@@ -23,6 +23,13 @@ const BLOOM_INTENSITY_DEFAULT: float = 0.3
 ## without one; at 1 the table as it is, or no correction at all
 const GAMMA_DEFAULT: float = 1.0
 const GAMMA_CURVE_STEPS: int = 256
+## The player's film grain (render/film_grain_enabled, render/film_grain_intensity): drawn over the
+## tonemapped 3D view by a full-screen pass on a canvas layer below the interface's (layer 0), off
+## unless the player turns it on
+const FILM_GRAIN_SHADER: Shader = preload("film_grain.gdshader")
+const FILM_GRAIN_LAYER: int = -1
+const FILM_GRAIN_ENABLED_DEFAULT: bool = false
+const FILM_GRAIN_INTENSITY_DEFAULT: float = 0.12
 
 const SHADOW_SCENERY_ENABLED_SETTING: StringName = &"reloaded/scenery/shadows/enabled"
 const SHADOW_CABIN_ENABLED_SETTING: StringName = &"reloaded/cabin/shadows/enabled"
@@ -60,6 +67,16 @@ const SHADOW_TEXTURE_QUALITY_SIZES: PackedInt32Array = [2048, 4096, 8192, 16384]
 ## The largest atlas Godot takes (rendering/lights_and_shadows/directional_shadow/size): MAXIMUM's
 ## map does not fit twice, so beside a cab light the sun keeps half of it
 const SHADOW_ATLAS_MAX_SIZE: int = 16384
+## How the atlas of the omni and spot lights' shadows (a street lamp's) is shared out, quadrant by
+## quadrant: the light nearest the camera gets a quadrant of its own - half the atlas across - and
+## the rest four, sixteen and sixty-four maps a quadrant. Godot's own first quadrant holds four, so
+## a lamp lighting the cab through its window drew its shadow from a quarter of that
+const POSITIONAL_SHADOW_QUADRANTS: Array[Viewport.PositionalShadowAtlasQuadrantSubdiv] = [
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_1,
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_4,
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_16,
+    Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_64,
+]
 
 # The default values of the shadow settings, which ReloadedProjectSettings registers - the only
 # place they are written down
@@ -81,8 +98,8 @@ const SHADOW_CABIN_SPLITS: Array[float] = [0.114, 0.162, 0.64]
 const SHADOW_CABIN_MAX_DISTANCE: float = 22.0
 const SHADOW_CABIN_BLUR: float = 0.46
 const SHADOW_CABIN_NORMAL_BIAS: float = 5.0
-## The cab gets a sun of its own that lights only EnvironmentNode.CABIN_RENDER_LAYER, with
-## the cabin/shadows settings, while the world's sun keeps the scenery ones in the cab view too
+## In the cab view the cab gets a sun of its own that lights only EnvironmentNode.CABIN_RENDER_LAYER,
+## with the cabin/shadows settings, while the world's sun keeps the scenery ones
 const CABIN_SHADOWS_IMPROVED_SETTING: StringName = &"reloaded/cabin/improve_shadows_quality"
 const CABIN_SHADOWS_IMPROVED: bool = true
 ## Shadow maps drawn with front faces culled (opengl33renderer.cpp:1758)
@@ -396,7 +413,9 @@ const FOG_NIGHT_DISTANCE_FACTOR_DEFAULT: float = 0.4255
 var environment_node: EnvironmentNode
 var _environment: Environment
 var _camera_attributes: CameraAttributesPractical
-## The cab light of each world light, when CABIN_SHADOWS_IMPROVED_SETTING is on
+## The full-screen pass of the film grain, shown while the player has it on
+var _film_grain: ColorRect
+## The cab light of each world light, in the cab view when CABIN_SHADOWS_IMPROVED_SETTING is on
 var _cabin_lights: Dictionary[DirectionalLight3D, DirectionalLight3D] = {}
 var _dirty_visuals: bool = true
 var _dirty_lights: bool = true
@@ -439,6 +458,16 @@ func _ready() -> void:
     world_environment.camera_attributes = _camera_attributes
     create_nodes(world_environment, _environment)
     add_child(world_environment, false, INTERNAL_MODE_BACK)
+    var film_grain_layer: CanvasLayer = CanvasLayer.new()
+    film_grain_layer.layer = FILM_GRAIN_LAYER
+    _film_grain = ColorRect.new()
+    _film_grain.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _film_grain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var film_grain_material: ShaderMaterial = ShaderMaterial.new()
+    film_grain_material.shader = FILM_GRAIN_SHADER
+    _film_grain.material = film_grain_material
+    film_grain_layer.add_child(_film_grain)
+    add_child(film_grain_layer, false, INTERNAL_MODE_BACK)
 
 
 func _enter_tree() -> void:
@@ -467,6 +496,7 @@ func _process(delta: float) -> void:
     if _dirty_lights:
         _dirty_lights = false
         apply_light_configuration()
+        _apply_positional_shadow_settings()
     if _dirty_time:
         _dirty_time = false
         apply_time_configuration()
@@ -544,6 +574,10 @@ func _apply_environment_configuration() -> void:
         UserSettings.get_setting("render", "glow_intensity", GLOW_INTENSITY_DEFAULT))
     _environment.glow_bloom = float(
         UserSettings.get_setting("render", "bloom_intensity", BLOOM_INTENSITY_DEFAULT))
+    _film_grain.visible = bool(
+        UserSettings.get_setting("render", "film_grain_enabled", FILM_GRAIN_ENABLED_DEFAULT))
+    (_film_grain.material as ShaderMaterial).set_shader_parameter(&"amount", float(
+        UserSettings.get_setting("render", "film_grain_intensity", FILM_GRAIN_INTENSITY_DEFAULT)))
     _environment.adjustment_enabled = adjustment_enabled
     var gamma: float = float(UserSettings.get_setting("render", "gamma", GAMMA_DEFAULT))
     if not is_equal_approx(gamma, _gamma) or not color_correction == _color_correction_table:
@@ -648,16 +682,15 @@ func _on_project_settings_changed() -> void:
 
 
 ## Copies what the sky backend drives on a world light every frame (Skydome writes colour, energy
-## and, from the clouds, the shadow opacity and the angular size that softens the shadow -
-## Skydome.gd:775 - all with no signal) onto its cab light. The direction comes
-## with the node tree: the cab light is a child with an identity transform. At most two entries.
+## and, from the clouds, the shadow opacity - Skydome.gd:775 - all with no signal) onto its cab
+## light. The direction comes with the node tree: the cab light is a child with an identity
+## transform. At most two entries.
 func sync_cabin_lights() -> void:
     for world_light: DirectionalLight3D in _cabin_lights:
         var cabin_light: DirectionalLight3D = _cabin_lights[world_light]
         cabin_light.light_color = world_light.light_color
         cabin_light.light_energy = world_light.light_energy
         cabin_light.shadow_opacity = world_light.shadow_opacity
-        cabin_light.light_angular_distance = world_light.light_angular_distance
 
 
 ## Gives a world light a cab light of its own: it lights only the cab layer and the world light no
@@ -670,6 +703,11 @@ func _create_cabin_light(world_light: DirectionalLight3D) -> void:
     # the world light already draws the sun in the sky and scatters in the fog
     cabin_light.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
     cabin_light.light_volumetric_fog_energy = 0.0
+    # The world light's angular size stays out: on the cab's dense cascades a shadow softened by
+    # it cost the GPU 15.6 ms more at the sun's 0.53 degrees and 40 ms more at the clouds' 15
+    # (1920x1080, FINDINGS.md 2026-11-23). The cab's shadow is softened by its own blur
+    # (SHADOW_CABIN_BLUR_SETTING)
+    cabin_light.light_angular_distance = 0.0
     world_light.add_child(cabin_light, false, Node.INTERNAL_MODE_BACK)
     world_light.light_cull_mask &= ~EnvironmentNode.CABIN_RENDER_LAYER
     _cabin_lights[world_light] = cabin_light
@@ -683,12 +721,16 @@ func _free_cabin_light(world_light: DirectionalLight3D) -> void:
 
 
 ## A world light takes the scenery settings, its cab light the cabin ones; the cab light is there
-## while CABIN_SHADOWS_IMPROVED_SETTING is on, and comes and goes with it
+## in the cab view while CABIN_SHADOWS_IMPROVED_SETTING is on, and comes and goes with both. The
+## exterior view hides the cab (Player): a cab light there would light nothing and still double
+## the shadow atlas (get_shadow_atlas_size())
 func _apply_sun_settings(world_light: DirectionalLight3D) -> void:
-    var improved: bool = bool(ProjectSettings.get_setting(CABIN_SHADOWS_IMPROVED_SETTING))
-    if improved and not _cabin_lights.has(world_light):
+    var with_cabin_light: bool = (
+        bool(ProjectSettings.get_setting(CABIN_SHADOWS_IMPROVED_SETTING)) and environment_node.cabin_view
+    )
+    if with_cabin_light and not _cabin_lights.has(world_light):
         _create_cabin_light(world_light)
-    elif not improved and _cabin_lights.has(world_light):
+    elif not with_cabin_light and _cabin_lights.has(world_light):
         _free_cabin_light(world_light)
     RenderingServer.directional_shadow_atlas_set_size(
         get_shadow_atlas_size(), bool(ProjectSettings.get_setting(DIRECTIONAL_SHADOW_16_BITS_SETTING))
@@ -699,6 +741,23 @@ func _apply_sun_settings(world_light: DirectionalLight3D) -> void:
     _apply_directional_light_settings(world_light, ShadowView.SCENERY)
     if _cabin_lights.has(world_light):
         _apply_directional_light_settings(_cabin_lights[world_light], ShadowView.CABIN)
+
+
+## The omni and spot lights' shadows are as sharp as the sun's: their atlas is the shadow texture
+## quality's map, shared out by POSITIONAL_SHADOW_QUADRANTS. The viewport the world is drawn in
+## holds it
+func _apply_positional_shadow_settings() -> void:
+    var viewport: Viewport = get_viewport()
+    if viewport == null:
+        return
+    viewport.positional_shadow_atlas_size = get_positional_shadow_atlas_size()
+    for quadrant: int in POSITIONAL_SHADOW_QUADRANTS.size():
+        viewport.set_positional_shadow_atlas_quadrant_subdiv(quadrant, POSITIONAL_SHADOW_QUADRANTS[quadrant])
+
+
+## The size of the omni and spot lights' shadow atlas: the shadow texture quality's map
+func get_positional_shadow_atlas_size() -> int:
+    return SHADOW_TEXTURE_QUALITY_SIZES[int(ProjectSettings.get_setting(SHADOW_TEXTURE_QUALITY_SETTING))]
 
 
 ## The size the directional shadow atlas is set to: the shadow map of the shadow texture quality for the
@@ -713,11 +772,8 @@ func get_shadow_atlas_size() -> int:
 func _apply_directional_light_settings(light: DirectionalLight3D, view: ShadowView) -> void:
     var cabin: bool = view == ShadowView.CABIN
     light.shadow_reverse_cull_face = bool(ProjectSettings.get_setting(REVERSE_CULL_FACE_SETTING))
-    # the cab light casts shadows only while there is a cab to look at; it keeps lighting the cab
-    # seen from outside
     light.shadow_enabled = (
         bool(ProjectSettings.get_setting(SHADOW_CABIN_ENABLED_SETTING))
-        and environment_node.cabin_view
         if cabin
         else bool(ProjectSettings.get_setting(SHADOW_SCENERY_ENABLED_SETTING))
     )

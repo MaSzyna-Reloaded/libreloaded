@@ -4,9 +4,11 @@ namespace godot {
     void SceneryStreamingProvider::_bind_methods() {
         GDVIRTUAL_BIND(_get_chunk_cells)
         GDVIRTUAL_BIND(_chunk_get_overhang, "cell")
+        GDVIRTUAL_BIND(_get_range)
         GDVIRTUAL_BIND(_get_content_kinds)
         GDVIRTUAL_BIND(_chunk_load, "cell", "kind")
         ClassDB::bind_method(D_METHOD("get_chunk_cells"), &SceneryStreamingProvider::get_chunk_cells);
+        ClassDB::bind_method(D_METHOD("get_range"), &SceneryStreamingProvider::get_range);
         ClassDB::bind_method(D_METHOD("chunk_get_overhang", "cell"), &SceneryStreamingProvider::chunk_get_overhang);
         ClassDB::bind_method(D_METHOD("get_content_kinds"), &SceneryStreamingProvider::get_content_kinds);
         ClassDB::bind_method(D_METHOD("chunk_load", "cell", "kind"), &SceneryStreamingProvider::chunk_load);
@@ -16,6 +18,7 @@ namespace godot {
         BIND_ENUM_CONSTANT(CONTENT_SOUNDS);
         BIND_ENUM_CONSTANT(CONTENT_LINES);
         BIND_ENUM_CONSTANT(CONTENT_MESHES);
+        BIND_ENUM_CONSTANT(CONTENT_HEIGHTMAP);
         BIND_ENUM_CONSTANT(CONTENT_KIND_MAX);
     }
 
@@ -29,6 +32,12 @@ namespace godot {
         float overhang = 0.0F;
         GDVIRTUAL_CALL(_chunk_get_overhang, p_cell, overhang);
         return overhang;
+    }
+
+    float SceneryStreamingProvider::get_range() const {
+        float range = 0.0F;
+        GDVIRTUAL_CALL(_get_range, range);
+        return range;
     }
 
     PackedInt32Array SceneryStreamingProvider::get_content_kinds() const {

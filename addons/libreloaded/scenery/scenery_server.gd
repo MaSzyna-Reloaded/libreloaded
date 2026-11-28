@@ -427,7 +427,7 @@ static func build_model(model_data:ModelData, model_name:String, world_3d:World3
         model_data.rendering_backend,
         model_name,
         model_data.skins,
-        Transform3D(Basis.from_euler(model_data.rotation), model_data.position),
+        Transform3D(Basis.from_euler(model_data.rotation).scaled(model_data.scale), model_data.position),
         model_data.range_min,
         model_data.range_max,
         world_3d.scenario,

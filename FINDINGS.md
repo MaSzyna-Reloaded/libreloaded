@@ -202,6 +202,9 @@ anything. Open work belongs in `TODO.md`.
 * A shadow's normal bias is texel x `shadow_normal_bias` per cascade: compute it against the
   thinnest caster before tuning; two shadowed directional lights halve the atlas. *(09-27 thin
   station objects lost their sun shadows)*
+* A shadow softened by the light's angular size costs by the texels it spans: never on a light
+  with dense cascades (the cab light); measure such a light by pass. *(11-23 the cab view at half
+  the frame rate)*
 * A gap the vertices do not show is a cut-out: check the texture's alpha where the UVs land. The
   trackbed's texture length is its material's `size:`, not the track's tex_length. *(09-28 the
   trackbed hung over the terrain)*
@@ -584,6 +587,9 @@ anything. Open work belongs in `TODO.md`.
 * Code whose output is cached on disk bumps its cache tag (`structure-vN`, `CACHE_VERSION`,
   `FIZ_PARSER_FORMAT_VERSION`) in the same commit, and every `ResourceCache` is wired into "Clear
   cache". *(09-20 low-poly interior; 09-20 E186 main tank)*
+* A cache entry used in the session is never trimmed away (`ResourceCacheServer`): streamed and
+  lazily loaded pieces read its files long after the cache handed it out, and files written beside
+  an entry (`get_file_path()`) count as its use. *(11-21 the caches' maximum size)*
 * Never delete a code span with a regex whose optional prefix can match across lines, and verify
   scripted edits structurally. `undefined symbol` means a deleted definition. *(09-22 regex that
   deleted 588 lines)*

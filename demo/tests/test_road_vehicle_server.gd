@@ -124,6 +124,24 @@ func test_it_stops_behind_a_standing_vehicle_with_its_gap() -> void:
             "it stands %.2f m behind, its gap is %.2f m" % [gap, FOLLOWING_GAP])
 
 
+func test_it_brakes_for_a_vehicle_put_ahead_of_it_while_it_drives() -> void:
+    var road:RID = _straight(0.0, 1000.0)
+    var following:RID = _vehicle(road, 20.0, RoadServer.ROAD_END_END, WANTED_VELOCITY)
+    await step(ticks(15.0))
+    # a little farther than it brakes in from its velocity with its gap and the vehicles' length:
+    # it brakes before it next looks ahead (RoadVehicleServer.LOOK_AHEAD_INTERVAL)
+    var standing:RID = _vehicle(road, _x(following) + 60.0, RoadServer.ROAD_END_END, 0.0)
+
+    var nearest:float = INF
+    for _tick:int in ticks(30.0):
+        await step(1)
+        nearest = minf(nearest, _x(standing) - _x(following) - VEHICLE_LENGTH)
+
+    assert_almost_eq(VehicleServer.vehicle_get_velocity(following), 0.0, VELOCITY_TOLERANCE)
+    assert_gt(nearest, FOLLOWING_GAP - PLACE_TOLERANCE,
+            "it came %.2f m near, its gap is %.2f m" % [nearest, FOLLOWING_GAP])
+
+
 func test_vehicles_in_their_lanes_pass_each_other() -> void:
     var road:RID = _straight(0.0, 1000.0)
     var east:RID = _vehicle(road, 400.0, RoadServer.ROAD_END_END, WANTED_VELOCITY)

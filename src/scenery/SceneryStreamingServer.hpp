@@ -62,8 +62,14 @@ namespace godot {
             /// The camera, the anchor and the content are looked at this often [s]; only the work
             /// a plan leaves - building, clearing - runs every frame, and only while there is some
             static constexpr double WATCH_INTERVAL_SEC = 0.1;
-            /// Time spent building and clearing per frame once the streaming has caught up
+            /// Time spent building and clearing per frame while the camera moves
             static constexpr uint64_t BUDGET_MSEC = 4;
+            /// ...and while it stands it grows by this a frame, up to CATCHUP_BUDGET_MSEC: what a
+            /// moving camera left behind is built while it looks around, and back at BUDGET_MSEC
+            /// the moment it moves again
+            static constexpr uint64_t STANDING_BUDGET_STEP_MSEC = 2;
+            /// A camera that moved less than this since it was last looked at stands [m]
+            static constexpr float STANDING_CAMERA_M = 1.0;
             /// ...and while an area is filled - a new camera, or one that jumped: filling a scenery
             /// in means thousands of builds, and at the idle budget that takes minutes of pop-in
             /// (the backlog only drains at frame rate times budget). Never while driving through the
@@ -107,6 +113,9 @@ namespace godot {
                     Callable preload; // (rid) -> Variant, on the worker thread; may be invalid
                     Callable build;   // (rid, preloaded) on the main thread
                     Callable clear;   // (rid) on the main thread
+                    /// What its pieces are built of, renewed by owner_rebuild(): a piece prepared
+                    /// of an older one is not built
+                    uint64_t generation = 0;
             };
             /// Main thread time spent in one kind of work - in the second being counted, and in the
             /// last full one for the debug window
@@ -139,7 +148,9 @@ namespace godot {
                     /// Wanted only ahead of its range (PREFETCH_M): nothing waits for it
                     bool ahead = false;
                     uint64_t wanted_revision = 0; // 0 means out of range
-                    uint64_t queued_revision = 0;
+                    /// In the load list, being prepared or waiting to be built: a plan does not queue
+                    /// it again, and what is prepared is built whichever plan queued it
+                    bool queued = false;
             };
 
             struct Chunk {
@@ -158,7 +169,7 @@ namespace godot {
                     Variant preloaded;
                     Vector2i chunk;
                     float distance = 0.0;
-                    uint64_t revision = 0;
+                    uint64_t generation = 0; // its owner's, as it was queued
             };
 
             struct PendingClear {
@@ -181,13 +192,20 @@ namespace godot {
                     bool adopted = false;
                     bool ahead = false; // wanted only ahead of the draw distance (PREFETCH_M)
                     uint64_t wanted_revision = 0;
-                    uint64_t queued_revision = 0;
+                    /// Loading or waiting to be supplied, as Entry::queued
+                    bool queued = false;
+                    /// What it holds, renewed by provider_refresh_cell(): a load of an older one is
+                    /// not supplied
+                    uint64_t generation = 0;
                     /// What the consumers made of the cell's content, by kind
                     std::array<Vector<RID>, CONTENT_KIND_COUNT> adopted_rids;
             };
             struct Provider {
                     Ref<SceneryStreamingProvider> provider;
                     RID scenario;
+                    /// How far from the camera its cells are wanted, 0 the draw distance
+                    /// (SceneryStreamingProvider::get_range())
+                    float range = 0.0;
                     Vector<ContentKind> kinds;
                     HashMap<Vector2i, ProviderCell> cells;
                     /// The cells whose content is out, wherever the camera is
@@ -200,7 +218,7 @@ namespace godot {
                     Vector2i cell;
                     std::array<Array, CONTENT_KIND_COUNT> items;
                     float distance = 0.0;
-                    uint64_t revision = 0;
+                    uint64_t generation = 0; // its cell's, as it was queued
             };
             struct PendingWithdraw {
                     RID provider_rid;
@@ -250,11 +268,12 @@ namespace godot {
             float draw_distance = DEFAULT_DRAW_DISTANCE_M;
 
             ObjectID camera_id;
-            /// Where the anchor is - its chunk is kept built wherever the camera is - and whether
-            /// there is one
+            /// Where the anchor is - what is within range of it is kept built as what is within
+            /// range of the camera - and whether there is one
             Vector3 anchor_position;
             bool anchored = false;
-            /// Its chunk as last looked at (_watch_camera()), for the plan
+            /// Whether there is one and its chunk as last looked at (_watch_camera()): a plan when it
+            /// enters another chunk
             bool has_anchor_chunk = false;
             Vector2i anchor_chunk;
             /// main thread only: the camera's position as last looked at (WATCH_INTERVAL_SEC), kept once it is
@@ -274,8 +293,14 @@ namespace godot {
             Ref<SceneTreeTimer> watch_timer;
             /// Main thread only: _process_streaming() is connected to process_frame - while there is work
             bool applying = false;
+            /// Main thread only: the frame's building budget - BUDGET_MSEC, growing while the camera
+            /// stands (STANDING_BUDGET_STEP_MSEC), CATCHUP_BUDGET_MSEC while an area is filled...
+            uint64_t budget_msec = BUDGET_MSEC;
+            /// ...and the camera's position it grew at, a move from which sets it back
+            Vector3 budget_camera_position;
             /// What the plan left the worker to load, nearest last: the builds with a preload and the
-            /// providers' cells
+            /// providers' cells. The worker takes them a batch at a time, so a new plan replaces only
+            /// what it has not taken yet
             Vector<PendingBuild> loading_builds;
             Vector<PendingProvide> loading_provides;
             /// Published by the worker - by the plan itself, a build with nothing to preload
@@ -322,12 +347,13 @@ namespace godot {
             static float _get_chunk_distance(const Vector2i &p_key, const Vector3 &p_position);
             void _sort_chunk(Chunk &p_chunk);
             Entry *_get_entry(const RID &p_stream_rid);
-            /// Loads on the worker what the plan of p_revision queued, nearest first, and publishes
-            /// it; stops once another plan replaces it
-            void
-            _load(uint64_t p_revision, const Vector<PendingProvide> &p_provides, const Vector<PendingBuild> &p_builds);
+            /// Loads on the worker what the plan queued, nearest first, a provider's cell or a batch
+            /// of builds at a time, each published as it is done - a new plan replaces the rest
+            void _load();
             void _drop_freed_work();
-            void _drop_stale_work();
+            /// What the last plan left to load and the worker has not taken yet goes, and is queued
+            /// again by the next plan if still wanted; what is prepared is kept
+            void _drop_unloaded_work();
             bool _is_area_ready_locked(int p_chunk_radius) const;
             int _get_pending_nearby_locked(int p_chunk_radius) const;
             void _plan(const Vector3 &p_position);
@@ -398,9 +424,9 @@ namespace godot {
             bool streaming_is_enabled() const;
 
             void streaming_set_camera(uint64_t p_camera_id);
-            /* Where the anchor is: its chunk is kept built - never cleared, its pieces built with
-             * the prefetch budget while out of the camera's range - wherever the camera goes and
-             * however far it is. Said again as the anchor moves; none after streaming_clear_anchor() */
+            /* Where the anchor is: what is within range of it is kept built as what is within range
+             * of the camera - a chunk's distance is the nearer of the two - wherever the camera goes.
+             * Said again as the anchor moves; none after streaming_clear_anchor() */
             void streaming_set_anchor_position(const Vector3 &p_position);
             void streaming_clear_anchor();
             float streaming_get_draw_distance() const;
