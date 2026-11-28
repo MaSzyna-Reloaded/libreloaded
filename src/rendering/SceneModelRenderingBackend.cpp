@@ -283,7 +283,12 @@ namespace godot {
                             mesh_instance->get_visibility_range_end_margin(),
                             static_cast<RenderingServer::VisibilityRangeFadeMode>(
                                     mesh_instance->get_visibility_range_fade_mode()),
-                            mesh_instance->get_custom_aabb()});
+                            mesh_instance->get_custom_aabb(),
+                            mesh_instance->get_visibility_parent().is_empty()
+                                    ? StringName()
+                                    : StringName(String(names[names.size() - 1])
+                                                         .path_join(String(mesh_instance->get_visibility_parent()))
+                                                         .simplify_path())});
         }
         // a collision shape of a body of a role: on its role's layer (the model format's collisions)
         const CollisionShape3D *shape = Object::cast_to<CollisionShape3D>(p_node);
@@ -710,6 +715,18 @@ namespace godot {
                     rs->instance_set_custom_aabb(render_instance, mesh.custom_aabb);
                 }
                 instance->render_instances.push_back(render_instance);
+            }
+            // each mesh drawn while the one it depends on is hidden for being near, as its node is
+            for (int index = 0; index < instance->meshes.size(); ++index) {
+                const StringName &parent = instance->meshes[index].visibility_parent;
+                for (int other = 0; !parent.is_empty() && other < instance->meshes.size(); ++other) {
+                    const Vector<StringName> &names = instance->meshes[other].path_names;
+                    if (names[names.size() - 1] == parent) {
+                        rs->instance_set_visibility_parent(
+                                instance->render_instances[index], instance->render_instances[other]);
+                        break;
+                    }
+                }
             }
         } else {
             Node3D *attached = Object::cast_to<Node3D>(ObjectDB::get_instance(instance->attached_id));

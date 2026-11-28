@@ -49,6 +49,9 @@ namespace godot {
                     /* The box its node gives it in place of its mesh's own, none of no size: where its
                      * distance from the camera is measured from, its levels' one point */
                     AABB custom_aabb;
+                    /* The mesh it is drawn only while that one is hidden for being near (its node's
+                     * visibility_parent, Godot's HLOD), by its path from the root; none of none */
+                    StringName visibility_parent;
             };
 
             /* One collision shape of a model: the nodes from the scene's root down to its shape's node,
