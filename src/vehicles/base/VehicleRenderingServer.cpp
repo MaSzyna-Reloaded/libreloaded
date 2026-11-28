@@ -384,7 +384,8 @@ namespace godot {
         }
     }
 
-    /* The models this server built drawn in p_scenario - in none for an empty one */
+    /* The models this server built drawn in p_scenario - in none for an empty one, those built as
+     * nodes hidden with their holder */
     void VehicleRenderingServer::_show_models(const RID &p_vehicle, const Visual &p_visual, const RID &p_scenario) {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         ERR_FAIL_NULL(models);
@@ -396,6 +397,10 @@ namespace godot {
             }
             for (const RID &instance: p_visual.attachments) {
                 models->instance_set_scenario(instance, p_scenario);
+            }
+            // the models built as nodes under the holder, drawn of no scenario: shown with it
+            if (Node3D *holder = Object::cast_to<Node3D>(ObjectDB::get_instance(p_visual.holder)); holder != nullptr) {
+                holder->set_visible(p_scenario.is_valid());
             }
         }
         _vehicle_scenario_changed(p_vehicle, p_scenario);
@@ -851,6 +856,8 @@ namespace godot {
                 holder->set_owner(node->get_owner() != nullptr ? node->get_owner() : node);
             }
             holder->set_global_transform(p_visual.transform);
+            // drawn in a world as the optimized instances are: once placed, while it has one
+            holder->set_visible(p_visual.placed && p_visual.scenario.is_valid());
             p_visual.holder = ObjectID(holder->get_instance_id());
             models->instance_attach_object_instance_id(p_visual.model, p_visual.holder);
             if (p_visual.low_poly.is_valid()) {
