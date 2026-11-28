@@ -174,3 +174,22 @@ func test_other_parts_hidden_are_hidden_on_the_vehicle_drawn_the_first_drawn_aga
     assert_true((find_child("Frame", true, false) as Node3D).visible, "the part hidden before drawn again")
     assert_false((find_child("Body", true, false) as Node3D).visible, "the exterior's other part hidden")
     assert_false((find_child("Seats", true, false) as Node3D).visible, "and the low-poly interior's")
+
+
+## The node the models of a vehicle drawn in detail are built under: named after its model's file
+const HOLDER:String = "scene_model"
+
+
+func test_models_built_as_nodes_are_hidden_with_the_vehicles_scenario() -> void:
+    var vehicle:RID = _vehicle_drawn(BACKEND)
+    var holder:Node3D = find_child(HOLDER, true, false) as Node3D
+    assert_not_null(holder, "built as nodes, an editable vehicle")
+    if not holder:
+        return
+    var scenario:RID = holder.get_world_3d().scenario
+    assert_true(holder.visible, "drawn in its world")
+
+    RailVehicleRenderingServer.vehicle_set_scenario(vehicle, RID())
+    assert_false(holder.visible, "of no scenario, as the optimized instances are drawn in none")
+    RailVehicleRenderingServer.vehicle_set_scenario(vehicle, scenario)
+    assert_true(holder.visible, "drawn again in its world")
