@@ -3,7 +3,8 @@
 // drawn on a quad that faces the camera, added on top. Nothing of a texture: every part is a function
 // of the distance from the lamp's centre and of the angle round it.
 // - the lamp's level (glare_level, its channel's) scales it, a dimmed lamp a smaller star
-// - it shows only towards the lamp's beam, fading out to the spot's edge (cos_outer; -1 for a point)
+// - whole within the lamp's beam, fading out to the spot's edge (cos_outer; -1 for a point), a faint
+//   glow of side_glow seen from aside in front of the lamp, none behind it
 // - by day it fades away (reloaded_light_level, the environment's)
 // - the rays turn as the camera goes round the lamp, not on their own
 // - from afar it keeps min_screen_size of the screen's height
@@ -21,16 +22,18 @@ instance uniform float glare_level = 0.0;
 instance uniform float cos_outer = -1.0;
 
 // the quad's size [m] near the camera, and the least of the screen's height it keeps from afar
-uniform float glare_size = 2.5;
-uniform float min_screen_size = 0.12;
+uniform float glare_size = 1.6;
+uniform float min_screen_size = 0.08;
 // the light level from which the glare is gone, and the one up to which it is whole
 uniform float day_light_level = 0.6;
 uniform float night_light_level = 0.15;
 uniform float intensity = 1.0;
+// how much of it is seen from aside, out of the lamp's beam but in front of it
+uniform float side_glow = 0.25;
 // the rays: how many, how thin, how far they reach of the quad's half
 uniform int ray_count = 6;
 uniform float ray_width = 120.0;
-uniform float ray_length = 0.95;
+uniform float ray_length = 0.7;
 // how much the rays turn as the camera goes round the lamp [turns a radian]
 uniform float ray_turn = 0.35;
 // the depth samples' ring [of the screen], and how far behind the lamp's centre a surface still
@@ -60,7 +63,8 @@ void vertex() {
 	vec3 axis = normalize(-MODEL_MATRIX[2].xyz);
 	vec3 to_camera = normalize(CAMERA_POSITION_WORLD - centre_world);
 	float facing = dot(axis, to_camera);
-	float beam = cos_outer <= -1.0 ? 1.0 : smoothstep(cos_outer, mix(cos_outer, 1.0, 0.5), facing);
+	float beam = cos_outer <= -1.0 ? 1.0 : max(smoothstep(cos_outer, mix(cos_outer, 1.0, 0.5), facing),
+			side_glow * smoothstep(0.0, cos_outer, facing));
 	float night = 1.0 - smoothstep(night_light_level, day_light_level, reloaded_light_level);
 	glare_strength = clamp(glare_level, 0.0, 2.0) * beam * night * intensity;
 	// the rays turn with the camera's way round the lamp
@@ -91,9 +95,9 @@ void fragment() {
 	vec2 position = UV * 2.0 - 1.0;
 	float radius = length(position);
 	// a soft core, and a wider veil about it
-	float core = exp(-radius * radius * 45.0) * 1.6 + exp(-radius * 5.0) * 0.45;
+	float core = exp(-radius * radius * 50.0) * 1.2 + exp(-radius * 6.0) * 0.22;
 	// a faint ring, its rim tinted warmer outside and colder inside
-	float ring = exp(-pow((radius - 0.55) * 14.0, 2.0)) * 0.08;
+	float ring = exp(-pow((radius - 0.55) * 14.0, 2.0)) * 0.025;
 	vec3 ring_tint = mix(vec3(0.7, 0.85, 1.0), vec3(1.0, 0.85, 0.7), smoothstep(0.5, 0.6, radius));
 	// thin rays, each of its own length
 	float rays = 0.0;
@@ -105,7 +109,7 @@ void fragment() {
 		float length_of = ray_length * (0.6 + 0.4 * fract(sin(float(index) * 12.9898) * 43758.5453));
 		rays += exp(-across * ray_width * (0.4 + along)) * (1.0 - smoothstep(0.0, length_of, along));
 	}
-	rays *= 0.8;
+	rays *= 0.45;
 	// the projected centre on the screen, to see whether anything hides it
 	vec4 centre_clip = PROJECTION_MATRIX * vec4(centre_view, 1.0);
 	vec2 centre_screen = centre_clip.xy / centre_clip.w * 0.5 + 0.5;
