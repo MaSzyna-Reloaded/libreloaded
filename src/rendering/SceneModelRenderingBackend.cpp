@@ -565,6 +565,9 @@ namespace godot {
             const float *lit = p_instance.light_levels.getptr(p_instance.light_controls[index].part);
             const float level = lit != nullptr ? *lit : 0.0F;
             glare->set_visible(level > 0.0F);
+            // its lamp's colour and beam given as it stands in the tree, where its instance keeps them
+            glare->set_instance_shader_parameter(GLARE_COLOR_PARAMETER, p_instance.light_controls[index].color);
+            glare->set_instance_shader_parameter(GLARE_COS_OUTER_PARAMETER, p_instance.light_controls[index].cos_outer);
             glare->set_instance_shader_parameter(GLARE_LEVEL_PARAMETER, level);
             glare->set_layer_mask(p_instance.layer_mask);
         }
@@ -771,8 +774,6 @@ namespace godot {
                 glare->set_mesh(glare_mesh);
                 glare->set_material_override(glare_material);
                 glare->set_cast_shadows_setting(GeometryInstance3D::SHADOW_CASTING_SETTING_OFF);
-                glare->set_instance_shader_parameter(GLARE_COLOR_PARAMETER, control.color);
-                glare->set_instance_shader_parameter(GLARE_COS_OUTER_PARAMETER, control.cos_outer);
                 light->add_child(glare, false, Node::INTERNAL_MODE_BACK);
                 instance->glare_nodes.push_back(ObjectID(glare->get_instance_id()));
             }

@@ -3,8 +3,8 @@
 // drawn on a quad that faces the camera, added on top. Nothing of a texture: every part is a function
 // of the distance from the lamp's centre and of the angle round it.
 // - the lamp's level (glare_level, its channel's) scales it, a dimmed lamp a smaller star
-// - whole within the lamp's beam, fading out to the spot's edge (cos_outer; -1 for a point), a faint
-//   glow of side_glow seen from aside in front of the lamp, none behind it
+// - whole within the lamp's beam (cos_outer; -1 for a point), shrinking and fading out from its edge
+//   to none seen square to the lamp's axis, none behind it
 // - by day it fades away (reloaded_light_level, the environment's)
 // - the rays turn as the camera goes round the lamp, not on their own
 // - from afar it keeps min_screen_size of the screen's height
@@ -28,8 +28,6 @@ uniform float min_screen_size = 0.08;
 uniform float day_light_level = 0.6;
 uniform float night_light_level = 0.15;
 uniform float intensity = 1.0;
-// how much of it is seen from aside, out of the lamp's beam but in front of it
-uniform float side_glow = 0.25;
 // the rays: how many, how thin, how far they reach of the quad's half
 uniform int ray_count = 6;
 uniform float ray_width = 120.0;
@@ -50,26 +48,26 @@ varying vec3 centre_view;
 void vertex() {
 	vec3 centre_world = MODEL_MATRIX[3].xyz;
 	centre_view = (VIEW_MATRIX * vec4(centre_world, 1.0)).xyz;
-	// as tall as the least share of the screen from afar: its height projected, of the screen's 2
-	vec4 bottom = PROJECTION_MATRIX * vec4(centre_view, 1.0);
-	vec4 top = PROJECTION_MATRIX * vec4(centre_view + vec3(0.0, glare_size, 0.0), 1.0);
-	float screen_size = abs(top.y / top.w - bottom.y / bottom.w) * 0.5;
-	float size = glare_size * max(1.0, min_screen_size / max(screen_size, 0.0001));
-	// a quad facing the camera, at the lamp's centre
-	VERTEX = vec3(VERTEX.xy * size, 0.0);
-	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
-
 	// towards the beam: the angle between the lamp's axis and the camera
 	vec3 axis = normalize(-MODEL_MATRIX[2].xyz);
 	vec3 to_camera = normalize(CAMERA_POSITION_WORLD - centre_world);
 	float facing = dot(axis, to_camera);
-	float beam = cos_outer <= -1.0 ? 1.0 : max(smoothstep(cos_outer, mix(cos_outer, 1.0, 0.5), facing),
-			side_glow * smoothstep(0.0, cos_outer, facing));
+	float beam = cos_outer <= -1.0 ? 1.0 : smoothstep(0.0, cos_outer, facing);
 	float night = 1.0 - smoothstep(night_light_level, day_light_level, reloaded_light_level);
 	glare_strength = clamp(glare_level, 0.0, 2.0) * beam * night * intensity;
 	// the rays turn with the camera's way round the lamp
 	vec3 side = normalize(MODEL_MATRIX[0].xyz);
 	ray_angle = atan(dot(to_camera, side), dot(to_camera, axis)) * ray_turn;
+
+	// as tall as the least share of the screen from afar: its height projected, of the screen's 2;
+	// smaller as it is dimmer off the beam, the whole star - not its core alone
+	vec4 bottom = PROJECTION_MATRIX * vec4(centre_view, 1.0);
+	vec4 top = PROJECTION_MATRIX * vec4(centre_view + vec3(0.0, glare_size, 0.0), 1.0);
+	float screen_size = abs(top.y / top.w - bottom.y / bottom.w) * 0.5;
+	float size = glare_size * max(1.0, min_screen_size / max(screen_size, 0.0001)) * beam;
+	// a quad facing the camera, at the lamp's centre
+	VERTEX = vec3(VERTEX.xy * size, 0.0);
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
 }
 
 float seen(vec2 uv_screen, vec2 ring_size, mat4 inv_projection) {
@@ -95,7 +93,7 @@ void fragment() {
 	vec2 position = UV * 2.0 - 1.0;
 	float radius = length(position);
 	// a soft core, and a wider veil about it
-	float core = exp(-radius * radius * 50.0) * 1.2 + exp(-radius * 6.0) * 0.22;
+	float core = exp(-radius * radius * 50.0) * 0.7 + exp(-radius * 6.0) * 0.12;
 	// a faint ring, its rim tinted warmer outside and colder inside
 	float ring = exp(-pow((radius - 0.55) * 14.0, 2.0)) * 0.025;
 	vec3 ring_tint = mix(vec3(0.7, 0.85, 1.0), vec3(1.0, 0.85, 0.7), smoothstep(0.5, 0.6, radius));
@@ -109,7 +107,7 @@ void fragment() {
 		float length_of = ray_length * (0.6 + 0.4 * fract(sin(float(index) * 12.9898) * 43758.5453));
 		rays += exp(-across * ray_width * (0.4 + along)) * (1.0 - smoothstep(0.0, length_of, along));
 	}
-	rays *= 0.45;
+	rays *= 0.25;
 	// the projected centre on the screen, to see whether anything hides it
 	vec4 centre_clip = PROJECTION_MATRIX * vec4(centre_view, 1.0);
 	vec2 centre_screen = centre_clip.xy / centre_clip.w * 0.5 + 0.5;
