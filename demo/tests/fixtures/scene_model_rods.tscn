@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3]
+
+[sub_resource type="BoxMesh" id="BoxMesh_rod"]
+size = Vector3(0.1, 0.1, 2)
+
+[node name="Locomotive" type="Node3D"]
+
+[node name="Crank" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+metadata/extras = {
+"rotation_control": {
+"axis": [1.0, 0.0, 0.0],
+"source": "axle.1.angle"
+}
+}
+
+[node name="Rod" type="MeshInstance3D" parent="Crank"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.25)
+mesh = SubResource("BoxMesh_rod")
+metadata/extras = {
+"rotation_control": {
+"axis": [1.0, 0.0, 0.0],
+"scale": -1.0,
+"source": "axle.1.angle"
+}
+}
+
+[node name="Lever" type="Node3D" parent="."]
+metadata/extras = {
+"rotation_control": {
+"axis": [0.0, 1.0, 0.0],
+"default": 0.5,
+"limits": [0.0, 0.25],
+"source": "lever.angle"
+}
+}

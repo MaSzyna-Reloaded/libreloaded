@@ -16,6 +16,10 @@ namespace godot {
 
     void ModelRenderingServer::project_settings_register() {
         ReloadedProjectSetting::add(BACKEND_SETTING, StringName(), Variant::STRING_NAME);
+        ReloadedProjectSetting::add(
+                BODY_LAYER_SETTING, DEFAULT_BODY_LAYER, Variant::INT, PROPERTY_HINT_LAYERS_3D_PHYSICS);
+        ReloadedProjectSetting::add(
+                INTERIOR_LAYER_SETTING, DEFAULT_INTERIOR_LAYER, Variant::INT, PROPERTY_HINT_LAYERS_3D_PHYSICS);
     }
 
     void ModelRenderingServer::_bind_methods() {
@@ -72,6 +76,10 @@ namespace godot {
                 D_METHOD("instance_set_part_poses", "instance", "poses"),
                 &ModelRenderingServer::instance_set_part_poses);
         ClassDB::bind_method(
+                D_METHOD("instance_set_channels", "instance", "channels"),
+                &ModelRenderingServer::instance_set_channels);
+        ClassDB::bind_method(D_METHOD("glare_set_material", "material"), &ModelRenderingServer::glare_set_material);
+        ClassDB::bind_method(
                 D_METHOD("instance_set_part_visible", "instance", "part", "visible"),
                 &ModelRenderingServer::instance_set_part_visible);
         ClassDB::bind_method(
@@ -83,6 +91,17 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("instance_set_emission_energy", "instance", "energy"),
                 &ModelRenderingServer::instance_set_emission_energy);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_layer_mask", "instance", "mask"),
+                &ModelRenderingServer::instance_set_layer_mask);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_space", "instance", "space"), &ModelRenderingServer::instance_set_space);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_smoke_intensity", "instance", "intensity"),
+                &ModelRenderingServer::instance_set_smoke_intensity);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_replaceable_textures", "instance", "textures"),
+                &ModelRenderingServer::instance_set_replaceable_textures);
         ClassDB::bind_method(
                 D_METHOD("instance_has_light", "instance", "light"), &ModelRenderingServer::instance_has_light);
         ClassDB::bind_method(
@@ -102,6 +121,8 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("instance_set_material_overlay", "instance", "material"),
                 &ModelRenderingServer::instance_set_material_overlay);
+        ClassDB::bind_method(
+                D_METHOD("instance_set_skins", "instance", "skins"), &ModelRenderingServer::instance_set_skins);
         ClassDB::bind_method(
                 D_METHOD("instance_find_nearest_hit", "from", "to"), &ModelRenderingServer::instance_find_nearest_hit);
         ClassDB::bind_method(
@@ -160,6 +181,7 @@ namespace godot {
         ERR_FAIL_NULL(backend);
         ERR_FAIL_COND_MSG(backends.has(p_name), "A model rendering backend is registered already: " + p_name);
         backends[p_name] = backend;
+        backend->glare_set_material(glare_material);
         backend->connect(
                 ModelRenderingBackend::instance_created_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_created).bind(p_name));
@@ -386,6 +408,19 @@ namespace godot {
         backend->instance_set_part_poses(p_instance, p_poses);
     }
 
+    void ModelRenderingServer::glare_set_material(const Ref<Material> &p_material) {
+        glare_material = p_material;
+        for (const KeyValue<StringName, ModelRenderingBackend *> &backend: backends) {
+            backend.value->glare_set_material(p_material);
+        }
+    }
+
+    void ModelRenderingServer::instance_set_channels(const RID &p_instance, const Dictionary &p_channels) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_channels(p_instance, p_channels);
+    }
+
     void
     ModelRenderingServer::instance_set_part_visible(const RID &p_instance, const String &p_part, const bool p_visible) {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
@@ -411,6 +446,30 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_emission_energy(p_instance, p_energy);
+    }
+
+    void ModelRenderingServer::instance_set_layer_mask(const RID &p_instance, const uint32_t p_mask) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_layer_mask(p_instance, p_mask);
+    }
+
+    void ModelRenderingServer::instance_set_space(const RID &p_instance, const RID &p_space) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_space(p_instance, p_space);
+    }
+
+    void ModelRenderingServer::instance_set_smoke_intensity(const RID &p_instance, const float p_intensity) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_smoke_intensity(p_instance, p_intensity);
+    }
+
+    void ModelRenderingServer::instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_replaceable_textures(p_instance, p_textures);
     }
 
     bool ModelRenderingServer::instance_has_light(const RID &p_instance, const String &p_light) const {
@@ -466,6 +525,12 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_shader_parameter(p_instance, p_name, p_value);
+    }
+
+    void ModelRenderingServer::instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_skins(p_instance, p_skins);
     }
 
     Dictionary ModelRenderingServer::instance_intersect_segment(

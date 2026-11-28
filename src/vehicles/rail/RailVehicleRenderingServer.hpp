@@ -11,6 +11,13 @@ namespace godot {
 
         private:
             static RailVehicleRenderingServer *singleton;
+            /* The most axles of a vehicle its channels name, and their names by the axle's place
+             * from the front ("axle.<n>.angle", the model format's) */
+            static constexpr int MAX_AXLE_CHANNELS = 32;
+            Vector<StringName> axle_channels;
+            /* The headlights' channels of the model format, by end and side, as
+             * _fill_channels() reads them: the front's left, right and upper, the rear's */
+            Vector<StringName> headlight_channels;
 
         protected:
             static void _bind_methods() {}
@@ -18,6 +25,7 @@ namespace godot {
             bool _vehicle_get_placement(const RID &p_vehicle, Transform3D &p_r_transform) const override;
             void _bind_running_gear(const RID &p_vehicle, Visual &p_visual) override;
             void _pose_running_gear(const RID &p_vehicle, Visual &p_visual) override;
+            void _fill_channels(const RID &p_vehicle, Visual &p_visual) override;
 
         public:
             static RailVehicleRenderingServer *get_instance();

@@ -37,6 +37,13 @@
 				Takes the backend [param name] away; its instances are forgotten with it.
 			</description>
 		</method>
+		<method name="glare_set_material">
+			<return type="void" />
+			<param index="0" name="material" type="Material" />
+			<description>
+				What a model's lit lamp - a light of the model format's [code]light_control[/code] - is drawn with as its glare, handed by the world that owns the environment (an [EnvironmentNode] as it enters the tree); every backend takes it, one registered later as well, for the instances it builds from then on. A null [param material] draws no glare.
+			</description>
+		</method>
 		<method name="instance_attach_object_instance_id">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -147,6 +154,14 @@
 				Without a streaming camera a registered instance is never built. Free it with [method instance_free] like any other instance.
 			</description>
 		</method>
+		<method name="instance_set_channels">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="channels" type="Dictionary" />
+			<description>
+				Sets the values of the channels the instance's model drives its parts by, as its data binds them - a node of the glTF extras [code]rotation_control[/code] turned about its own axis by [code]source * scale + offset[/code] [lb]rad[rb], a coupling rod by [code]axle.<n>.angle[/code]; a light of [code]light_control[/code] at its own energy times the value, off at 0, and a lens of [code]light_id[/code] at the same level of emission, a headlight by [code]headlight.<end>.<side>.level[/code]: [code]{channel: value}[/code]. Kept across rebuilds; a channel of no value leaves its parts as their data's [code]default[/code] says. A part its data drives takes its pose of its channel alone: a pose [method instance_set_part_poses] sets for it is left out, so a part turned both by a role and by its data turns once. A backend of no driven parts does nothing.
+			</description>
+		</method>
 		<method name="instance_set_emission_energy">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -161,6 +176,14 @@
 			<param index="1" name="instancer" type="int" enum="ModelRenderingServer.Instancer" />
 			<description>
 				Builds the instance again with another instancer, keeping the RID and everything set on it.
+			</description>
+		</method>
+		<method name="instance_set_layer_mask">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="mask" type="int" />
+			<description>
+				The render layers the instance is drawn on, as [member VisualInstance3D.layers], set by its backend - a backend of no layers does nothing.
 			</description>
 		</method>
 		<method name="instance_set_lights_colors">
@@ -252,6 +275,14 @@
 				Shows or hides a part, by name, kept across rebuilds.
 			</description>
 		</method>
+		<method name="instance_set_replaceable_textures">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="textures" type="Dictionary" />
+			<description>
+				The textures that replace the textures of the model's materials of a slot - a livery: by the slot's name, each a [Dictionary] of its [code]"base_color"[/code], [code]"orm"[/code] (ambient occlusion, roughness and metalness in its red, green and blue) and [code]"normal"[/code] [Texture2D], any of them left out. A material takes them whose metadata [code]"extras"[/code] names its slot as [code]"replacable_texture"[/code], as the materials of a glTF model imported by [GLTFDocument] keep their extras; the others keep their own. An empty [param textures] draws the model's own materials.
+			</description>
+		</method>
 		<method name="instance_set_scenario">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -267,6 +298,30 @@
 			<param index="2" name="value" type="Variant" />
 			<description>
 				A per-instance uniform of the instance's shaders ([code]instance uniform[/code]), on all its meshes, kept when the instance is built again. [code]null[/code] takes it off.
+			</description>
+		</method>
+		<method name="instance_set_skins">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="skins" type="PackedStringArray" />
+			<description>
+				The instance's replaceable materials take [param skins] - in what is built, as it stands, with nothing built again.
+			</description>
+		</method>
+		<method name="instance_set_smoke_intensity">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="intensity" type="float" />
+			<description>
+				How much smoke the emitters the instance's model carries give, [code]0[/code] none to [code]1[/code] full, set by its backend - a backend of no emitters does nothing.
+			</description>
+		</method>
+		<method name="instance_set_space">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="space" type="RID" />
+			<description>
+				The physics space the collision shapes of the [param instance]'s model are in, set by its backend: each a kinematic body on the layer of its role ([code]reloaded/physics/vehicle_body_layer[/code] for the model format's [code]&lt;object&gt;.collision.body[/code], [code]reloaded/physics/vehicle_interior_layer[/code] for [code].collision.interior[/code]), where the meshes of its part are, their poses included. An empty RID for none; a backend of no shapes does nothing.
 			</description>
 		</method>
 		<method name="instance_set_transform">

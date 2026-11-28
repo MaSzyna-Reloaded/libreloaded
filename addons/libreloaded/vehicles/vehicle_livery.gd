@@ -14,5 +14,12 @@ class_name VehicleLivery
 ## What the livery paints on the vehicle's livery surfaces, by the surface's name; nothing draws them
 ## yet
 @export var textures:Dictionary[StringName, Texture2D] = {}
+## What the provider's files say of the livery, for a list of liveries to show; the core reads none
+## of it. Who made it - its painting, its photos
+@export var authors:PackedStringArray = []
+## What it is, in a few words
+@export var description:String = ""
+## Notes written of it
+@export var comments:String = ""
 ## What the provider keeps of a livery of its own; the core reads none of it
 @export var meta:Dictionary = {}

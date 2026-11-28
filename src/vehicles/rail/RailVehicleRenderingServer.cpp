@@ -2,6 +2,7 @@
 #include "rendering/ModelRenderingServer.hpp"
 #include "vehicles/base/VehicleServer.hpp"
 #include "vehicles/rail/RailVehicleAppearance.hpp"
+#include "vehicles/rail/RailVehicleLighting.hpp"
 #include "vehicles/rail/RailVehicleServer.hpp"
 #include "vehicles/rail/RailVehicleWheels.hpp"
 
@@ -22,6 +23,14 @@ namespace godot {
 
     RailVehicleRenderingServer::RailVehicleRenderingServer() {
         singleton = this;
+        for (int axle = 0; axle < MAX_AXLE_CHANNELS; ++axle) {
+            axle_channels.push_back(vformat("axle.%d.angle", axle));
+        }
+        for (const char *end: {"front", "rear"}) {
+            for (const char *side: {"left", "right", "upper"}) {
+                headlight_channels.push_back(vformat("headlight.%s.%s.level", end, side));
+            }
+        }
         if (RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance(); rail_vehicles != nullptr) {
             _follow_placements(
                     rail_vehicles, RailVehicleServer::vehicle_placed_signal,
@@ -86,13 +95,47 @@ namespace godot {
                       rest.inverse() * Basis(Vector3(0.0, 1.0, 0.0), static_cast<real_t>(body_yaw - bogie_yaw)) * rest);
             }
         }
+        // the wheels turn about the axis across the travel in the model's own frame: up x the vehicle's
+        // front (-Z) as the model sees it (VehicleAppearance.model_transform) - X of a model whose front
+        // faces +Z
+        const Basis model_basis =
+                p_visual.appearance.is_valid() ? p_visual.appearance->get_model_transform().basis : Basis();
+        const Vector3 axle_axis =
+                Vector3(0.0, 1.0, 0.0).cross(model_basis.xform_inv(Vector3(0.0, 0.0, -1.0))).normalized();
         const double angles[] = {
                 wheels->get_angle_front_deg(), wheels->get_angle_powered_deg(), wheels->get_angle_rear_deg()};
         for (int group = 0; group < static_cast<int>(std::size(p_visual.wheels)); ++group) {
-            const Basis pose(Vector3(1.0, 0.0, 0.0), static_cast<real_t>(Math::deg_to_rad(angles[group])));
+            const Basis pose(axle_axis, static_cast<real_t>(Math::deg_to_rad(angles[group])));
             for (const Part &wheel: p_visual.wheels[group]) {
                 _pose(p_visual, wheel, pose);
             }
+        }
+        // the axles' angles as the model's parts driven by them take them [rad], by each axle's place
+        const int axles = MIN(wheels->get_axle_count(), MAX_AXLE_CHANNELS);
+        for (int axle = 0; axle < axles; ++axle) {
+            p_visual.channels[axle_channels[axle]] = Math::deg_to_rad(wheels->get_axle_angle_deg(axle));
+        }
+    }
+
+    /* The headlights' levels (the model format's headlight.<end>.<side>.level): 1 a headlight on,
+     * the lighting's dimmed multiplier while its headlights are dimmed, 0 off.
+     * TODO: the lamps' state is read again every frame the vehicle is drawn in detail, as a plugin's
+     * renderer reads the lights of its own models; it is to be sent on an event of the lighting's
+     * change instead
+     * (TODO.md, "A vehicle's lights read every frame") */
+    void RailVehicleRenderingServer::_fill_channels(const RID &p_vehicle, Visual &p_visual) {
+        const Ref<RailVehicleLighting> lighting =
+                component<RailVehicleLighting>(p_vehicle, VehicleComponentType::COMPONENT_LIGHTING);
+        if (lighting.is_null()) {
+            return;
+        }
+        const double on = lighting->get_headlights_dimmed() ? lighting->get_head_light_dimmed_multiplier() : 1.0;
+        const bool enabled[] = {
+                lighting->get_front_headlight_left_enabled(),  lighting->get_front_headlight_right_enabled(),
+                lighting->get_front_headlight_upper_enabled(), lighting->get_rear_headlight_left_enabled(),
+                lighting->get_rear_headlight_right_enabled(),  lighting->get_rear_headlight_upper_enabled()};
+        for (int index = 0; index < headlight_channels.size(); ++index) {
+            p_visual.channels[headlight_channels[index]] = enabled[index] ? on : 0.0;
         }
     }
 

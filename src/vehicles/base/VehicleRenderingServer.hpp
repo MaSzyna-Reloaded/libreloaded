@@ -55,6 +55,9 @@ namespace godot {
              * frame [ms]; a build that started is finished, so a frame builds at least one - the
              * streaming's own budget (SceneryStreamingServer::BUDGET_MSEC) */
             static constexpr uint64_t BUILD_BUDGET_MSEC = 4;
+            /* Where a preload request of the appearance's models names the backend that draws them;
+             * a plugin's renderer's own requests end before it, drawn by the default backend */
+            static constexpr int PRELOAD_REQUEST_BACKEND = 3;
 
         protected:
             /* A submodel of the exterior model that moves, and where it rests in the vehicle's own
@@ -89,6 +92,8 @@ namespace godot {
                     RID passengers;
                     Vector<RID> attachments;
                     bool own_models = false;
+                    /* vehicle_set_low_poly_interior_visible(), kept as the models are built anew */
+                    bool low_poly_interior_visible = true;
                     /* The appearance's model files registered with ResourceLazyLoader, by file
                      * name - loaded at once without lazy loading - and what the models built from
                      * them hold, one per model */
@@ -115,6 +120,9 @@ namespace godot {
                     Vector<Part> wheels[3];
                     /* Every pose of the exterior, sent to it in one call */
                     Dictionary poses;
+                    /* The values of the channels the exterior's parts are driven by (the kind's
+                     * _pose_running_gear()), sent with the poses */
+                    Dictionary channels;
                     /* Born optimized: a scenery's vehicles built as node hierarchies (cars,
                      * interiors) filled the load; _update_detail() details the near ones */
                     bool detailed = false;
@@ -134,6 +142,9 @@ namespace godot {
              * before the poses are sent, every frame the vehicle is drawn in detail */
             virtual void _bind_running_gear(const RID &p_vehicle, Visual &p_visual) {}
             virtual void _pose_running_gear(const RID &p_vehicle, Visual &p_visual) {}
+            /* The kind's channels of the vehicle's state the exterior's parts are driven by (its
+             * lights' levels), every frame the vehicle is drawn in detail, before its poses are sent */
+            virtual void _fill_channels(const RID &p_vehicle, Visual &p_visual) {}
             /* The kind's server announces by p_placed that it placed a vehicle and by p_changed that
              * it moved one: the vehicle is drawn there from then on */
             void _follow_placements(Object *p_server, const char *p_placed, const char *p_changed);
@@ -165,11 +176,18 @@ namespace godot {
             virtual void _vehicle_pose(const RID &p_vehicle) {}
             /* vehicle_set_shown_cabin() changed */
             virtual void _vehicle_shown_cabin_changed(const RID &p_vehicle) {}
+            /* Whether the low-poly interior stays drawn while a cabin is shown: a renderer whose
+             * low-poly interiors have a part for each cab hides the cab shown itself. The base hides
+             * the whole low-poly interior, the cabin's interior standing in its place. */
+            virtual bool _low_poly_interior_keeps_cabins(const RID &p_vehicle) const;
             /* Once a frame, after every vehicle's own work */
             virtual void _frame_processed(double p_delta) {}
 
             Visual *_get_visual(const RID &p_vehicle);
             const Visual *_get_visual(const RID &p_vehicle) const;
+            void _update_low_poly_interior(const RID &p_vehicle, const Visual &p_visual) const;
+            void _parts_hide(
+                    const Visual &p_visual, const PackedStringArray &p_shown, const PackedStringArray &p_hidden) const;
             Part _part(const Visual &p_visual, const String &p_submodel) const;
             Vector<Part> _parts(const Visual &p_visual, const PackedStringArray &p_submodels) const;
             static void _pose(Visual &p_visual, const Part &p_part, const Basis &p_pose);
@@ -211,6 +229,7 @@ namespace godot {
             float detail_distance = DEFAULT_DETAIL_DISTANCE;
 
             static Node3D *_node(const Visual &p_visual);
+            static RID _space(const Visual &p_visual);
             void _set_processing(bool p_processing);
             void _process_frame();
             void _on_data_reload_requested();
@@ -283,15 +302,36 @@ namespace godot {
              * vehicle_set_models() hands it. */
             void vehicle_set_appearance(const RID &p_vehicle, const Ref<VehicleAppearance> &p_appearance);
             Ref<VehicleAppearance> vehicle_get_appearance(const RID &p_vehicle) const;
+            /* The vehicle in other skins - its livery (VehicleAppearance.skins): the models built
+             * from its appearance keep standing, their replaceable materials take the skins
+             * (ModelRenderingServer.instance_set_skins()), and the appearance has them for the
+             * next build */
+            void vehicle_set_skins(const RID &p_vehicle, const PackedStringArray &p_skins);
+            /* The vehicle in other replaceable textures - another livery
+             * (VehicleAppearance.replaceable_textures): the models built from its appearance keep
+             * standing and take them (ModelRenderingServer.instance_set_replaceable_textures()), and
+             * the vehicle's appearance, a copy of the one set, has them for the next build */
+            void vehicle_set_replaceable_textures(const RID &p_vehicle, const Dictionary &p_textures);
+            /* The vehicle drawn without other parts of its models - as another variant of the models
+             * it shares (VehicleAppearance.hidden_parts): the models built keep standing, the parts
+             * hidden before drawn again, and the vehicle's appearance, a copy of the one set, has
+             * them for the next build */
+            void vehicle_set_hidden_parts(const RID &p_vehicle, const PackedStringArray &p_parts);
             /* The exterior and the low-poly interior, as ModelRenderingServer instances somebody else
              * owns - a vehicle assembled by hand */
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
+            /* The low-poly interior as ModelRenderingServer draws it; RID() of a vehicle of none */
+            RID vehicle_get_low_poly_interior(const RID &p_vehicle) const;
+            /* Whether the low-poly interior is drawn, as a tool showing the vehicle asks - while
+             * no cabin is shown in its place */
+            void vehicle_set_low_poly_interior_visible(const RID &p_vehicle, bool p_visible);
             /* The cabin whose interior is drawn, by whoever shows it, in the place of the
-             * low-poly interior's cab it stands for - which a plugin's renderer hides, whoever
-             * drives (the player's cab, DynObj.cpp:1389-1397); RID() while none is: every
-             * low-poly cab is drawn */
+             * low-poly interior - whoever drives (the player's cab): the whole low-poly interior is
+             * hidden, or the cab's part of it by a renderer that keeps it
+             * (_low_poly_interior_keeps_cabins()); RID() while none is: the low-poly interior is
+             * drawn whole */
             void vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin);
             /* Whether the vehicle is drawn in detail - as nodes, animated */
             bool vehicle_is_detailed(const RID &p_vehicle) const;

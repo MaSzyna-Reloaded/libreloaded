@@ -9,6 +9,13 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="glare_set_material">
+			<return type="void" />
+			<param index="0" name="material" type="Material" />
+			<description>
+				What [method ModelRenderingServer.glare_set_material] hands the backend: the material a lit lamp's glare is drawn with, for the instances built from then on. The base does nothing - a backend of no lamps of its models' own leaves it so.
+			</description>
+		</method>
 		<method name="instance_attach_object_instance_id">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -109,6 +116,14 @@
 				Without a streaming camera a registered instance is never built. The backend emits [signal instance_created] for it. Free it with [method instance_free] like any other instance.
 			</description>
 		</method>
+		<method name="instance_set_channels">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="channels" type="Dictionary" />
+			<description>
+				What [method ModelRenderingServer.instance_set_channels] asks of the backend: the values of the channels the model's parts are driven by, [code]{channel: value}[/code], kept across rebuilds. The base does nothing - a backend of no driven parts leaves it so.
+			</description>
+		</method>
 		<method name="instance_set_emission_energy">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
@@ -123,6 +138,14 @@
 			<param index="1" name="instancer" type="int" enum="ModelRenderingServer.Instancer" />
 			<description>
 				Builds the instance again with another instancer, keeping the RID and everything set on it.
+			</description>
+		</method>
+		<method name="instance_set_layer_mask">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="mask" type="int" />
+			<description>
+				The render layers the instance is drawn on, as [member VisualInstance3D.layers] - kept across a rebuild. A backend of no layers does nothing; this one does nothing by default.
 			</description>
 		</method>
 		<method name="instance_set_lights_dimmed">
@@ -206,12 +229,36 @@
 				Shows or hides a part, by name, kept across rebuilds.
 			</description>
 		</method>
+		<method name="instance_set_replaceable_textures">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="textures" type="Dictionary" />
+			<description>
+				The textures that replace the textures of the materials of a slot ([method ModelRenderingServer.instance_set_replaceable_textures]). A backend of no such slots does nothing.
+			</description>
+		</method>
 		<method name="instance_set_scenario">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
 			<param index="1" name="scenario" type="RID" />
 			<description>
 				Scenario of an [constant ModelRenderingServer.INSTANCER_OPTIMIZED] instance. Rebuilds an already built instance.
+			</description>
+		</method>
+		<method name="instance_set_smoke_intensity">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="intensity" type="float" />
+			<description>
+				How much smoke the emitters the instance's model carries give, [code]0[/code] none to [code]1[/code] full. A backend of no emitters does nothing; this one does nothing by default.
+			</description>
+		</method>
+		<method name="instance_set_space">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="space" type="RID" />
+			<description>
+				The physics space the collision shapes of the [param instance]'s model are in, posed with its parts ([method ModelRenderingServer.instance_set_space]). A backend of no shapes does nothing; this one does nothing by default.
 			</description>
 		</method>
 		<method name="instance_set_transform">

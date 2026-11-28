@@ -32,10 +32,25 @@ namespace godot {
         ClassDB::bind_method(D_METHOD("set_skins", "value"), &VehicleAppearance::set_skins);
         ClassDB::bind_method(D_METHOD("get_skins"), &VehicleAppearance::get_skins);
         ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "skins"), "set_skins", "get_skins");
+        ClassDB::bind_method(
+                D_METHOD("set_replaceable_textures", "value"), &VehicleAppearance::set_replaceable_textures);
+        ClassDB::bind_method(D_METHOD("get_replaceable_textures"), &VehicleAppearance::get_replaceable_textures);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::DICTIONARY, "replaceable_textures"), "set_replaceable_textures",
+                "get_replaceable_textures");
+        ClassDB::bind_method(D_METHOD("set_hidden_parts", "value"), &VehicleAppearance::set_hidden_parts);
+        ClassDB::bind_method(D_METHOD("get_hidden_parts"), &VehicleAppearance::get_hidden_parts);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::PACKED_STRING_ARRAY, "hidden_parts"), "set_hidden_parts", "get_hidden_parts");
         ClassDB::bind_method(D_METHOD("set_model_transform", "value"), &VehicleAppearance::set_model_transform);
         ClassDB::bind_method(D_METHOD("get_model_transform"), &VehicleAppearance::get_model_transform);
         ADD_PROPERTY(
                 PropertyInfo(Variant::TRANSFORM3D, "model_transform"), "set_model_transform", "get_model_transform");
+        ClassDB::bind_method(D_METHOD("set_rendering_backend", "value"), &VehicleAppearance::set_rendering_backend);
+        ClassDB::bind_method(D_METHOD("get_rendering_backend"), &VehicleAppearance::get_rendering_backend);
+        ADD_PROPERTY(
+                PropertyInfo(Variant::STRING_NAME, "rendering_backend"), "set_rendering_backend",
+                "get_rendering_backend");
     }
 
     void VehicleAppearance::set_data_path(const String &p_value) {
@@ -86,11 +101,35 @@ namespace godot {
         return skins;
     }
 
+    void VehicleAppearance::set_replaceable_textures(const Dictionary &p_value) {
+        replaceable_textures = p_value;
+    }
+
+    Dictionary VehicleAppearance::get_replaceable_textures() const {
+        return replaceable_textures;
+    }
+
+    void VehicleAppearance::set_hidden_parts(const PackedStringArray &p_value) {
+        hidden_parts = p_value;
+    }
+
+    PackedStringArray VehicleAppearance::get_hidden_parts() const {
+        return hidden_parts;
+    }
+
     void VehicleAppearance::set_model_transform(const Transform3D &p_value) {
         model_transform = p_value;
     }
 
     Transform3D VehicleAppearance::get_model_transform() const {
         return model_transform;
+    }
+
+    void VehicleAppearance::set_rendering_backend(const StringName &p_value) {
+        rendering_backend = p_value;
+    }
+
+    StringName VehicleAppearance::get_rendering_backend() const {
+        return rendering_backend;
     }
 } // namespace godot

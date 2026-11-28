@@ -37,3 +37,10 @@ var vehicle:String = ""
 ## For the player to read; empty shows the vehicle's name
 var title:String = ""
 var category:VehicleCategory = VehicleCategory.OTHER
+## What the provider's files say of the vehicle, for a list of vehicles to show; the core reads none
+## of it. Who made it
+var authors:PackedStringArray = []
+## What it is, in a few words
+var description:String = ""
+## Notes written of it
+var comments:String = ""

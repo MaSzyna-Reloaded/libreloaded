@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3]
+
+[sub_resource type="StandardMaterial3D" id="Paint"]
+metadata/extras = {
+"replacable_texture": "body"
+}
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+material = SubResource("Paint")
+size = Vector3(2, 3, 10)
+
+[sub_resource type="StandardMaterial3D" id="Steel"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame"]
+material = SubResource("Steel")
+size = Vector3(2, 0.4, 10)
+
+[node name="Livery" type="Node3D"]
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_body")
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_frame")

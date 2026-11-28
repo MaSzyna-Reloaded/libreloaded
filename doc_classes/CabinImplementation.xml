@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CabinImplementation" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		What builds a kind of cab.
+	</brief_description>
+	<description>
+		Registered with [CabinSystem] under the name its cabs give ([member Cabin3D.implementation], [method CabinSystem.implementation_register]). Implement it in C++ by overriding the virtual methods, or in GDScript by overriding their script counterparts.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_component_create" qualifiers="virtual const">
+			<return type="Node3D" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+				A control of a name [method _component_list] gives, with its defaults; [code]null[/code] for another.
+			</description>
+		</method>
+		<method name="_component_list" qualifiers="virtual const">
+			<return type="CabinComponentInfo[]" />
+			<description>
+				The controls it can make, each once.
+			</description>
+		</method>
+	</methods>
+</class>

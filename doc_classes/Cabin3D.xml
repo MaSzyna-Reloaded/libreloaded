@@ -97,6 +97,9 @@
 		<member name="has_cab_model" type="bool" setter="set_has_cab_model" getter="get_has_cab_model" default="true">
 			Whether the cab has a model of its own; without one the vehicle's low-poly cab stays drawn while the player looks from it.
 		</member>
+		<member name="implementation" type="StringName" setter="set_implementation" getter="get_implementation" default="&amp;&quot;&quot;">
+			The name of the implementation that builds this cab ([method CabinSystem.implementation_register]).
+		</member>
 		<member name="shake_angle_scale" type="Vector2" setter="set_shake_angle_scale" getter="get_shake_angle_scale" default="Vector2(0.05, 0.1)">
 			How much the shake turns the driver's head; x scales its roll ([code]BaseShake[/code], [code]DynObj.h:837-846[/code]).
 		</member>

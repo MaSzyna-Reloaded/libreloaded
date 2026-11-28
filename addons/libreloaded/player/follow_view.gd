@@ -67,6 +67,8 @@ const FRAME_SHARE:float = 0.8
 const OPERATOR_RATE:float = 2.0
 ## How far ahead of the view a part of the trainset is, at least, to count as in front of it [m]
 const FRONT_DEPTH:float = 0.1
+## The keys that move the view (_move_view)
+const MOVE_KEYS:Array[Key] = [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN]
 
 
 ## The shot set for one view: the orbit, the shift and the zoom
@@ -138,6 +140,9 @@ var _chosen_in_trainset:bool = false
 var _driveby_aside:Vector3 = Vector3.ZERO
 var _driveby_ahead:Vector3 = Vector3.ZERO
 var _driveby_frame:Basis = Basis()
+## The arrows and PageUp/PageDown that went down on an event the view got: a key held where the view
+## gets no input (a text field focused) moves it not
+var _keys_held:Dictionary[Key, bool] = {}
 
 
 func _enter_tree() -> void:
@@ -203,8 +208,41 @@ func activate(p_vehicle:RID, p_from:Transform3D) -> void:
     _dirty = true
 
 
+## Follows the vehicle from p_from, taken as the shot of the selected view - the offsets that put the
+## view there, so it stands there with no flight; the drive-by view, which stands by the track, flies
+## from it as activate() does
+func activate_from(p_vehicle:RID, p_from:Transform3D) -> void:
+    activate(p_vehicle, p_from)
+    _process_dirty()
+    if not _view_vehicle.is_valid():
+        return
+    _dirty = false
+    var view_transform:Transform3D = VehicleServer.vehicle_get_transform(_view_vehicle)
+    var target:Vector3 = view_transform * _look_offset
+    var arm:Vector3 = view_transform * _view_offset - target
+    # the view stands on the arm along its own Z, which looks back at what it looks at
+    var back:Vector3 = p_from.basis.z.normalized()
+    var heading:float = atan2(back.x, back.z)
+    var elevation:float = clampf(asin(back.y), -ELEVATION_LIMIT, ELEVATION_LIMIT)
+    var distance:float = maxf(p_from.origin.distance_to(target), _min_distance)
+    var look_point:Vector3 = p_from.origin - back * distance
+    var offsets:Offsets = _offsets[view]
+    offsets.orbit = Vector2(angle_difference(atan2(arm.x, arm.z), heading),
+            atan2(arm.y, Vector2(arm.x, arm.z).length()) - elevation)
+    offsets.zoom = distance / arm.length()
+    offsets.shift = view_transform.basis.inverse() * (look_point - target)
+    _shown.orbit = offsets.orbit
+    _shown.shift = offsets.shift
+    _shown.zoom = offsets.zoom
+    _flight = Vector3.ZERO
+    _look_flight = Vector3.ZERO
+    _look_point = look_point
+
+
 func _input(event:InputEvent) -> void:
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+    if event is InputEventKey and not event.echo and event.physical_keycode in MOVE_KEYS:
+        _keys_held[event.physical_keycode] = event.pressed
+    elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
         Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED if event.pressed else Input.MOUSE_MODE_VISIBLE)
     elif event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
         var offsets:Offsets = _offsets[view]
@@ -451,10 +489,8 @@ func _towards_head(p_vehicle:RID) -> float:
 ## The arrows and PageUp/PageDown move the view along the screen's axes - left/right across it,
 ## up/down ahead and back the way it looks, PageUp/PageDown up it - as fast as the zoom goes
 func _move_view(delta:float) -> void:
-    var move:Vector2 = Vector2(
-        float(Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_LEFT)),
-        float(Input.is_physical_key_pressed(KEY_PAGEUP)) - float(Input.is_physical_key_pressed(KEY_PAGEDOWN)))
-    var zoom:float = float(Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_UP))
+    var move:Vector2 = Vector2(_held(KEY_RIGHT) - _held(KEY_LEFT), _held(KEY_PAGEUP) - _held(KEY_PAGEDOWN))
+    var zoom:float = _held(KEY_DOWN) - _held(KEY_UP)
     if move.x == 0.0:
         _driveby_aside = Vector3.ZERO
     if zoom == 0.0:
@@ -486,6 +522,12 @@ func _move_view(delta:float) -> void:
                 - _driveby_ahead * zoom * distance * rate * delta)
         return
     _zoom_by(exp(zoom * (ZOOM_KEY_RATE_FAST if fast else ZOOM_KEY_RATE) * delta))
+
+
+## 1 while the key, gone down on an event the view got, is held; its release the view did not get
+## (a text field focused meanwhile) lets it go too
+func _held(p_key:Key) -> float:
+    return float(_keys_held.get(p_key, false) and Input.is_physical_key_pressed(p_key))
 
 
 ## Scales the view's distance, kept within the min/max distance settings - closer than the least, the

@@ -1,6 +1,8 @@
 #pragma once
 #include <godot_cpp/classes/resource.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 
 namespace godot {
@@ -19,7 +21,10 @@ namespace godot {
             String passengers_model_filename;
             PackedStringArray attachment_model_filenames;
             PackedStringArray skins;
+            Dictionary replaceable_textures;
+            PackedStringArray hidden_parts;
             Transform3D model_transform;
+            StringName rendering_backend;
 
         protected:
             static void _bind_methods();
@@ -40,8 +45,21 @@ namespace godot {
             PackedStringArray get_attachment_model_filenames() const;
             void set_skins(const PackedStringArray &p_value);
             PackedStringArray get_skins() const;
+            /* The models' replaceable textures - a livery's - by the name of the slot the materials
+             * that take them name (ModelRenderingServer.instance_set_replaceable_textures()); none
+             * for the models' own */
+            void set_replaceable_textures(const Dictionary &p_value);
+            Dictionary get_replaceable_textures() const;
+            /* The parts of the exterior and of the low-poly interior the vehicle is not drawn with,
+             * as the models name them - a variant's of the same models drawn of another */
+            void set_hidden_parts(const PackedStringArray &p_value);
+            PackedStringArray get_hidden_parts() const;
             /* Where every model of the vehicle sits in the vehicle's own frame */
             void set_model_transform(const Transform3D &p_value);
             Transform3D get_model_transform() const;
+            /* The ModelRenderingServer backend the models are drawn by, by its name; none for the
+             * project's default backend */
+            void set_rendering_backend(const StringName &p_value);
+            StringName get_rendering_backend() const;
     };
 } // namespace godot

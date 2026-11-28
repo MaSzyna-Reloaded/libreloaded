@@ -80,6 +80,12 @@ namespace godot {
             /// Poses parts, by name, on top of their own transform: {part: Transform3D}, kept across
             /// rebuilds; an empty transform takes a part back to rest
             virtual void instance_set_part_poses(const RID &p_instance, const Dictionary &p_poses) = 0;
+            /// The values of the channels the model's parts are driven by: {channel: value}, kept
+            /// across rebuilds; a backend of no driven parts does nothing
+            virtual void instance_set_channels(const RID &p_instance, const Dictionary &p_channels);
+            /// What a model's lit lamp's glare is drawn with, for the instances built from now on; a
+            /// backend of no lamps of its models' own does nothing
+            virtual void glare_set_material(const Ref<Material> &p_material);
             virtual void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible) = 0;
             /// Draws the part with p_material instead of its own
             virtual void instance_set_part_material_override(
@@ -89,6 +95,19 @@ namespace godot {
             instance_set_part_emission_energy(const RID &p_instance, const String &p_part, float p_energy) = 0;
             /// The self-illumination of every emissive material of the instance
             virtual void instance_set_emission_energy(const RID &p_instance, float p_energy) = 0;
+            /// The render layers the instance is drawn on (VisualInstance3D.layers); a backend of no
+            /// layers does nothing
+            virtual void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask);
+            /// The physics space the collision shapes of the model are in; a backend of no shapes does
+            /// nothing
+            virtual void instance_set_space(const RID &p_instance, const RID &p_space);
+            /// How much smoke the emitters the model carries give, 0 none to 1 full; a backend of no
+            /// emitters does nothing
+            virtual void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);
+            /// The textures that replace the textures of the materials of a slot
+            /// (ModelRenderingServer.instance_set_replaceable_textures()); a backend of no such slots
+            /// does nothing
+            virtual void instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures);
 
             /// The model has the light, by name
             virtual bool instance_has_light(const RID &p_instance, const String &p_light) const = 0;
@@ -110,6 +129,9 @@ namespace godot {
             /// kept across a rebuild; null takes it off
             virtual void
             instance_set_shader_parameter(const RID &p_instance, const StringName &p_name, const Variant &p_value) = 0;
+            /// The instance's replaceable materials take the skins - in what is built, as it stands,
+            /// with nothing built again
+            virtual void instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins) = 0;
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             virtual Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const = 0;

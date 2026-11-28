@@ -83,12 +83,12 @@ func console_cabin(train, operation, control=null, value=null):
         return
     if operation == "controls":
         Console.print_line("controls:\n%s\nactions: %s" % [
-            "\n".join(CabinSystem.get_controls(cabin)), ", ".join(CabinSystem.ACTIONS)])
+            "\n".join(CabinSystem.get_controls(cabin)), ", ".join(CabinSystem.get_actions())])
     elif operation == "state" or (operation == "get" and not control):
         Console.print_line("%s" % [CabinSystem.get_state(cabin)])
     elif operation == "get":
         Console.print_line("%s" % [CabinSystem.get_control(cabin, control)])
-    elif not StringName(operation) in CabinSystem.ACTIONS:
+    elif not operation in CabinSystem.get_actions():
         console_print_error("%s: Unknown cabin operation: %s" % [train, operation])
     elif not control:
         console_print_error("%s: Cabin operation %s needs a control id" % [train, operation])

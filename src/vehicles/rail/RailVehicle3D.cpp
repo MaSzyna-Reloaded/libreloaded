@@ -247,7 +247,7 @@ namespace godot {
     /* A part of a model is one of its submodels, and a submodel node is named after it */
     String RailVehicle3D::_submodel_name(const NodePath &p_path) const {
         const Node *node = p_path.is_empty() ? nullptr : get_node_or_null(p_path);
-        return node != nullptr ? String(node->get_name()).to_lower() : String();
+        return node != nullptr ? String(node->get_name()) : String();
     }
 
     PackedStringArray RailVehicle3D::_submodel_names(const TypedArray<NodePath> &p_paths) const {

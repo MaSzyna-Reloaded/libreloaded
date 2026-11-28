@@ -48,6 +48,13 @@ namespace godot {
 
             /// The backend a model of no backend named is the one of, by its name
             static constexpr const char *BACKEND_SETTING = "reloaded/models/backend";
+            /// The physics layers a model's collision shapes are on, by their role (the model format's
+            /// `<object>.collision.body` and `.interior`): the outer volume, and what a person inside
+            /// collides with
+            static constexpr const char *BODY_LAYER_SETTING = "reloaded/physics/vehicle_body_layer";
+            static constexpr const char *INTERIOR_LAYER_SETTING = "reloaded/physics/vehicle_interior_layer";
+            static constexpr uint32_t DEFAULT_BODY_LAYER = 1U << 1U;
+            static constexpr uint32_t DEFAULT_INTERIOR_LAYER = 1U << 2U;
 
             static const char *instance_built_signal;
             /// A built instance has been cleared by its backend, and is not built until it is built again
@@ -59,6 +66,8 @@ namespace godot {
 
             /// The registered backends, by name; each one unregisters before it goes
             HashMap<StringName, ModelRenderingBackend *> backends;
+            /// glare_set_material(), handed to every backend, one registered later as well
+            Ref<Material> glare_material;
             /// The backend BACKEND_SETTING names, once registered
             StringName default_backend;
             /// The backend each instance is drawn by, from its instance_created to its instance_freed
@@ -145,6 +154,15 @@ namespace godot {
             /// Poses parts, by name, on top of their own transform: {part: Transform3D}, kept across
             /// rebuilds; an empty transform takes a part back to rest
             void instance_set_part_poses(const RID &p_instance, const Dictionary &p_poses);
+            /// The values of the channels the model's parts are driven by, as its data binds them
+            /// (a wheel turned by an axle's angle): {channel: value}, kept across rebuilds; a part
+            /// of a channel of no value stands as its data says. A part its data drives takes its
+            /// pose of its channel alone, whatever instance_set_part_poses() sets for it
+            void instance_set_channels(const RID &p_instance, const Dictionary &p_channels);
+            /// What a model's lit lamp's glare is drawn with - its lights of the model format
+            /// (light_control) - handed by the world that owns the environment; for the instances built
+            /// from now on. A null material draws none
+            void glare_set_material(const Ref<Material> &p_material);
             void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible);
             /// Draws the part with p_material instead of its own
             void instance_set_part_material_override(
@@ -153,6 +171,18 @@ namespace godot {
             void instance_set_part_emission_energy(const RID &p_instance, const String &p_part, float p_energy);
             /// The self-illumination of every emissive material of the instance
             void instance_set_emission_energy(const RID &p_instance, float p_energy);
+            /// The render layers the instance is drawn on, as its backend draws them
+            void instance_set_layer_mask(const RID &p_instance, uint32_t p_mask);
+            /// The physics space the collision shapes of the instance's model are in, posed with its
+            /// parts; an empty RID for none
+            void instance_set_space(const RID &p_instance, const RID &p_space);
+            /// How much smoke the emitters its model carries give, 0 none to 1 full
+            void instance_set_smoke_intensity(const RID &p_instance, float p_intensity);
+            /// The textures that replace the textures of the model's materials of a slot - a livery:
+            /// by the slot's name, each a Dictionary of its "base_color", "orm" (occlusion, roughness,
+            /// metalness) and "normal" Texture2D, any of them left out; a material takes them whose
+            /// metadata "extras" names its slot "replacable_texture", as a glTF model's do
+            void instance_set_replaceable_textures(const RID &p_instance, const Dictionary &p_textures);
 
             /// The model has the light, by name
             bool instance_has_light(const RID &p_instance, const String &p_light) const;
@@ -173,6 +203,9 @@ namespace godot {
             /// A per-instance uniform of the instance's shaders ("instance uniform"), on all its meshes -
             /// kept across a rebuild; null takes it off
             void instance_set_shader_parameter(const RID &p_instance, const StringName &p_name, const Variant &p_value);
+            /// The instance's replaceable materials take the skins - in what is built, as it stands,
+            /// with nothing built again
+            void instance_set_skins(const RID &p_instance, const PackedStringArray &p_skins);
             /// The nearest hit of the segment on the instance's meshes: {position, distance}, empty for none
             Dictionary
             instance_intersect_segment(const RID &p_instance, const Vector3 &p_from, const Vector3 &p_to) const;

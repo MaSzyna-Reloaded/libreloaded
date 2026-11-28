@@ -88,20 +88,19 @@ namespace godot {
     }
 
     /* Every model file the vehicle's build takes - the appearance's, and what a plugin's renderer
-     * adds - as [resource, data path, skins], what its materials are found by */
+     * adds - as [resource, data path, skins], what its materials are found by, and the appearance's
+     * with the backend that draws them after them */
     Array VehicleRenderingServer::_get_preload_requests(const RID &p_vehicle, const Visual &p_visual) const {
         Array requests;
         const String data_path = p_visual.appearance.is_valid() ? p_visual.appearance->get_data_path() : String();
         const PackedStringArray skins =
                 p_visual.appearance.is_valid() ? p_visual.appearance->get_skins() : PackedStringArray();
-        const auto request =
-                [&requests](const RID &p_resource, const String &p_data_path, const PackedStringArray &p_skins) {
-                    if (p_resource.is_valid()) {
-                        requests.push_back(Array::make(p_resource, p_data_path, p_skins));
-                    }
-                };
+        const StringName backend =
+                p_visual.appearance.is_valid() ? p_visual.appearance->get_rendering_backend() : StringName();
         for (const KeyValue<String, RID> &resource: p_visual.model_resources) {
-            request(resource.value, data_path, skins);
+            if (resource.value.is_valid()) {
+                requests.push_back(Array::make(resource.value, data_path, skins, backend));
+            }
         }
         _vehicle_add_preload_requests(p_vehicle, requests);
         return requests;
@@ -122,8 +121,11 @@ namespace godot {
             const Ref<Resource> model = lazy_loader->resource_load(request[0]);
             models[request[0]] = model;
             // a vehicle's models draw with the project's texture size limit (_create_models()), by the
-            // default backend: a VehicleAppearance names none
-            materials.push_back(model_rendering->material_preload(StringName(), model, request[1], request[2], 0));
+            // backend the appearance names; a plugin's renderer's own by the default one
+            const StringName backend = request.size() > PRELOAD_REQUEST_BACKEND
+                                               ? StringName(request[PRELOAD_REQUEST_BACKEND])
+                                               : StringName();
+            materials.push_back(model_rendering->material_preload(backend, model, request[1], request[2], 0));
         }
         return Array::make(models, materials);
     }
@@ -275,9 +277,23 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("vehicle_get_appearance", "vehicle"), &VehicleRenderingServer::vehicle_get_appearance);
         ClassDB::bind_method(
+                D_METHOD("vehicle_set_skins", "vehicle", "skins"), &VehicleRenderingServer::vehicle_set_skins);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_set_replaceable_textures", "vehicle", "textures"),
+                &VehicleRenderingServer::vehicle_set_replaceable_textures);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_set_hidden_parts", "vehicle", "parts"),
+                &VehicleRenderingServer::vehicle_set_hidden_parts);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_models", "vehicle", "model", "low_poly"),
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_get_low_poly_interior", "vehicle"),
+                &VehicleRenderingServer::vehicle_get_low_poly_interior);
+        ClassDB::bind_method(
+                D_METHOD("vehicle_set_low_poly_interior_visible", "vehicle", "visible"),
+                &VehicleRenderingServer::vehicle_set_low_poly_interior_visible);
         ClassDB::bind_method(
                 D_METHOD("vehicle_set_shown_cabin", "vehicle", "cabin"),
                 &VehicleRenderingServer::vehicle_set_shown_cabin);
@@ -388,18 +404,33 @@ namespace godot {
         }
     }
 
-    /* The models this server built drawn in p_scenario - in none for an empty one */
+    /* The physics space of the world the vehicle's scene node is in, none out of one: its models'
+     * collision shapes go there */
+    RID VehicleRenderingServer::_space(const Visual &p_visual) {
+        const Node3D *node = _node(p_visual);
+        return node != nullptr && node->is_inside_tree() ? node->get_world_3d()->get_space() : RID();
+    }
+
+    /* The models this server built drawn in p_scenario - in none for an empty one, those built as
+     * nodes hidden with their holder */
     void VehicleRenderingServer::_show_models(const RID &p_vehicle, const Visual &p_visual, const RID &p_scenario) {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         ERR_FAIL_NULL(models);
         if (p_visual.own_models) {
+            // their collision shapes in the scene node's physics space while they are drawn
+            const RID space = p_scenario.is_valid() ? _space(p_visual) : RID();
             for (const RID &instance: {p_visual.model, p_visual.low_poly, p_visual.passengers}) {
                 if (instance.is_valid()) {
                     models->instance_set_scenario(instance, p_scenario);
+                    models->instance_set_space(instance, space);
                 }
             }
             for (const RID &instance: p_visual.attachments) {
                 models->instance_set_scenario(instance, p_scenario);
+            }
+            // the models built as nodes under the holder, drawn of no scenario: shown with it
+            if (Node3D *holder = Object::cast_to<Node3D>(ObjectDB::get_instance(p_visual.holder)); holder != nullptr) {
+                holder->set_visible(p_scenario.is_valid());
             }
         }
         _vehicle_scenario_changed(p_vehicle, p_scenario);
@@ -435,8 +466,9 @@ namespace godot {
                 }
                 // the key a scenery placement of the same file has
                 visual->model_resources[filename] = lazy_loader->resource_register(
-                        data_path.path_join(filename), callable_mp(models, &ModelRenderingServer::model_load)
-                                                               .bind(StringName(), data_path.path_join(filename)));
+                        data_path.path_join(filename),
+                        callable_mp(models, &ModelRenderingServer::model_load)
+                                .bind(p_appearance->get_rendering_backend(), data_path.path_join(filename)));
             }
         }
         _vehicle_appearance_changed(p_vehicle);
@@ -453,6 +485,84 @@ namespace godot {
         const Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL_V(visual, Ref<VehicleAppearance>());
         return visual->appearance;
+    }
+
+    void VehicleRenderingServer::vehicle_set_skins(const RID &p_vehicle, const PackedStringArray &p_skins) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        ERR_FAIL_COND(visual->appearance.is_null());
+        // the appearance is whoever set it's: the vehicle takes a copy in the skins
+        visual->appearance = visual->appearance->duplicate();
+        visual->appearance->set_skins(p_skins);
+        if (!visual->own_models) {
+            return;
+        }
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        ERR_FAIL_NULL(models);
+        for (const RID &model: {visual->model, visual->low_poly, visual->passengers}) {
+            if (model.is_valid()) {
+                models->instance_set_skins(model, p_skins);
+            }
+        }
+        for (const RID &attachment: visual->attachments) {
+            models->instance_set_skins(attachment, p_skins);
+        }
+    }
+
+    void VehicleRenderingServer::vehicle_set_replaceable_textures(const RID &p_vehicle, const Dictionary &p_textures) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        ERR_FAIL_COND(visual->appearance.is_null());
+        // the appearance is whoever set it's: the vehicle takes a copy in the textures
+        visual->appearance = visual->appearance->duplicate();
+        visual->appearance->set_replaceable_textures(p_textures);
+        if (!visual->own_models) {
+            return;
+        }
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        ERR_FAIL_NULL(models);
+        for (const RID &model: {visual->model, visual->low_poly, visual->passengers}) {
+            if (model.is_valid()) {
+                models->instance_set_replaceable_textures(model, p_textures);
+            }
+        }
+        for (const RID &attachment: visual->attachments) {
+            models->instance_set_replaceable_textures(attachment, p_textures);
+        }
+    }
+
+    void VehicleRenderingServer::vehicle_set_hidden_parts(const RID &p_vehicle, const PackedStringArray &p_parts) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        ERR_FAIL_COND(visual->appearance.is_null());
+        const PackedStringArray hidden_before = visual->appearance->get_hidden_parts();
+        // the appearance is whoever set it's: the vehicle takes a copy in the parts
+        visual->appearance = visual->appearance->duplicate();
+        visual->appearance->set_hidden_parts(p_parts);
+        if (visual->own_models) {
+            _parts_hide(*visual, hidden_before, p_parts);
+        }
+    }
+
+    /* The exterior's and the low-poly interior's parts of `p_hidden` not drawn, those of `p_shown`
+     * not among them drawn again - the one place the appearance's hidden parts are set */
+    void VehicleRenderingServer::_parts_hide(
+            const Visual &p_visual, const PackedStringArray &p_shown, const PackedStringArray &p_hidden) const {
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        ERR_FAIL_NULL(models);
+        for (const RID &instance: {p_visual.model, p_visual.low_poly}) {
+            if (!instance.is_valid()) {
+                continue;
+            }
+            for (const String &part: p_shown) {
+                if (!p_hidden.has(part)) {
+                    models->instance_set_part_visible(instance, part, true);
+                }
+            }
+            for (const String &part: p_hidden) {
+                models->instance_set_part_visible(instance, part, false);
+            }
+        }
     }
 
     void VehicleRenderingServer::vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly) {
@@ -477,10 +587,40 @@ namespace godot {
         return visual->model;
     }
 
+    RID VehicleRenderingServer::vehicle_get_low_poly_interior(const RID &p_vehicle) const {
+        const Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(visual, RID());
+        return visual->low_poly;
+    }
+
+    void VehicleRenderingServer::vehicle_set_low_poly_interior_visible(const RID &p_vehicle, const bool p_visible) {
+        Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL(visual);
+        visual->low_poly_interior_visible = p_visible;
+        _update_low_poly_interior(p_vehicle, *visual);
+    }
+
+    bool VehicleRenderingServer::_low_poly_interior_keeps_cabins(const RID & /* p_vehicle */) const {
+        return false;
+    }
+
+    /* The low-poly interior this server built drawn as the tool asks (low_poly_interior_visible),
+     * hidden whole while a cabin is shown in its place - unless the renderer keeps it - the one
+     * place its visibility is set */
+    void VehicleRenderingServer::_update_low_poly_interior(const RID &p_vehicle, const Visual &p_visual) const {
+        ModelRenderingServer *models = ModelRenderingServer::get_instance();
+        if (models == nullptr || !p_visual.own_models || !p_visual.low_poly.is_valid()) {
+            return;
+        }
+        const bool given_way = p_visual.shown_cabin.is_valid() && !_low_poly_interior_keeps_cabins(p_vehicle);
+        models->instance_set_visible(p_visual.low_poly, p_visual.low_poly_interior_visible && !given_way);
+    }
+
     void VehicleRenderingServer::vehicle_set_shown_cabin(const RID &p_vehicle, const RID &p_cabin) {
         Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL(visual);
         visual->shown_cabin = p_cabin;
+        _update_low_poly_interior(p_vehicle, *visual);
         _vehicle_shown_cabin_changed(p_vehicle);
     }
 
@@ -573,16 +713,19 @@ namespace godot {
                 return RID();
             }
             const RID instance = models->instance_create(
-                    StringName(), model, p_instancer, ModelRenderingServer::INSTANCE_KIND_DYNAMIC);
+                    appearance->get_rendering_backend(), model, p_instancer,
+                    ModelRenderingServer::INSTANCE_KIND_DYNAMIC);
             // a vehicle's translucent submodels - its windows - are drawn blended near the camera,
             // opaque by the optimized instancer far away; a cutout leaves holes in the glass
             constexpr bool FORCE_ALPHA = true;
             models->instance_set_options(instance, data_path, p_skins, Array(), FORCE_ALPHA, {}, 0);
+            models->instance_set_replaceable_textures(instance, appearance->get_replaceable_textures());
             if (p_instancer != ModelRenderingServer::INSTANCER_OPTIMIZED) {
                 models->instance_attach_object_instance_id(instance, holder->get_instance_id());
             }
             models->instance_set_node_transform(instance, appearance->get_model_transform());
             models->instance_set_scenario(instance, p_visual.placed ? p_visual.scenario : RID());
+            models->instance_set_space(instance, p_visual.placed ? _space(p_visual) : RID());
             models->instance_set_transform(instance, p_visual.transform * appearance->get_model_transform());
             models->instance_build(instance);
             return instance;
@@ -599,6 +742,9 @@ namespace godot {
             models->instance_set_shader_parameter(
                     p_visual.low_poly, LOW_POLY_DEPTH_BEHIND_PARAMETER, LOW_POLY_DEPTH_BEHIND);
         }
+        _update_low_poly_interior(p_vehicle, p_visual);
+        // a variant's of the same models drawn without the other variants' parts
+        _parts_hide(p_visual, PackedStringArray(), appearance->get_hidden_parts());
         // the passengers carry no skin of their own
         p_visual.passengers =
                 create(appearance->get_passengers_model_filename(), PackedStringArray(),
@@ -620,9 +766,9 @@ namespace godot {
             !models->instance_has_part(p_visual.model, p_submodel)) {
             return Part();
         }
+        // the part as the appearance names it: how a backend tells its parts is the backend's own
         return Part{
-                p_submodel.to_lower(),
-                p_visual.model_transform * models->instance_get_part_transform(p_visual.model, p_submodel)};
+                p_submodel, p_visual.model_transform * models->instance_get_part_transform(p_visual.model, p_submodel)};
     }
 
     Vector<VehicleRenderingServer::Part>
@@ -639,6 +785,7 @@ namespace godot {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         const Ref<VehicleAppearance> &appearance = p_visual.appearance;
         p_visual.poses.clear();
+        p_visual.channels.clear();
         if (appearance.is_null() || models == nullptr || !p_visual.model.is_valid()) {
             _vehicle_parts_bound(p_vehicle);
             return;
@@ -696,6 +843,7 @@ namespace godot {
         }
         if (p_visual.detailed) {
             _pose_running_gear(p_vehicle, p_visual);
+            _fill_channels(p_vehicle, p_visual);
             _send_poses(p_visual);
         }
     }
@@ -714,7 +862,13 @@ namespace godot {
 
     void VehicleRenderingServer::_send_poses(Visual &p_visual) {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
-        if (models != nullptr && p_visual.model.is_valid() && !p_visual.poses.is_empty()) {
+        if (models == nullptr || !p_visual.model.is_valid()) {
+            return;
+        }
+        if (!p_visual.channels.is_empty()) {
+            models->instance_set_channels(p_visual.model, p_visual.channels);
+        }
+        if (!p_visual.poses.is_empty()) {
             models->instance_set_part_poses(p_visual.model, p_visual.poses);
         }
     }
@@ -855,6 +1009,8 @@ namespace godot {
                 holder->set_owner(node->get_owner() != nullptr ? node->get_owner() : node);
             }
             holder->set_global_transform(p_visual.transform);
+            // drawn in a world as the optimized instances are: once placed, while it has one
+            holder->set_visible(p_visual.placed && p_visual.scenario.is_valid());
             p_visual.holder = ObjectID(holder->get_instance_id());
             models->instance_attach_object_instance_id(p_visual.model, p_visual.holder);
             if (p_visual.low_poly.is_valid()) {
@@ -1027,6 +1183,7 @@ namespace godot {
             }
             ++visited;
             _vehicle_pose(vehicle);
+            _fill_channels(vehicle, visual);
             _send_poses(visual);
         }
         _frame_processed(delta);

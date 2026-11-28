@@ -67,6 +67,24 @@ func _over_control() -> Vector2:
     return _camera.unproject_position(_mesh.global_position)
 
 
+## A cursor outside the view - over panels beside a SubViewport - lights no control up, though the ray
+## through it runs into one wider than the view
+func test_a_cursor_outside_the_view_lights_nothing_up() -> void:
+    _mesh.scale = Vector3(1000.0, 1.0, 1.0)
+    var middle:Vector2 = _over_control()
+    _move_to(middle)
+    assert_eq(CabinHUDMouseSystem.control_get_hovered(), _control, "inside the view")
+    _move_to(Vector2(_camera.get_viewport().get_visible_rect().size.x + 50.0, middle.y))
+    assert_false(CabinHUDMouseSystem.control_get_hovered().is_valid(), "beside the view")
+    assert_null(_mesh.material_overlay)
+
+
+## The mesh a control was made for: what the control under the cursor is, for a tool following it
+func test_a_control_tells_the_mesh_it_was_made_for() -> void:
+    assert_eq(CabinHUDMouseSystem.control_get_mesh_instance_id(_control), _mesh.get_instance_id())
+    assert_eq(CabinHUDMouseSystem.control_get_mesh_instance_id(RID()), 0, "none for no control")
+
+
 func test_hover_outlines_and_captions_the_control() -> void:
     _move_to(_over_control())
     assert_eq(CabinHUDMouseSystem.control_get_hovered(), _control)

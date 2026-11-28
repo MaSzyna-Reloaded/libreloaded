@@ -1,5 +1,10 @@
 #include "cabin/Cabin3D.hpp"
+#include "cabin/CabinComponentInfo.hpp"
 #include "cabin/CabinHUDMouseSystem.hpp"
+#include "cabin/CabinImplementation.hpp"
+#include "cabin/CabinLogic.hpp"
+#include "cabin/CabinState.hpp"
+#include "cabin/CabinSystem.hpp"
 #include "cache/ResourceCache.hpp"
 #include "driver/DriverImplementation.hpp"
 #include "driver/DriverServer.hpp"
@@ -22,6 +27,7 @@
 #include "register_types.h"
 #include "rendering/DrawingServer.hpp"
 #include "rendering/DrawingTexture.hpp"
+#include "rendering/GltfLightUnits.hpp"
 #include "rendering/ModelRenderingBackend.hpp"
 #include "rendering/ModelRenderingServer.hpp"
 #include "rendering/PlanarMirror3D.hpp"
@@ -92,6 +98,7 @@
 #include "vehicles/base/GenericVehicleComponentNode.hpp"
 #include "vehicles/base/VehicleAppearance.hpp"
 #include "vehicles/base/VehicleComponent.hpp"
+#include "vehicles/base/VehicleComponentInfo.hpp"
 #include "vehicles/base/VehicleComponentType.hpp"
 #include "vehicles/base/VehicleController.hpp"
 #include "vehicles/base/VehicleCurvePointItem.hpp"
@@ -153,6 +160,7 @@
 #include "world/WorldSection.hpp"
 #include <gdextension_interface.h>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/gltf_document.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/defs.hpp>
@@ -186,6 +194,7 @@ SceneryMeshRenderingServer *scenery_mesh_rendering_server_singleton = nullptr;
 SmokeServer *smoke_server_singleton = nullptr;
 ReloadedTranslationServer *maszyna_translation_server_singleton = nullptr;
 CabinHUDMouseSystem *cabin_hud_mouse_system_singleton = nullptr;
+CabinSystem *cabin_system_singleton = nullptr;
 SignallingServer *signalling_server_singleton = nullptr;
 ScenarioEventServer *scenario_event_server_singleton = nullptr;
 SceneryHUDMouseServer *scenery_hud_mouse_server_singleton = nullptr;
@@ -198,6 +207,7 @@ PlayerCameraServer *player_camera_server_singleton = nullptr;
 HUDServer *hud_server_singleton = nullptr;
 DrawingServer *drawing_server_singleton = nullptr;
 Ref<OggVorbisFormatLoader> ogg_vorbis_format_loader;
+Ref<GltfLightUnits> gltf_light_units;
 
 void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     UtilityFunctions::print("Initializing libreloaded module on level " + String::num(p_level) + "...");
@@ -227,6 +237,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(TrackRenderingServer);
         GDREGISTER_CLASS(TrackRenderingLook);
         GDREGISTER_CLASS(SceneModelRenderingBackend);
+        GDREGISTER_CLASS(GltfLightUnits);
         GDREGISTER_CLASS(ReloadedMaterialServer);
         GDREGISTER_CLASS(ReloadedModel3D);
         GDREGISTER_CLASS(SmokeSource);
@@ -242,6 +253,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(RoadVehicleServer);
         GDREGISTER_CLASS(RailVehicleNeighbour);
         GDREGISTER_CLASS(VehicleAppearance);
+        GDREGISTER_CLASS(VehicleComponentInfo);
         GDREGISTER_ABSTRACT_CLASS(VehicleRenderingServer);
         GDREGISTER_CLASS(RailVehicleAppearance);
         GDREGISTER_CLASS(RailVehicleRenderingServer);
@@ -333,6 +345,11 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_CLASS(Cabin3D);
         GDREGISTER_CLASS(TrainSoundListener3D);
         GDREGISTER_ABSTRACT_CLASS(CabinHUDMouseSystem);
+        GDREGISTER_CLASS(CabinState);
+        GDREGISTER_CLASS(CabinLogic);
+        GDREGISTER_CLASS(CabinComponentInfo);
+        GDREGISTER_CLASS(CabinImplementation);
+        GDREGISTER_ABSTRACT_CLASS(CabinSystem);
         GDREGISTER_CLASS(RailVehicle3D);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleHeating);
         GDREGISTER_ABSTRACT_CLASS(RailVehicleRadio);
@@ -368,6 +385,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
         // the settings read in C++, by their owners, before UserSettings applies the player's values
         ModelRenderingServer::project_settings_register();
+        GltfLightUnits::project_settings_register();
         PlayerServer::project_settings_register();
         RailVehicleServer::project_settings_register();
         ReloadedTranslationServer::project_settings_register();
@@ -441,6 +459,10 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         Engine::get_singleton()->register_singleton("RoadVehicleServer", road_vehicle_server_singleton); // 10e
         vehicle_server_singleton->implementation_register(
                 RoadVehicleServer::IMPLEMENTATION_NAME, road_vehicle_server_singleton->get_instance_id());
+        // after SimulationServer, VehicleServer and RailVehicleServer are registered: the constructor
+        // follows their clock, commands, freed vehicles and drivers' cabins
+        cabin_system_singleton = memnew(CabinSystem);
+        Engine::get_singleton()->register_singleton("CabinSystem", cabin_system_singleton); // 10f
         // after TrackServer is registered: the constructor follows its switches; before the plugins'
         // servers, which draw the signal heads' lights
         signalling_server_singleton = memnew(SignallingServer);
@@ -522,6 +544,9 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
         ogg_vorbis_format_loader.instantiate();
         ResourceLoader::get_singleton()->add_resource_format_loader(ogg_vorbis_format_loader);
+        // a glTF model's lights in Godot's units, however it is read
+        gltf_light_units.instantiate();
+        GLTFDocument::register_gltf_document_extension(gltf_light_units);
     }
 }
 
@@ -532,6 +557,10 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         return;
     }
 
+    if (gltf_light_units.is_valid()) {
+        GLTFDocument::unregister_gltf_document_extension(gltf_light_units);
+        gltf_light_units.unref();
+    }
     if (ogg_vorbis_format_loader.is_valid()) {
         ResourceLoader::get_singleton()->remove_resource_format_loader(ogg_vorbis_format_loader);
         ogg_vorbis_format_loader.unref();
@@ -670,6 +699,14 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     if (signalling_server_singleton != nullptr) {
         memdelete(signalling_server_singleton);
         signalling_server_singleton = nullptr;
+    }
+
+    if (Engine::get_singleton()->has_singleton("CabinSystem")) {
+        Engine::get_singleton()->unregister_singleton("CabinSystem"); // 10f
+    }
+    if (cabin_system_singleton != nullptr) {
+        memdelete(cabin_system_singleton);
+        cabin_system_singleton = nullptr;
     }
 
     if (Engine::get_singleton()->has_singleton("RoadVehicleServer")) {

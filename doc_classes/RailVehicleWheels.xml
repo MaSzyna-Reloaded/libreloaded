@@ -27,6 +27,19 @@
 				How far the rear rolling wheels have turned [deg].
 			</description>
 		</method>
+		<method name="get_axle_angle_deg" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="axle" type="int" />
+			<description>
+				How far the [param axle] has turned [lb]deg[rb], by its place from the front: the angle of its group - [method get_angle_powered_deg] for a powered axle, [method get_angle_front_deg] for a rolling one before the powered ones, [method get_angle_rear_deg] for a rolling one after them, as [member axle_arrangement] reads. [code]0[/code] for an axle past the last.
+			</description>
+		</method>
+		<method name="get_axle_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				The axles [member axle_arrangement] counts in the UIC notation: a letter for that many powered axles ([code]A[/code] one, [code]B[/code] two, ...), a digit for that many rolling ones; anything else ([code]o[/code], [code]'[/code], brackets) counts none. [code]Bo'Bo'[/code] has four, [code]C[/code] three.
+			</description>
+		</method>
 		<method name="get_flat" qualifiers="const">
 			<return type="float" />
 			<description>

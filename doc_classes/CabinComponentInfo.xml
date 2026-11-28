@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CabinComponentInfo" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A control a cab's implementation can make.
+	</brief_description>
+	<description>
+		What [method CabinSystem.component_list] lists of an implementation: the name it makes the control by ([method CabinSystem.component_create]), its title for a list, the class of the cab widget it is, and the vehicle commands it sends.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="commands" type="PackedStringArray" setter="set_commands" getter="get_commands" default="PackedStringArray()">
+			The vehicle commands the control sends ([method VehicleServer.vehicle_send_command]).
+		</member>
+		<member name="name" type="StringName" setter="set_name" getter="get_name" default="&amp;&quot;&quot;">
+			The name the implementation makes the control by.
+		</member>
+		<member name="title" type="String" setter="set_title" getter="get_title" default="&quot;&quot;">
+			The control's title for a list.
+		</member>
+		<member name="widget_class" type="StringName" setter="set_widget_class" getter="get_widget_class" default="&amp;&quot;&quot;">
+			The class of the cab widget the control is, e.g. [code]CabinButton[/code], [code]CabinSwitch[/code], [code]CabinKnob[/code], [code]CabinGauge[/code].
+		</member>
+	</members>
+</class>

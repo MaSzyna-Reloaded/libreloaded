@@ -32,6 +32,9 @@ namespace godot {
 
         ClassDB::bind_method(D_METHOD("set_cabin", "cabin"), &Cabin3D::set_cabin);
         ClassDB::bind_method(D_METHOD("get_cabin"), &Cabin3D::get_cabin);
+        ClassDB::bind_method(D_METHOD("set_implementation", "implementation"), &Cabin3D::set_implementation);
+        ClassDB::bind_method(D_METHOD("get_implementation"), &Cabin3D::get_implementation);
+        ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "implementation"), "set_implementation", "get_implementation");
 
         ClassDB::bind_method(D_METHOD("set_has_cab_model", "has_cab_model"), &Cabin3D::set_has_cab_model);
         ClassDB::bind_method(D_METHOD("get_has_cab_model"), &Cabin3D::get_has_cab_model);
@@ -418,5 +421,13 @@ namespace godot {
     }
     double Cabin3D::get_engine_shake_fade_out_factor() const {
         return engine_shake_fade_out_factor;
+    }
+
+    void Cabin3D::set_implementation(const StringName &p_implementation) {
+        implementation = p_implementation;
+    }
+
+    StringName Cabin3D::get_implementation() const {
+        return implementation;
     }
 } // namespace godot

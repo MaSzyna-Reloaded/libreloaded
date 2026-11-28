@@ -188,6 +188,26 @@ func test_page_up_moves_the_view_up_in_the_screen_plane() -> void:
     await _assert_moves_in_the_screen_plane(KEY_PAGEUP, _view.global_transform.basis.y)
 
 
+func test_an_arrow_gone_down_where_the_view_gets_no_input_moves_it_not() -> void:
+    await _follow(PlayerCameraServer.CAMERA_FOLLOW_VIEW_TRAINSET_FRONT)
+    var position:Vector3 = _view.global_position
+    # as a text field focused keeps the keys from the view
+    _view.set_process_input(false)
+    var event:InputEventKey = InputEventKey.new()
+    event.physical_keycode = KEY_RIGHT
+    event.pressed = true
+    Input.parse_input_event(event)
+    await wait_idle_frames(1)
+    _view.set_process_input(true)
+    await wait_idle_frames(KEY_FRAMES)
+    event = event.duplicate()
+    event.pressed = false
+    Input.parse_input_event(event)
+    await wait_idle_frames(SETTLE_FRAMES)
+
+    assert_almost_eq(_view.global_position.distance_to(position), 0.0, TOLERANCE, "it stood")
+
+
 func test_moved_aside_the_up_and_down_arrows_move_the_view_ahead_and_back_the_way_it_looks() -> void:
     await _follow(PlayerCameraServer.CAMERA_FOLLOW_VIEW_TRAINSET_FRONT)
     await _hold_key(KEY_RIGHT, KEY_FRAMES)
