@@ -1,12 +1,12 @@
 extends GutTest
 
 ## A glTF model's lights (KHR_lights_punctual) in Godot's units however it is read (GltfLightUnits): a
-## spot's intensity [cd] times reloaded/models/light_candela_to_energy its energy, a light of no range
+## spot's intensity [cd] over reloaded/models/light_energy_candela its energy, a light of no range
 ## reloaded/models/light_default_range far, one of its own as it is
 
 const CANDELA:float = 1500.0
 const OWN_RANGE:float = 25.0
-const CANDELA_TO_ENERGY_SETTING:String = "reloaded/models/light_candela_to_energy"
+const ENERGY_CANDELA_SETTING:String = "reloaded/models/light_energy_candela"
 const DEFAULT_RANGE_SETTING:String = "reloaded/models/light_default_range"
 
 
@@ -38,8 +38,8 @@ func test_a_spots_candelas_are_its_energy_and_its_range_the_default_of_none() ->
 
     var unranged:SpotLight3D = root.find_child("Unranged", true, false) as SpotLight3D
     var ranged:SpotLight3D = root.find_child("Ranged", true, false) as SpotLight3D
-    var energy:float = CANDELA * float(ProjectSettings.get_setting(CANDELA_TO_ENERGY_SETTING))
-    assert_almost_eq(unranged.light_energy, energy, 0.0001, "its candelas times the setting")
+    var energy:float = CANDELA / float(ProjectSettings.get_setting(ENERGY_CANDELA_SETTING))
+    assert_almost_eq(unranged.light_energy, energy, 0.0001, "its candelas over the setting")
     assert_almost_eq(unranged.spot_range, float(ProjectSettings.get_setting(DEFAULT_RANGE_SETTING)), 0.001,
             "the default range of none")
     assert_almost_eq(ranged.spot_range, OWN_RANGE, 0.001, "its own range kept")
