@@ -109,8 +109,10 @@ namespace godot {
                 const Dictionary extras = light_node->has_meta(EXTRAS_META)
                                                   ? Dictionary(light_node->get_meta(EXTRAS_META))
                                                   : Dictionary();
+                // the light its lens names: by its node's name, its semantic_id, or the light_id both share
                 const StringName semantic_id = String(extras.get(SEMANTIC_ID_KEY, String()));
-                if (lens.source == light_node->get_name() || lens.source == semantic_id) {
+                const StringName light_id = String(extras.get(LIGHT_ID_KEY, String()));
+                if (lens.source == light_node->get_name() || lens.source == semantic_id || lens.source == light_id) {
                     lenses.push_back(LensControl{lens.part, light.source, light.default_value});
                 }
             }

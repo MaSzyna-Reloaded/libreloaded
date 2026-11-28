@@ -18,7 +18,8 @@ metadata/extras = {
 "default": 0.0,
 "source": "headlight.front.left.level"
 },
-"semantic_id": "vehicle.headlight.front.left"
+"light_id": "vehicle.headlight.front.left",
+"semantic_id": "vehicle.headlight.front.left.source"
 }
 
 [node name="Lens" type="MeshInstance3D" parent="."]

@@ -77,8 +77,8 @@ namespace godot {
 
             /* A light dimmed by a channel's value, as its glTF extras' light_control says: its own
              * energy times the value - off at 0 - the default for a channel of no value; and a lens
-             * of a light (extras' light_id naming the light's node or its semantic_id), its emission
-             * of the same channel */
+             * of a light (extras' light_id naming the light's node, its semantic_id or the light_id
+             * the light has too), its emission of the same channel */
             struct LightControl {
                     StringName part;
                     StringName source;

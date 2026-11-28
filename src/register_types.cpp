@@ -27,6 +27,7 @@
 #include "register_types.h"
 #include "rendering/DrawingServer.hpp"
 #include "rendering/DrawingTexture.hpp"
+#include "rendering/GltfLightUnits.hpp"
 #include "rendering/ModelRenderingBackend.hpp"
 #include "rendering/ModelRenderingServer.hpp"
 #include "rendering/PlanarMirror3D.hpp"
@@ -159,6 +160,7 @@
 #include "world/WorldSection.hpp"
 #include <gdextension_interface.h>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/gltf_document.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/defs.hpp>
@@ -205,6 +207,7 @@ PlayerCameraServer *player_camera_server_singleton = nullptr;
 HUDServer *hud_server_singleton = nullptr;
 DrawingServer *drawing_server_singleton = nullptr;
 Ref<OggVorbisFormatLoader> ogg_vorbis_format_loader;
+Ref<GltfLightUnits> gltf_light_units;
 
 void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
     UtilityFunctions::print("Initializing libreloaded module on level " + String::num(p_level) + "...");
@@ -234,6 +237,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         GDREGISTER_ABSTRACT_CLASS(TrackRenderingServer);
         GDREGISTER_CLASS(TrackRenderingLook);
         GDREGISTER_CLASS(SceneModelRenderingBackend);
+        GDREGISTER_CLASS(GltfLightUnits);
         GDREGISTER_CLASS(ReloadedMaterialServer);
         GDREGISTER_CLASS(ReloadedModel3D);
         GDREGISTER_CLASS(SmokeSource);
@@ -381,6 +385,7 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
         // the settings read in C++, by their owners, before UserSettings applies the player's values
         ModelRenderingServer::project_settings_register();
+        GltfLightUnits::project_settings_register();
         PlayerServer::project_settings_register();
         RailVehicleServer::project_settings_register();
         ReloadedTranslationServer::project_settings_register();
@@ -539,6 +544,9 @@ void initialize_libreloaded_module(const ModuleInitializationLevel p_level) {
 
         ogg_vorbis_format_loader.instantiate();
         ResourceLoader::get_singleton()->add_resource_format_loader(ogg_vorbis_format_loader);
+        // a glTF model's lights in Godot's units, however it is read
+        gltf_light_units.instantiate();
+        GLTFDocument::register_gltf_document_extension(gltf_light_units);
     }
 }
 
@@ -549,6 +557,10 @@ void uninitialize_libreloaded_module(const ModuleInitializationLevel p_level) {
         return;
     }
 
+    if (gltf_light_units.is_valid()) {
+        GLTFDocument::unregister_gltf_document_extension(gltf_light_units);
+        gltf_light_units.unref();
+    }
     if (ogg_vorbis_format_loader.is_valid()) {
         ResourceLoader::get_singleton()->remove_resource_format_loader(ogg_vorbis_format_loader);
         ogg_vorbis_format_loader.unref();
