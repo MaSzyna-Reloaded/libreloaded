@@ -37,6 +37,13 @@
 				Takes the backend [param name] away; its instances are forgotten with it.
 			</description>
 		</method>
+		<method name="glare_set_material">
+			<return type="void" />
+			<param index="0" name="material" type="Material" />
+			<description>
+				What a model's lit lamp - a light of the model format's [code]light_control[/code] - is drawn with as its glare, handed by the world that owns the environment (an [EnvironmentNode] as it enters the tree); every backend takes it, one registered later as well, for the instances it builds from then on. A null [param material] draws no glare.
+			</description>
+		</method>
 		<method name="instance_attach_object_instance_id">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

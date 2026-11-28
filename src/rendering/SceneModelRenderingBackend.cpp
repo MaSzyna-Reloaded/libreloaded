@@ -12,6 +12,7 @@
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/spot_light3d.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -19,6 +20,7 @@
 
 namespace godot {
     SceneModelRenderingBackend::SceneModelRenderingBackend() {
+        glare_mesh.instantiate();
         SceneryStreamingServer *streaming = SceneryStreamingServer::get_instance();
         ERR_FAIL_NULL(streaming);
         // the scenes are loaded as a placement is built, on the main thread: nothing is read ahead
@@ -69,6 +71,11 @@ namespace godot {
         /* The keys of a light's extras dimming it by a channel, and of a lens naming its light */
         const char *const LIGHT_CONTROL_KEY = "light_control";
         const char *const LIGHT_ID_KEY = "light_id";
+        /* The glare shader's instance uniforms: its lamp's colour, the cosine of its spot's edge and
+         * its level (light_glare.gdshader) */
+        const char *const GLARE_COLOR_PARAMETER = "light_color";
+        const char *const GLARE_COS_OUTER_PARAMETER = "cos_outer";
+        const char *const GLARE_LEVEL_PARAMETER = "glare_level";
         /* An axis written as its three components, limits as their two */
         constexpr int64_t AXIS_COMPONENTS = 3;
         constexpr int64_t LIMITS_BOUNDS = 2;
@@ -249,10 +256,16 @@ namespace godot {
                 const Dictionary control = light_data;
                 const String source = control.get(CONTROL_SOURCE_KEY, String());
                 if (!source.is_empty()) {
+                    const SpotLight3D *spot = Object::cast_to<SpotLight3D>(p_node);
                     p_instance.light_controls.push_back(
                             LightControl{
                                     path, source, control.get(CONTROL_DEFAULT_KEY, 0.0),
-                                    static_cast<float>(light->get_param(Light3D::PARAM_ENERGY))});
+                                    static_cast<float>(light->get_param(Light3D::PARAM_ENERGY)), names, transforms,
+                                    light->get_color(),
+                                    spot != nullptr
+                                            ? static_cast<float>(Math::cos(
+                                                      Math::deg_to_rad(spot->get_param(Light3D::PARAM_SPOT_ANGLE))))
+                                            : -1.0F});
                 }
             }
             const String light_id = extras.get(LIGHT_ID_KEY, String());
@@ -439,6 +452,13 @@ namespace godot {
                         p_instance.render_instances[index],
                         p_instance.transform * _get_path_transform(p_instance, mesh.path_names, mesh.path_transforms));
             }
+            for (int index = 0; index < p_instance.glare_instances.size(); ++index) {
+                const LightControl &control = p_instance.light_controls[index];
+                rs->instance_set_transform(
+                        p_instance.glare_instances[index],
+                        p_instance.transform *
+                                _get_path_transform(p_instance, control.path_names, control.path_transforms));
+            }
             return;
         }
         Node3D *root = _get_root(p_instance);
@@ -491,6 +511,18 @@ namespace godot {
                             render_instance, name, p_instance.shader_parameters[name]);
                 }
             }
+            // the glares of the lamps lit, at their levels
+            for (int index = 0; index < p_instance.glare_instances.size(); ++index) {
+                const LightControl &control = p_instance.light_controls[index];
+                const float *level = p_instance.light_levels.getptr(control.part);
+                const float lit = level != nullptr ? *level : 0.0F;
+                const RID glare = p_instance.glare_instances[index];
+                rs->instance_set_scenario(glare, p_instance.scenario);
+                rs->instance_set_layer_mask(glare, p_instance.layer_mask);
+                rs->instance_set_visible(
+                        glare, p_instance.visible && lit > 0.0F && _is_path_visible(p_instance, control.path_names));
+                rs->instance_geometry_set_shader_parameter(glare, GLARE_LEVEL_PARAMETER, lit);
+            }
             return;
         }
         Node3D *root = _get_root(p_instance);
@@ -518,6 +550,19 @@ namespace godot {
             light->set_param(Light3D::PARAM_ENERGY, control.energy * *level);
             light->set_visible(light->is_visible() && *level > 0.0F);
         }
+        // the glares of the lamps lit, at their levels
+        for (int index = 0; index < p_instance.glare_nodes.size(); ++index) {
+            MeshInstance3D *glare =
+                    Object::cast_to<MeshInstance3D>(ObjectDB::get_instance(p_instance.glare_nodes[index]));
+            if (glare == nullptr) {
+                continue;
+            }
+            const float *lit = p_instance.light_levels.getptr(p_instance.light_controls[index].part);
+            const float level = lit != nullptr ? *lit : 0.0F;
+            glare->set_visible(level > 0.0F);
+            glare->set_instance_shader_parameter(GLARE_LEVEL_PARAMETER, level);
+            glare->set_layer_mask(p_instance.layer_mask);
+        }
         for (const MeshPart &mesh: p_instance.meshes) {
             MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(
                     root->get_node_or_null(NodePath(String(mesh.path_names[mesh.path_names.size() - 1]))));
@@ -542,6 +587,12 @@ namespace godot {
             rs->free_rid(render_instance);
         }
         p_instance.render_instances.clear();
+        for (const RID &glare: p_instance.glare_instances) {
+            rs->free_rid(glare);
+        }
+        p_instance.glare_instances.clear();
+        // a glare built as a node goes with the scene's root, freed here too
+        p_instance.glare_nodes.clear();
         p_instance.drawn_materials.clear();
         PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
         for (const RID &body: p_instance.bodies) {
@@ -675,6 +726,40 @@ namespace godot {
             attached->add_child(root);
             instance->root_id = root->get_instance_id();
         }
+        // a glare a lamp, drawn while it is lit (_apply()); none without its material
+        if (glare_material.is_valid()) {
+            RenderingServer *rs = RenderingServer::get_singleton();
+            Node3D *root = _get_root(*instance);
+            for (const LightControl &control: instance->light_controls) {
+                if (instance->instancer == ModelRenderingServer::INSTANCER_OPTIMIZED) {
+                    const RID glare = rs->instance_create();
+                    rs->instance_set_base(glare, glare_mesh->get_rid());
+                    rs->instance_geometry_set_material_override(glare, glare_material->get_rid());
+                    rs->instance_geometry_set_cast_shadows_setting(glare, RenderingServer::SHADOW_CASTING_SETTING_OFF);
+                    rs->instance_geometry_set_shader_parameter(glare, GLARE_COLOR_PARAMETER, control.color);
+                    rs->instance_geometry_set_shader_parameter(glare, GLARE_COS_OUTER_PARAMETER, control.cos_outer);
+                    instance->glare_instances.push_back(glare);
+                    continue;
+                }
+                Node3D *light =
+                        root != nullptr
+                                ? Object::cast_to<Node3D>(root->get_node_or_null(NodePath(String(control.part))))
+                                : nullptr;
+                if (light == nullptr) {
+                    // a place kept: the glares by the lights' own order
+                    instance->glare_nodes.push_back(ObjectID());
+                    continue;
+                }
+                MeshInstance3D *glare = memnew(MeshInstance3D);
+                glare->set_mesh(glare_mesh);
+                glare->set_material_override(glare_material);
+                glare->set_cast_shadows_setting(GeometryInstance3D::SHADOW_CASTING_SETTING_OFF);
+                glare->set_instance_shader_parameter(GLARE_COLOR_PARAMETER, control.color);
+                glare->set_instance_shader_parameter(GLARE_COS_OUTER_PARAMETER, control.cos_outer);
+                light->add_child(glare, false, Node::INTERNAL_MODE_BACK);
+                instance->glare_nodes.push_back(ObjectID(glare->get_instance_id()));
+            }
+        }
         PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
         for (const ShapePart &shape: instance->shapes) {
             const RID body = ps->body_create();
@@ -804,6 +889,10 @@ namespace godot {
             }
         }
         _apply(*instance);
+    }
+
+    void SceneModelRenderingBackend::glare_set_material(const Ref<Material> &p_material) {
+        glare_material = p_material;
     }
 
     void SceneModelRenderingBackend::instance_set_channels(const RID &p_instance, const Dictionary &p_channels) {

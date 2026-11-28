@@ -13,9 +13,10 @@ namespace godot {
             GDCLASS(GltfLightUnits, GLTFDocumentExtension)
 
         public:
-            /// How much light energy a candela gives, and how far a light of no range reaches [m]
+            /// How much light energy a candela gives - a headlight of 3000 cd 1, as bright as a vehicle's
+            /// lamps of other models - and how far a light of no range reaches [m]
             static constexpr const char *LIGHT_CANDELA_TO_ENERGY_SETTING = "reloaded/models/light_candela_to_energy";
-            static constexpr double DEFAULT_LIGHT_CANDELA_TO_ENERGY = 0.001;
+            static constexpr double DEFAULT_LIGHT_CANDELA_TO_ENERGY = 1.0 / 3000.0;
             static constexpr const char *LIGHT_DEFAULT_RANGE_SETTING = "reloaded/models/light_default_range";
             static constexpr double DEFAULT_LIGHT_RANGE = 60.0;
 

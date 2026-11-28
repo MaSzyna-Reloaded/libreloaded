@@ -56,6 +56,7 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("instance_set_channels", "instance", "channels"),
                 &ModelRenderingBackend::instance_set_channels);
+        ClassDB::bind_method(D_METHOD("glare_set_material", "material"), &ModelRenderingBackend::glare_set_material);
         ClassDB::bind_method(
                 D_METHOD("instance_set_part_visible", "instance", "part", "visible"),
                 &ModelRenderingBackend::instance_set_part_visible);
@@ -111,6 +112,8 @@ namespace godot {
 
     void
     ModelRenderingBackend::instance_set_channels(const RID & /* p_instance */, const Dictionary & /* p_channels */) {}
+
+    void ModelRenderingBackend::glare_set_material(const Ref<Material> & /* p_material */) {}
 
     void
     ModelRenderingBackend::instance_set_smoke_intensity(const RID & /* p_instance */, const float /* p_intensity */) {}

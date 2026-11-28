@@ -83,6 +83,9 @@ namespace godot {
             /// The values of the channels the model's parts are driven by: {channel: value}, kept
             /// across rebuilds; a backend of no driven parts does nothing
             virtual void instance_set_channels(const RID &p_instance, const Dictionary &p_channels);
+            /// What a model's lit lamp's glare is drawn with, for the instances built from now on; a
+            /// backend of no lamps of its models' own does nothing
+            virtual void glare_set_material(const Ref<Material> &p_material);
             virtual void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible) = 0;
             /// Draws the part with p_material instead of its own
             virtual void instance_set_part_material_override(

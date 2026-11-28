@@ -4,7 +4,7 @@
 		A glTF model's lights in Godot's units.
 	</brief_description>
 	<description>
-		The model format writes a light ([code]KHR_lights_punctual[/code]) in physical units, which Godot's glTF reading takes as its own as they are. Registered with [GLTFDocument] as the library starts, this extension turns them into Godot's on every glTF read - imported into a project and its packs, or read at run time: a point's or a spot's intensity [lb]cd[rb] times [code]reloaded/models/light_candela_to_energy[/code] (0.001 by default) is its energy, and a light of no range reaches [code]reloaded/models/light_default_range[/code] [lb]m[rb] (60 by default). A directional light [lb]lx[rb] is left as it is.
+		The model format writes a light ([code]KHR_lights_punctual[/code]) in physical units, which Godot's glTF reading takes as its own as they are. Registered with [GLTFDocument] as the library starts, this extension turns them into Godot's on every glTF read - imported into a project and its packs, or read at run time: a point's or a spot's intensity [lb]cd[rb] times [code]reloaded/models/light_candela_to_energy[/code] (1/3000 by default: a headlight of 3000 cd as bright as a vehicle's lamps of other models) is its energy, and a light of no range reaches [code]reloaded/models/light_default_range[/code] [lb]m[rb] (60 by default). A directional light [lb]lx[rb] is left as it is.
 	</description>
 	<tutorials>
 	</tutorials>

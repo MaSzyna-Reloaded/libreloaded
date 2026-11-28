@@ -2,6 +2,8 @@
 extends Node
 class_name EnvironmentNode
 
+## The glare a model's lit lamp is drawn with (ModelRenderingServer.glare_set_material())
+const LIGHT_GLARE_SHADER:Shader = preload("light_glare.gdshader")
 ## Group the player sets cabin_view on when switching between the cabin and the exterior view
 const GROUP: StringName = &"reloaded_environment"
 ## Render layer of the cab interior - with reloaded/cabin/improve_shadows_quality the cab is lit by a
@@ -218,9 +220,13 @@ func _ready() -> void:
 
 
 ## What the backends take of SimulationServer's environment they are handed now, and again
-## whenever the server announces a change
+## whenever the server announces a change; the models' backends the glare their lit lamps are
+## drawn with, the world's, while the environment is there
 func _enter_tree() -> void:
     add_to_group(GROUP)
+    var glare:ShaderMaterial = ShaderMaterial.new()
+    glare.shader = LIGHT_GLARE_SHADER
+    ModelRenderingServer.glare_set_material(glare)
     # the time of day passes while the environment is there (SimulationServer's clock)
     if not Engine.is_editor_hint():
         SimulationServer.clock_hold()
@@ -230,6 +236,7 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+    ModelRenderingServer.glare_set_material(null)
     if not Engine.is_editor_hint():
         SimulationServer.clock_release()
     ProjectSettings.settings_changed.disconnect(_on_project_settings_changed)

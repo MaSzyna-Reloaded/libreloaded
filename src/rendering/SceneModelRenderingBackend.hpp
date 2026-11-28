@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
+#include <godot_cpp/classes/quad_mesh.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/shape3d.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -84,6 +85,12 @@ namespace godot {
                     StringName source;
                     double default_value = 0.0;
                     float energy = 0.0F;
+                    /* Its glare's: the nodes down to it (MeshPart's), its colour, the cosine of its
+                     * spot's edge (-1 of a point light) */
+                    Vector<StringName> path_names;
+                    Vector<Transform3D> path_transforms;
+                    Color color;
+                    float cos_outer = -1.0F;
             };
             struct LensControl {
                     StringName part;
@@ -111,6 +118,11 @@ namespace godot {
                     Vector<LensControl> lens_controls;
                     HashMap<StringName, float> light_levels;
                     HashMap<StringName, float> lens_levels;
+                    /* The lit lamps' glares, one a light of light_control: built optimized, a
+                     * RenderingServer instance each; built as nodes, a mesh under the light's node -
+                     * both by the lights' order */
+                    Vector<RID> glare_instances;
+                    Vector<ObjectID> glare_nodes;
                     HashMap<StringName, bool> part_visible;
                     HashMap<StringName, Ref<Material>> part_materials;
                     HashMap<StringName, float> part_emission;
@@ -151,6 +163,9 @@ namespace godot {
             };
 
             RIDMap<InstanceData> instances;
+            /* glare_set_material(), and the quad every glare is drawn on */
+            Ref<Material> glare_material;
+            Ref<QuadMesh> glare_mesh;
             int stream_owner = -1;
 
             static void _read_model(InstanceData &p_instance);
@@ -208,6 +223,7 @@ namespace godot {
             Transform3D instance_get_part_transform(const RID &p_instance, const String &p_part) const override;
             void instance_set_part_poses(const RID &p_instance, const Dictionary &p_poses) override;
             void instance_set_channels(const RID &p_instance, const Dictionary &p_channels) override;
+            void glare_set_material(const Ref<Material> &p_material) override;
             void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible) override;
             void instance_set_part_material_override(
                     const RID &p_instance, const String &p_part, const Ref<Material> &p_material) override;

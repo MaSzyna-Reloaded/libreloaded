@@ -78,6 +78,7 @@ namespace godot {
         ClassDB::bind_method(
                 D_METHOD("instance_set_channels", "instance", "channels"),
                 &ModelRenderingServer::instance_set_channels);
+        ClassDB::bind_method(D_METHOD("glare_set_material", "material"), &ModelRenderingServer::glare_set_material);
         ClassDB::bind_method(
                 D_METHOD("instance_set_part_visible", "instance", "part", "visible"),
                 &ModelRenderingServer::instance_set_part_visible);
@@ -180,6 +181,7 @@ namespace godot {
         ERR_FAIL_NULL(backend);
         ERR_FAIL_COND_MSG(backends.has(p_name), "A model rendering backend is registered already: " + p_name);
         backends[p_name] = backend;
+        backend->glare_set_material(glare_material);
         backend->connect(
                 ModelRenderingBackend::instance_created_signal,
                 callable_mp(this, &ModelRenderingServer::_on_instance_created).bind(p_name));
@@ -404,6 +406,13 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_part_poses(p_instance, p_poses);
+    }
+
+    void ModelRenderingServer::glare_set_material(const Ref<Material> &p_material) {
+        glare_material = p_material;
+        for (const KeyValue<StringName, ModelRenderingBackend *> &backend: backends) {
+            backend.value->glare_set_material(p_material);
+        }
     }
 
     void ModelRenderingServer::instance_set_channels(const RID &p_instance, const Dictionary &p_channels) {

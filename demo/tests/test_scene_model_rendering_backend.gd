@@ -407,3 +407,28 @@ func test_a_headlight_and_its_lens_shine_at_the_level_of_their_channel() -> void
 
     ModelRenderingServer.instance_set_channels(_instance, {HEADLIGHT_CHANNEL: 0.0})
     assert_false(light.visible, "off at 0")
+
+
+## A lit lamp's glare (ModelRenderingServer.glare_set_material()): built under its light as nodes,
+## shown at its light's level, hidden while the light is off
+func test_a_lamp_lit_has_a_glare_at_its_level() -> void:
+    var material:ShaderMaterial = ShaderMaterial.new()
+    ModelRenderingServer.glare_set_material(material)
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var model:Resource = ModelRenderingServer.model_load(BACKEND, LIGHTS_MODEL)
+    _instance = ModelRenderingServer.instance_create(BACKEND, model, ModelRenderingServer.INSTANCER_NODES,
+            ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    ModelRenderingServer.instance_attach_object_instance_id(_instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(_instance)
+    var light:SpotLight3D = attached.find_child("Headlight", true, false) as SpotLight3D
+    var glares:Array[Node] = light.get_children(true).filter(func(child:Node) -> bool: return child is MeshInstance3D)
+    ModelRenderingServer.glare_set_material(null)
+
+    assert_eq(glares.size(), 1, "a glare under its light")
+    var glare:MeshInstance3D = glares[0]
+    assert_eq(glare.material_override, material)
+    assert_false(glare.visible, "none while the light is off")
+    ModelRenderingServer.instance_set_channels(_instance, {HEADLIGHT_CHANNEL: DIMMED})
+    assert_true(glare.visible)
+    assert_almost_eq(float(glare.get_instance_shader_parameter("glare_level")), DIMMED, 0.001, "at its level")

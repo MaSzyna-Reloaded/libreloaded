@@ -66,6 +66,8 @@ namespace godot {
 
             /// The registered backends, by name; each one unregisters before it goes
             HashMap<StringName, ModelRenderingBackend *> backends;
+            /// glare_set_material(), handed to every backend, one registered later as well
+            Ref<Material> glare_material;
             /// The backend BACKEND_SETTING names, once registered
             StringName default_backend;
             /// The backend each instance is drawn by, from its instance_created to its instance_freed
@@ -157,6 +159,10 @@ namespace godot {
             /// of a channel of no value stands as its data says. A part its data drives takes its
             /// pose of its channel alone, whatever instance_set_part_poses() sets for it
             void instance_set_channels(const RID &p_instance, const Dictionary &p_channels);
+            /// What a model's lit lamp's glare is drawn with - its lights of the model format
+            /// (light_control) - handed by the world that owns the environment; for the instances built
+            /// from now on. A null material draws none
+            void glare_set_material(const Ref<Material> &p_material);
             void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible);
             /// Draws the part with p_material instead of its own
             void instance_set_part_material_override(

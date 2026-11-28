@@ -9,6 +9,13 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="glare_set_material">
+			<return type="void" />
+			<param index="0" name="material" type="Material" />
+			<description>
+				What [method ModelRenderingServer.glare_set_material] hands the backend: the material a lit lamp's glare is drawn with, for the instances built from then on. The base does nothing - a backend of no lamps of its models' own leaves it so.
+			</description>
+		</method>
 		<method name="instance_attach_object_instance_id">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />
