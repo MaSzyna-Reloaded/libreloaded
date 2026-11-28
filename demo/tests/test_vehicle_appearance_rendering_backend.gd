@@ -58,6 +58,21 @@ func test_the_models_are_the_ones_of_the_backend_the_appearance_names() -> void:
     assert_true(ModelRenderingServer.instance_has_part(model, "Wheel"), "the scene's nodes are its parts")
 
 
+## The low-poly interior a tool builds anew by its own instance: the vehicle's, none of a vehicle of
+## no low-poly interior
+func test_the_low_poly_interior_is_the_tools_by_its_instance() -> void:
+    var vehicle:RID = _vehicle_drawn(BACKEND, INTERIOR)
+    var low_poly:RID = RailVehicleRenderingServer.vehicle_get_low_poly_interior(vehicle)
+
+    assert_true(low_poly.is_valid(), "the low-poly interior built of its scene")
+    assert_ne(low_poly, RailVehicleRenderingServer.vehicle_get_model(vehicle), "not the exterior")
+    RailVehicleRenderingServer.vehicle_detach(vehicle)
+    VehicleServer.vehicle_free(vehicle)
+    _vehicle = RID()
+    assert_false(RailVehicleRenderingServer.vehicle_get_low_poly_interior(_vehicle_drawn(BACKEND)).is_valid(),
+            "none of a vehicle of none")
+
+
 ## The low-poly interior's own scene, drawn as nodes under the vehicle's node - an editable vehicle's
 func _low_poly_interior() -> Node3D:
     return find_child(INTERIOR_ROOT, true, false) as Node3D

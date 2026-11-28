@@ -289,6 +289,9 @@ namespace godot {
                 &VehicleRenderingServer::vehicle_set_models);
         ClassDB::bind_method(D_METHOD("vehicle_get_model", "vehicle"), &VehicleRenderingServer::vehicle_get_model);
         ClassDB::bind_method(
+                D_METHOD("vehicle_get_low_poly_interior", "vehicle"),
+                &VehicleRenderingServer::vehicle_get_low_poly_interior);
+        ClassDB::bind_method(
                 D_METHOD("vehicle_set_low_poly_interior_visible", "vehicle", "visible"),
                 &VehicleRenderingServer::vehicle_set_low_poly_interior_visible);
         ClassDB::bind_method(
@@ -577,6 +580,12 @@ namespace godot {
         const Visual *visual = vehicles.getptr(p_vehicle);
         ERR_FAIL_NULL_V(visual, RID());
         return visual->model;
+    }
+
+    RID VehicleRenderingServer::vehicle_get_low_poly_interior(const RID &p_vehicle) const {
+        const Visual *visual = vehicles.getptr(p_vehicle);
+        ERR_FAIL_NULL_V(visual, RID());
+        return visual->low_poly;
     }
 
     void VehicleRenderingServer::vehicle_set_low_poly_interior_visible(const RID &p_vehicle, const bool p_visible) {

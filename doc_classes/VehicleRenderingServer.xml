@@ -50,6 +50,13 @@
 				What the vehicle looks like, as last set.
 			</description>
 		</method>
+		<method name="vehicle_get_low_poly_interior" qualifiers="const">
+			<return type="RID" />
+			<param index="0" name="vehicle" type="RID" />
+			<description>
+				The low-poly interior model as [ModelRenderingServer] draws it - a tool builds it anew by [method ModelRenderingServer.instance_build]; an empty RID for a vehicle of none.
+			</description>
+		</method>
 		<method name="vehicle_get_model" qualifiers="const">
 			<return type="RID" />
 			<param index="0" name="vehicle" type="RID" />

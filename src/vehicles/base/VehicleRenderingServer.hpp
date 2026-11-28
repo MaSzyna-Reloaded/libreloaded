@@ -322,6 +322,8 @@ namespace godot {
             void vehicle_set_models(const RID &p_vehicle, const RID &p_model, const RID &p_low_poly);
             /* The exterior model as ModelRenderingServer draws it */
             RID vehicle_get_model(const RID &p_vehicle) const;
+            /* The low-poly interior as ModelRenderingServer draws it; RID() of a vehicle of none */
+            RID vehicle_get_low_poly_interior(const RID &p_vehicle) const;
             /* Whether the low-poly interior is drawn, as a tool showing the vehicle asks - while
              * no cabin is shown in its place */
             void vehicle_set_low_poly_interior_visible(const RID &p_vehicle, bool p_visible);
