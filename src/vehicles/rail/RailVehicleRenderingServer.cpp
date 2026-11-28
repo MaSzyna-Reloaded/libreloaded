@@ -22,6 +22,9 @@ namespace godot {
 
     RailVehicleRenderingServer::RailVehicleRenderingServer() {
         singleton = this;
+        for (int axle = 0; axle < MAX_AXLE_CHANNELS; ++axle) {
+            axle_channels.push_back(vformat("axle.%d.angle", axle));
+        }
         if (RailVehicleServer *rail_vehicles = RailVehicleServer::get_instance(); rail_vehicles != nullptr) {
             _follow_placements(
                     rail_vehicles, RailVehicleServer::vehicle_placed_signal,
@@ -100,6 +103,11 @@ namespace godot {
             for (const Part &wheel: p_visual.wheels[group]) {
                 _pose(p_visual, wheel, pose);
             }
+        }
+        // the axles' angles as the model's parts driven by them take them [rad], by each axle's place
+        const int axles = MIN(wheels->get_axle_count(), MAX_AXLE_CHANNELS);
+        for (int axle = 0; axle < axles; ++axle) {
+            p_visual.channels[axle_channels[axle]] = Math::deg_to_rad(wheels->get_axle_angle_deg(axle));
         }
     }
 

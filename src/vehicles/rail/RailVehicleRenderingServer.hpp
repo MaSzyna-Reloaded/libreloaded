@@ -11,6 +11,10 @@ namespace godot {
 
         private:
             static RailVehicleRenderingServer *singleton;
+            /* The most axles of a vehicle its channels name, and their names by the axle's place
+             * from the front ("axle.<n>.angle", the model format's) */
+            static constexpr int MAX_AXLE_CHANNELS = 32;
+            Vector<StringName> axle_channels;
 
         protected:
             static void _bind_methods() {}

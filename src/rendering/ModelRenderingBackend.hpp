@@ -80,6 +80,9 @@ namespace godot {
             /// Poses parts, by name, on top of their own transform: {part: Transform3D}, kept across
             /// rebuilds; an empty transform takes a part back to rest
             virtual void instance_set_part_poses(const RID &p_instance, const Dictionary &p_poses) = 0;
+            /// The values of the channels the model's parts are driven by: {channel: value}, kept
+            /// across rebuilds; a backend of no driven parts does nothing
+            virtual void instance_set_channels(const RID &p_instance, const Dictionary &p_channels);
             virtual void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible) = 0;
             /// Draws the part with p_material instead of its own
             virtual void instance_set_part_material_override(

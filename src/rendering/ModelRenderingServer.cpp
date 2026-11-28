@@ -76,6 +76,9 @@ namespace godot {
                 D_METHOD("instance_set_part_poses", "instance", "poses"),
                 &ModelRenderingServer::instance_set_part_poses);
         ClassDB::bind_method(
+                D_METHOD("instance_set_channels", "instance", "channels"),
+                &ModelRenderingServer::instance_set_channels);
+        ClassDB::bind_method(
                 D_METHOD("instance_set_part_visible", "instance", "part", "visible"),
                 &ModelRenderingServer::instance_set_part_visible);
         ClassDB::bind_method(
@@ -401,6 +404,12 @@ namespace godot {
         ModelRenderingBackend *backend = _get_instance_backend(p_instance);
         ERR_FAIL_NULL(backend);
         backend->instance_set_part_poses(p_instance, p_poses);
+    }
+
+    void ModelRenderingServer::instance_set_channels(const RID &p_instance, const Dictionary &p_channels) {
+        ModelRenderingBackend *backend = _get_instance_backend(p_instance);
+        ERR_FAIL_NULL(backend);
+        backend->instance_set_channels(p_instance, p_channels);
     }
 
     void

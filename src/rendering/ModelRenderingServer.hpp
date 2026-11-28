@@ -152,6 +152,11 @@ namespace godot {
             /// Poses parts, by name, on top of their own transform: {part: Transform3D}, kept across
             /// rebuilds; an empty transform takes a part back to rest
             void instance_set_part_poses(const RID &p_instance, const Dictionary &p_poses);
+            /// The values of the channels the model's parts are driven by, as its data binds them
+            /// (a wheel turned by an axle's angle): {channel: value}, kept across rebuilds; a part
+            /// of a channel of no value stands as its data says. A part its data drives takes its
+            /// pose of its channel alone, whatever instance_set_part_poses() sets for it
+            void instance_set_channels(const RID &p_instance, const Dictionary &p_channels);
             void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible);
             /// Draws the part with p_material instead of its own
             void instance_set_part_material_override(

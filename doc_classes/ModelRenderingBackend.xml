@@ -109,6 +109,14 @@
 				Without a streaming camera a registered instance is never built. The backend emits [signal instance_created] for it. Free it with [method instance_free] like any other instance.
 			</description>
 		</method>
+		<method name="instance_set_channels">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="channels" type="Dictionary" />
+			<description>
+				What [method ModelRenderingServer.instance_set_channels] asks of the backend: the values of the channels the model's parts are driven by, [code]{channel: value}[/code], kept across rebuilds. The base does nothing - a backend of no driven parts leaves it so.
+			</description>
+		</method>
 		<method name="instance_set_emission_energy">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

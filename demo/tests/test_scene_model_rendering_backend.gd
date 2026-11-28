@@ -300,3 +300,75 @@ func test_a_model_in_no_space_collides_with_nothing() -> void:
     ModelRenderingServer.instance_set_space(instance, space)
     await wait_physics_frames(2)
     assert_false(_ray_hit(space, Vector3.ZERO, body_layer).is_empty(), "in the space once set")
+
+
+## A model's nodes turned by channels (the model format's rotation_control): a crank by an axle's
+## angle, the coupling rod on its pin turned back by the same angle, so it keeps level as its pin
+## goes round; a lever of no channel's value at its default, within its limits
+const RODS_MODEL:String = "res://tests/fixtures/scene_model_rods.tscn"
+const CRANK_ORIGIN:Vector3 = Vector3(0.0, 0.5, 0.0)
+const CRANK_PIN:Vector3 = Vector3(0.0, 0.0, 0.25)
+const AXLE_CHANNEL:String = "axle.1.angle"
+const LEVER_LIMIT:float = 0.25
+const ROD_HALF_LENGTH:float = 1.0
+const QUARTER_TURNS:int = 4
+
+
+func _rods_instance(instancer:ModelRenderingServer.Instancer) -> RID:
+    var model:Resource = ModelRenderingServer.model_load(BACKEND, RODS_MODEL)
+    _instance = ModelRenderingServer.instance_create(BACKEND, model, instancer,
+            ModelRenderingServer.INSTANCE_KIND_DYNAMIC)
+    return _instance
+
+
+func test_a_coupling_rod_keeps_level_on_its_crank_pin() -> void:
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var instance:RID = _rods_instance(ModelRenderingServer.INSTANCER_NODES)
+    ModelRenderingServer.instance_attach_object_instance_id(instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(instance)
+    var rod:Node3D = attached.find_child("Rod", true, false) as Node3D
+
+    for quarter:int in QUARTER_TURNS:
+        var angle:float = quarter * PI / 2.0
+        ModelRenderingServer.instance_set_channels(instance, {AXLE_CHANNEL: angle})
+        var pin:Vector3 = CRANK_ORIGIN + Basis(Vector3.RIGHT, angle) * CRANK_PIN
+        assert_true(rod.global_transform.origin.is_equal_approx(pin), "the rod on the pin at %d deg" % (quarter * 90))
+        assert_true(rod.global_transform.basis.is_equal_approx(Basis()), "the rod level at %d deg" % (quarter * 90))
+
+
+func test_a_part_of_no_channels_value_stands_at_its_default_within_its_limits() -> void:
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var instance:RID = _rods_instance(ModelRenderingServer.INSTANCER_NODES)
+    ModelRenderingServer.instance_attach_object_instance_id(instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(instance)
+
+    var lever:Node3D = attached.find_child("Lever", true, false) as Node3D
+    assert_true(lever.transform.basis.is_equal_approx(Basis(Vector3.UP, LEVER_LIMIT)), "the default clamped to the limit")
+
+
+func test_channels_set_before_the_build_pose_the_meshes_drawn_optimized() -> void:
+    var instance:RID = _rods_instance(ModelRenderingServer.INSTANCER_OPTIMIZED)
+    ModelRenderingServer.instance_set_channels(instance, {AXLE_CHANNEL: PI})
+    ModelRenderingServer.instance_build(instance)
+
+    # the rod half a turn round: its pin under the crank, the rod still along Z
+    var pin:Vector3 = CRANK_ORIGIN + Basis(Vector3.RIGHT, PI) * CRANK_PIN
+    var hit:Dictionary = ModelRenderingServer.instance_intersect_segment(
+            instance, pin + Vector3(0.0, 0.0, 2.0 * ROD_HALF_LENGTH), pin - Vector3(0.0, 0.0, 2.0 * ROD_HALF_LENGTH))
+    assert_almost_eq(float(hit.get("distance", -1.0)), ROD_HALF_LENGTH, 0.001, "the rod's end where the pin took it")
+
+
+func test_a_part_driven_by_its_data_turns_by_its_channel_alone() -> void:
+    var attached:Node3D = Node3D.new()
+    add_child_autofree(attached)
+    var instance:RID = _rods_instance(ModelRenderingServer.INSTANCER_NODES)
+    ModelRenderingServer.instance_attach_object_instance_id(instance, attached.get_instance_id())
+    ModelRenderingServer.instance_build(instance)
+    var crank:Node3D = attached.find_child("Crank", true, false) as Node3D
+
+    # the crank posed as a wheel too, by the same angle: turned once, as the rod on it
+    ModelRenderingServer.instance_set_part_poses(instance, {"Crank": Transform3D(Basis(Vector3.RIGHT, PI / 2.0))})
+    ModelRenderingServer.instance_set_channels(instance, {AXLE_CHANNEL: PI / 2.0})
+    assert_true(crank.transform.basis.is_equal_approx(Basis(Vector3.RIGHT, PI / 2.0)), "a quarter turn, not a half")

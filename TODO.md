@@ -493,6 +493,13 @@ and a catalog `state_light`. The lamps also light without low voltage - TGauge g
 
 ## Rendering
 
+* **A model's parts driven by channels: only `rotation_control` and only the axles' angles (#128).**
+  `SceneModelRenderingBackend` turns the nodes of the glTF extras' `rotation_control` by
+  `ModelRenderingServer.instance_set_channels()`, and `RailVehicleRenderingServer` gives
+  `axle.<n>.angle`. Not yet: `translation_control` (suspension, buffers), the other channels of the
+  model format (`bogie.<n>.yaw`, `door.<side>.<n>.open_fraction` with the clips of `playback`,
+  #126), and a vehicle's low-poly interior, which is given no channels.
+
 * **GPU 22 ms of a 33 ms frame** (RX 580, 3607 draw calls) - measure on `make compile-profiling`
   and split by pass before any hypothesis.
 * **Mirror reflections (`PlanarMirror3D`) are smeared** (Impuls 36WEa, `td_impuls`). Not

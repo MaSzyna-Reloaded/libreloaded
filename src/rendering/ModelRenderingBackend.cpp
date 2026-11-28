@@ -54,6 +54,9 @@ namespace godot {
                 D_METHOD("instance_set_part_poses", "instance", "poses"),
                 &ModelRenderingBackend::instance_set_part_poses);
         ClassDB::bind_method(
+                D_METHOD("instance_set_channels", "instance", "channels"),
+                &ModelRenderingBackend::instance_set_channels);
+        ClassDB::bind_method(
                 D_METHOD("instance_set_part_visible", "instance", "part", "visible"),
                 &ModelRenderingBackend::instance_set_part_visible);
         ClassDB::bind_method(
@@ -105,6 +108,9 @@ namespace godot {
     void ModelRenderingBackend::instance_set_layer_mask(const RID & /* p_instance */, const uint32_t /* p_mask */) {}
 
     void ModelRenderingBackend::instance_set_space(const RID & /* p_instance */, const RID & /* p_space */) {}
+
+    void
+    ModelRenderingBackend::instance_set_channels(const RID & /* p_instance */, const Dictionary & /* p_channels */) {}
 
     void
     ModelRenderingBackend::instance_set_smoke_intensity(const RID & /* p_instance */, const float /* p_intensity */) {}

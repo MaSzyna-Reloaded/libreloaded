@@ -771,6 +771,7 @@ namespace godot {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
         const Ref<VehicleAppearance> &appearance = p_visual.appearance;
         p_visual.poses.clear();
+        p_visual.channels.clear();
         if (appearance.is_null() || models == nullptr || !p_visual.model.is_valid()) {
             _vehicle_parts_bound(p_vehicle);
             return;
@@ -846,7 +847,13 @@ namespace godot {
 
     void VehicleRenderingServer::_send_poses(Visual &p_visual) {
         ModelRenderingServer *models = ModelRenderingServer::get_instance();
-        if (models != nullptr && p_visual.model.is_valid() && !p_visual.poses.is_empty()) {
+        if (models == nullptr || !p_visual.model.is_valid()) {
+            return;
+        }
+        if (!p_visual.channels.is_empty()) {
+            models->instance_set_channels(p_visual.model, p_visual.channels);
+        }
+        if (!p_visual.poses.is_empty()) {
             models->instance_set_part_poses(p_visual.model, p_visual.poses);
         }
     }

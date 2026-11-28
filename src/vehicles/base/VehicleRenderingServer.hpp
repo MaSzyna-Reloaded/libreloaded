@@ -120,6 +120,9 @@ namespace godot {
                     Vector<Part> wheels[3];
                     /* Every pose of the exterior, sent to it in one call */
                     Dictionary poses;
+                    /* The values of the channels the exterior's parts are driven by (the kind's
+                     * _pose_running_gear()), sent with the poses */
+                    Dictionary channels;
                     /* Born optimized: a scenery's vehicles built as node hierarchies (cars,
                      * interiors) filled the load; _update_detail() details the near ones */
                     bool detailed = false;

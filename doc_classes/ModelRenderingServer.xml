@@ -147,6 +147,14 @@
 				Without a streaming camera a registered instance is never built. Free it with [method instance_free] like any other instance.
 			</description>
 		</method>
+		<method name="instance_set_channels">
+			<return type="void" />
+			<param index="0" name="instance" type="RID" />
+			<param index="1" name="channels" type="Dictionary" />
+			<description>
+				Sets the values of the channels the instance's model drives its parts by, as its data binds them - a node of the glTF extras [code]rotation_control[/code] turned about its own axis by [code]source * scale + offset[/code] [lb]rad[rb], a coupling rod by [code]axle.<n>.angle[/code]: [code]{channel: value}[/code]. Kept across rebuilds; a channel of no value leaves its parts as their data's [code]default[/code] says. A part its data drives takes its pose of its channel alone: a pose [method instance_set_part_poses] sets for it is left out, so a part turned both by a role and by its data turns once. A backend of no driven parts does nothing.
+			</description>
+		</method>
 		<method name="instance_set_emission_energy">
 			<return type="void" />
 			<param index="0" name="instance" type="RID" />

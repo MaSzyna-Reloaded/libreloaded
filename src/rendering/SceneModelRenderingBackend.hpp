@@ -60,6 +60,21 @@ namespace godot {
                     uint32_t layer = 0;
             };
 
+            /* A node turned by a channel's value, as its glTF extras' rotation_control says: about
+             * its own axis by the value times the scale plus the offset [rad], within the limits
+             * where it has them; the default for a channel of no value */
+            struct RotationControl {
+                    StringName part;
+                    StringName source;
+                    Vector3 axis;
+                    double scale = 1.0;
+                    double offset = 0.0;
+                    double default_value = 0.0;
+                    bool limited = false;
+                    double limit_min = 0.0;
+                    double limit_max = 0.0;
+            };
+
             struct InstanceData {
                     Ref<PackedScene> model;
                     Instancer instancer = ModelRenderingServer::INSTANCER_OPTIMIZED;
@@ -69,6 +84,11 @@ namespace godot {
                     bool visible = true;
                     ObjectID attached_id;
                     Dictionary part_poses;
+                    /* instance_set_channels(), the nodes of its model they turn (_read_model()), and
+                     * their poses of them (_pose_channels()), in place of part_poses' */
+                    Dictionary channels;
+                    Vector<RotationControl> rotation_controls;
+                    HashMap<StringName, Transform3D> channel_poses;
                     HashMap<StringName, bool> part_visible;
                     HashMap<StringName, Ref<Material>> part_materials;
                     HashMap<StringName, float> part_emission;
@@ -117,6 +137,8 @@ namespace godot {
             static void _read_node(
                     const Node *p_node, const Vector<StringName> &p_names, const Vector<Transform3D> &p_transforms,
                     InstanceData &p_instance);
+            static void _pose_channels(InstanceData &p_instance);
+            static Transform3D _get_part_pose(const InstanceData &p_instance, const StringName &p_part);
             static Transform3D _get_path_transform(
                     const InstanceData &p_instance, const Vector<StringName> &p_names,
                     const Vector<Transform3D> &p_transforms);
@@ -125,6 +147,7 @@ namespace godot {
             Ref<Material>
             _get_surface_material(const InstanceData &p_instance, const MeshPart &p_mesh, int p_surface) const;
             void _apply(InstanceData &p_instance) const;
+            void _apply_poses(InstanceData &p_instance) const;
             void _clear(InstanceData &p_instance);
             void _stream_build(const RID &p_instance, const Variant &p_preloaded);
             void _stream_clear(const RID &p_instance);
@@ -162,6 +185,7 @@ namespace godot {
             bool instance_has_part(const RID &p_instance, const String &p_part) const override;
             Transform3D instance_get_part_transform(const RID &p_instance, const String &p_part) const override;
             void instance_set_part_poses(const RID &p_instance, const Dictionary &p_poses) override;
+            void instance_set_channels(const RID &p_instance, const Dictionary &p_channels) override;
             void instance_set_part_visible(const RID &p_instance, const String &p_part, bool p_visible) override;
             void instance_set_part_material_override(
                     const RID &p_instance, const String &p_part, const Ref<Material> &p_material) override;

@@ -52,6 +52,7 @@ namespace godot {
     void SceneModelRenderingBackend::_read_model(InstanceData &p_instance) {
         p_instance.meshes.clear();
         p_instance.shapes.clear();
+        p_instance.rotation_controls.clear();
         p_instance.part_local_transforms.clear();
         p_instance.part_model_transforms.clear();
         p_instance.part_paths.clear();
@@ -85,6 +86,7 @@ namespace godot {
         }
         p_instance.part_emission = emission;
         _replace_materials(p_instance);
+        _pose_channels(p_instance);
     }
 
     namespace {
@@ -97,6 +99,18 @@ namespace godot {
         const char *const BODY_ROLE_SUFFIX = ".collision.body";
         const char *const INTERIOR_ROLE_SUFFIX = ".collision.interior";
         const char *const REPLACEABLE_TEXTURE_KEY = "replacable_texture";
+        /* The key of a node's extras turning it by a channel, and the keys of what it gives (the
+         * model format's procedural motion) */
+        const char *const ROTATION_CONTROL_KEY = "rotation_control";
+        const char *const CONTROL_SOURCE_KEY = "source";
+        const char *const CONTROL_AXIS_KEY = "axis";
+        const char *const CONTROL_SCALE_KEY = "scale";
+        const char *const CONTROL_OFFSET_KEY = "offset";
+        const char *const CONTROL_DEFAULT_KEY = "default";
+        const char *const CONTROL_LIMITS_KEY = "limits";
+        /* An axis written as its three components, limits as their two */
+        constexpr int64_t AXIS_COMPONENTS = 3;
+        constexpr int64_t LIMITS_BOUNDS = 2;
         /* The textures of a slot (ModelRenderingServer.instance_set_replaceable_textures()) */
         const char *const BASE_COLOR_TEXTURE = "base_color";
         const char *const ORM_TEXTURE = "orm";
@@ -175,6 +189,31 @@ namespace godot {
             p_instance.part_model_transforms[path] = model_transform;
             // a name of more nodes names none of them
             p_instance.part_paths[name] = p_instance.part_paths.has(name) ? StringName() : path;
+            // a node turned by a channel (the model format's rotation_control): of a source and an axis
+            const Dictionary extras =
+                    p_node->has_meta(EXTRAS_META) ? Dictionary(p_node->get_meta(EXTRAS_META)) : Dictionary();
+            const Variant control_data = extras.get(ROTATION_CONTROL_KEY, Variant());
+            if (control_data.get_type() == Variant::DICTIONARY) {
+                const Dictionary control = control_data;
+                const Array axis = control.get(CONTROL_AXIS_KEY, Array());
+                const String source = control.get(CONTROL_SOURCE_KEY, String());
+                if (!source.is_empty() && axis.size() == AXIS_COMPONENTS) {
+                    RotationControl rotation;
+                    rotation.part = path;
+                    rotation.source = source;
+                    rotation.axis = Vector3(axis[0], axis[1], axis[2]).normalized();
+                    rotation.scale = control.get(CONTROL_SCALE_KEY, 1.0);
+                    rotation.offset = control.get(CONTROL_OFFSET_KEY, 0.0);
+                    rotation.default_value = control.get(CONTROL_DEFAULT_KEY, 0.0);
+                    const Array limits = control.get(CONTROL_LIMITS_KEY, Array());
+                    rotation.limited = limits.size() == LIMITS_BOUNDS;
+                    if (rotation.limited) {
+                        rotation.limit_min = limits[0];
+                        rotation.limit_max = limits[1];
+                    }
+                    p_instance.rotation_controls.push_back(rotation);
+                }
+            }
         }
         const MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node);
         if (mesh_instance != nullptr && mesh_instance->get_mesh().is_valid()) {
@@ -211,6 +250,32 @@ namespace godot {
         }
     }
 
+    /// The nodes the channels turn posed of their values (instance_set_channels()), or of their
+    /// defaults; a turn reduced to a full one
+    void SceneModelRenderingBackend::_pose_channels(InstanceData &p_instance) {
+        p_instance.channel_poses.clear();
+        for (const RotationControl &control: p_instance.rotation_controls) {
+            const double value = p_instance.channels.get(control.source, control.default_value);
+            double angle = (value * control.scale) + control.offset;
+            if (control.limited) {
+                angle = Math::clamp(angle, control.limit_min, control.limit_max);
+            }
+            p_instance.channel_poses[control.part] =
+                    Transform3D(Basis(control.axis, static_cast<real_t>(Math::fmod(angle, Math::TAU))));
+        }
+    }
+
+    /// A part's pose on top of its own transform: its channel's, the one writer of a part its data
+    /// drives - a pose set for it too (instance_set_part_poses()) is left out - else the one set
+    Transform3D SceneModelRenderingBackend::_get_part_pose(const InstanceData &p_instance, const StringName &p_part) {
+        const Transform3D *channel_pose = p_instance.channel_poses.getptr(p_part);
+        if (channel_pose != nullptr) {
+            return *channel_pose;
+        }
+        const Variant pose = p_instance.part_poses.get(p_part, Variant());
+        return pose.get_type() == Variant::TRANSFORM3D ? Transform3D(pose) : Transform3D();
+    }
+
     /// A mesh or a shape in the model's space by the nodes down to it, each posed on top of its own
     /// transform
     Transform3D SceneModelRenderingBackend::_get_path_transform(
@@ -218,9 +283,7 @@ namespace godot {
             const Vector<Transform3D> &p_transforms) {
         Transform3D transform;
         for (int64_t index = 0; index < p_names.size(); ++index) {
-            const Variant pose = p_instance.part_poses.get(p_names[index], Variant());
-            transform = transform * p_transforms[index] *
-                        (pose.get_type() == Variant::TRANSFORM3D ? Transform3D(pose) : Transform3D());
+            transform = transform * p_transforms[index] * _get_part_pose(p_instance, p_names[index]);
         }
         return transform;
     }
@@ -278,20 +341,51 @@ namespace godot {
     }
 
     /// What is set on the instance onto what it draws
-    void SceneModelRenderingBackend::_apply(InstanceData &p_instance) const {
+    /// Where the instance's meshes, nodes and collision shapes stand, of their parts' poses
+    void SceneModelRenderingBackend::_apply_poses(InstanceData &p_instance) const {
         if (!p_instance.built) {
             return;
         }
-        // the collision shapes where the meshes of their parts are, posed; none of a part hidden
         PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
         for (int index = 0; index < p_instance.bodies.size(); ++index) {
             const ShapePart &shape = p_instance.shapes[index];
             ps->body_set_state(
                     p_instance.bodies[index], PhysicsServer3D::BODY_STATE_TRANSFORM,
                     p_instance.transform * _get_path_transform(p_instance, shape.path_names, shape.path_transforms));
+        }
+        if (p_instance.instancer == ModelRenderingServer::INSTANCER_OPTIMIZED) {
+            RenderingServer *rs = RenderingServer::get_singleton();
+            for (int index = 0; index < p_instance.meshes.size(); ++index) {
+                const MeshPart &mesh = p_instance.meshes[index];
+                rs->instance_set_transform(
+                        p_instance.render_instances[index],
+                        p_instance.transform * _get_path_transform(p_instance, mesh.path_names, mesh.path_transforms));
+            }
+            return;
+        }
+        Node3D *root = _get_root(p_instance);
+        if (root == nullptr) {
+            return;
+        }
+        for (const KeyValue<StringName, Transform3D> &part: p_instance.part_local_transforms) {
+            Node3D *node = Object::cast_to<Node3D>(root->get_node_or_null(NodePath(String(part.key))));
+            if (node != nullptr) {
+                node->set_transform(part.value * _get_part_pose(p_instance, part.key));
+            }
+        }
+    }
+
+    void SceneModelRenderingBackend::_apply(InstanceData &p_instance) const {
+        if (!p_instance.built) {
+            return;
+        }
+        _apply_poses(p_instance);
+        // the collision shapes where the meshes of their parts are (_apply_poses()); none of a part hidden
+        PhysicsServer3D *ps = PhysicsServer3D::get_singleton();
+        for (int index = 0; index < p_instance.bodies.size(); ++index) {
             ps->body_set_shape_disabled(
                     p_instance.bodies[index], 0,
-                    !p_instance.visible || !_is_path_visible(p_instance, shape.path_names));
+                    !p_instance.visible || !_is_path_visible(p_instance, p_instance.shapes[index].path_names));
         }
         RenderingServer *rs = RenderingServer::get_singleton();
         if (p_instance.instancer == ModelRenderingServer::INSTANCER_OPTIMIZED) {
@@ -300,9 +394,6 @@ namespace godot {
                 const MeshPart &mesh = p_instance.meshes[index];
                 const RID render_instance = p_instance.render_instances[index];
                 rs->instance_set_scenario(render_instance, p_instance.scenario);
-                rs->instance_set_transform(
-                        render_instance,
-                        p_instance.transform * _get_path_transform(p_instance, mesh.path_names, mesh.path_transforms));
                 rs->instance_set_visible(
                         render_instance, p_instance.visible && _is_path_visible(p_instance, mesh.path_names));
                 rs->instance_set_layer_mask(render_instance, p_instance.layer_mask);
@@ -334,9 +425,6 @@ namespace godot {
             if (node == nullptr) {
                 continue;
             }
-            const Variant pose = p_instance.part_poses.get(part.key, Variant());
-            node->set_transform(
-                    part.value * (pose.get_type() == Variant::TRANSFORM3D ? Transform3D(pose) : Transform3D()));
             const bool *visible = p_instance.part_visible.getptr(part.key);
             node->set_visible(visible == nullptr || *visible);
         }
@@ -626,6 +714,14 @@ namespace godot {
             }
         }
         _apply(*instance);
+    }
+
+    void SceneModelRenderingBackend::instance_set_channels(const RID &p_instance, const Dictionary &p_channels) {
+        InstanceData *instance = instances.getptr(p_instance);
+        ERR_FAIL_NULL(instance);
+        instance->channels = p_channels.duplicate();
+        _pose_channels(*instance);
+        _apply_poses(*instance);
     }
 
     void SceneModelRenderingBackend::instance_set_part_visible(
